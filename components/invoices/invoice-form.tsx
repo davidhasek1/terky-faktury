@@ -110,40 +110,60 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
       const retentionAmount = calculateRetention()
       const total = calculateTotal()
 
-      const invoiceData = {
-        ...formData,
+      const baseInvoiceData = {
+        invoice_number: formData.invoice_number,
+        customer_id: formData.customer_id,
+        issue_date: formData.issue_date,
+        due_date: formData.due_date,
+        tax_rate: formData.tax_rate,
+        retention_rate: formData.retention_rate,
+        notes: formData.notes,
         subtotal,
         tax_amount: taxAmount,
         retention_amount: retentionAmount,
         total,
-        user_id: user.id, // Add user_id for RLS
       }
 
       let invoiceId = invoice?.id
 
       if (invoice) {
-        // Update existing invoice
-        const { error: invoiceError } = await supabase.from("invoices").update(invoiceData).eq("id", invoice.id)
+        console.log("[v0] Updating invoice:", invoice.id)
+        const { error: invoiceError } = await supabase.from("invoices").update(baseInvoiceData).eq("id", invoice.id)
 
-        if (invoiceError) throw invoiceError
+        if (invoiceError) {
+          console.error("[v0] Error updating invoice:", invoiceError)
+          throw invoiceError
+        }
 
-        // Delete old items
+        console.log("[v0] Deleting old items for invoice:", invoice.id)
         const { error: deleteError } = await supabase.from("invoice_items").delete().eq("invoice_id", invoice.id)
 
-        if (deleteError) throw deleteError
+        if (deleteError) {
+          console.error("[v0] Error deleting items:", deleteError)
+          throw deleteError
+        }
       } else {
-        // Create new invoice
+        console.log("[v0] Creating new invoice")
+        const newInvoiceData = {
+          ...baseInvoiceData,
+          user_id: user.id,
+        }
+
         const { data: newInvoice, error: invoiceError } = await supabase
           .from("invoices")
-          .insert([invoiceData])
+          .insert([newInvoiceData])
           .select()
           .single()
 
-        if (invoiceError) throw invoiceError
+        if (invoiceError) {
+          console.error("[v0] Error creating invoice:", invoiceError)
+          throw invoiceError
+        }
+
+        console.log("[v0] Created invoice:", newInvoice)
         invoiceId = newInvoice.id
       }
 
-      // Insert items
       const itemsData = items.map((item) => ({
         invoice_id: invoiceId,
         description: item.description,
@@ -152,10 +172,15 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
         total: item.total,
       }))
 
+      console.log("[v0] Inserting items:", itemsData)
       const { error: itemsError } = await supabase.from("invoice_items").insert(itemsData)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error("[v0] Error inserting items:", itemsError)
+        throw itemsError
+      }
 
+      console.log("[v0] Invoice saved successfully")
       router.push("/invoices")
       router.refresh()
     } catch (err) {
