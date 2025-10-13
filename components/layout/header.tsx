@@ -28,7 +28,7 @@ export function Header() {
     <header className="border-b bg-background">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-xl font-bold">
+          <Link href="/" className="text-xl font-bold hover:text-primary transition-colors">
             Terky fakturační udělátko
           </Link>
           <nav className="hidden md:flex items-center gap-6">
