@@ -38,15 +38,30 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
     const supabase = createClient()
 
     try {
-      const { error } = await supabase.from("invoices").delete().eq("id", invoiceId)
+      console.log("[v0] Deleting invoice items first...")
+      // Nejdřív smazat položky faktury
+      const { error: itemsError } = await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId)
 
-      if (error) throw error
+      if (itemsError) {
+        console.error("[v0] Error deleting invoice items:", itemsError)
+        throw itemsError
+      }
 
+      console.log("[v0] Deleting invoice...")
+      // Pak smazat fakturu
+      const { error: invoiceError } = await supabase.from("invoices").delete().eq("id", invoiceId)
+
+      if (invoiceError) {
+        console.error("[v0] Error deleting invoice:", invoiceError)
+        throw invoiceError
+      }
+
+      console.log("[v0] Invoice deleted successfully")
       router.refresh()
       setShowDeleteDialog(false)
     } catch (err) {
       console.error("[v0] Error deleting invoice:", err)
-      alert("Nepodařilo se smazat fakturu")
+      alert("Nepodařilo se smazat fakturu: " + (err instanceof Error ? err.message : "Neznámá chyba"))
     } finally {
       setIsDeleting(false)
     }

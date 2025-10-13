@@ -239,7 +239,10 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
             step="0.01"
             required
             value={formData.tax_rate}
-            onChange={(e) => setFormData({ ...formData, tax_rate: Number.parseFloat(e.target.value) })}
+            onChange={(e) => {
+              const value = e.target.value
+              setFormData({ ...formData, tax_rate: value === "" ? 0 : Number.parseFloat(value) })
+            }}
           />
         </div>
 
@@ -250,7 +253,10 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
             type="number"
             step="0.01"
             value={formData.retention_rate}
-            onChange={(e) => setFormData({ ...formData, retention_rate: Number.parseFloat(e.target.value) || 0 })}
+            onChange={(e) => {
+              const value = e.target.value
+              setFormData({ ...formData, retention_rate: value === "" ? 0 : Number.parseFloat(value) })
+            }}
           />
           <p className="text-xs text-muted-foreground">Obvykle 15% pro španělské faktury</p>
         </div>
@@ -287,7 +293,10 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
                   step="0.01"
                   required
                   value={item.quantity}
-                  onChange={(e) => updateItem(index, "quantity", Number.parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    updateItem(index, "quantity", value === "" ? 0 : Number.parseFloat(value))
+                  }}
                 />
               </div>
 
@@ -299,7 +308,10 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
                   step="0.01"
                   required
                   value={item.unit_price}
-                  onChange={(e) => updateItem(index, "unit_price", Number.parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    updateItem(index, "unit_price", value === "" ? 0 : Number.parseFloat(value))
+                  }}
                 />
               </div>
 

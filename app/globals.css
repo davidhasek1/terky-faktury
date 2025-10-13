@@ -8,8 +8,8 @@
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
-  /* Oprava popover - solidní pozadí pro lepší čitelnost */
-  --popover: oklch(0.22 0 0);
+  /* Světlejší popover pro lepší čitelnost v dark mode */
+  --popover: oklch(0.25 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
@@ -48,7 +48,7 @@
   --color-foreground: #0a0a0a;
   --color-card: #ffffff;
   --color-card-foreground: #0a0a0a;
-  /* Oprava popover - solidní bílé pozadí */
+  /* Explicitní bílé pozadí pro popover */
   --color-popover: #ffffff;
   --color-popover-foreground: #0a0a0a;
   --color-primary: #2563eb;
@@ -113,9 +113,24 @@
   body {
     @apply bg-background text-foreground;
   }
-  /* Světle šedé placeholdery pro lepší rozlišení od vyplněného textu */
+  /* Ještě světlejší placeholdery pro lepší rozlišení */
   input::placeholder,
   textarea::placeholder {
-    @apply text-muted-foreground/40;
+    @apply text-muted-foreground/30;
+  }
+
+  /* Explicitní solidní pozadí pro všechny popovery a dialogy */
+  [data-slot="popover-content"],
+  [data-slot="dialog-content"],
+  [data-radix-popper-content-wrapper] {
+    background-color: var(--color-popover) !important;
+    opacity: 1 !important;
+  }
+
+  .dark [data-slot="popover-content"],
+  .dark [data-slot="dialog-content"],
+  .dark [data-radix-popper-content-wrapper] {
+    background-color: oklch(0.25 0 0) !important;
+    opacity: 1 !important;
   }
 }
