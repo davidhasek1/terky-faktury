@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
 
 export async function GET(request: NextRequest, { params }: { params: { publicId: string } }) {
@@ -7,7 +7,11 @@ export async function GET(request: NextRequest, { params }: { params: { publicId
     console.log("[v0] Starting PDF download for publicId:", params.publicId)
 
     const { publicId } = params
-    const supabase = await createClient()
+
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
 
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: { publicId
 
     const [{ data: items, error: itemsError }, { data: companyDetails }] = await Promise.all([
       supabase.from("invoice_items").select("*").eq("invoice_id", invoice.id),
-      supabase.from("company_details").select("*").eq("user_id", invoice.user_id).single(),
+      supabase.from("company_details").select("*").eq("user_id", invoice.user_id).maybeSingle(),
     ])
 
     if (itemsError) {

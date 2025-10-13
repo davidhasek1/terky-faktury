@@ -1,30 +1,67 @@
-import { createClient } from "@/lib/supabase/server"
-import { notFound } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { InvoicePreview } from "@/components/invoices/invoice-preview"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, Loader2 } from "lucide-react"
 import Link from "next/link"
+import type { Invoice, InvoiceItem, CompanyDetails } from "@/lib/types"
 
-export default async function PublicInvoiceDownloadPage({ params }: { params: { publicId: string } }) {
-  const supabase = await createClient()
+export default function PublicInvoiceDownloadPage() {
+  const params = useParams()
+  const publicId = params.publicId as string
 
-  const { data: invoice, error: invoiceError } = await supabase
-    .from("invoices")
-    .select("*, customer:customers(*)")
-    .eq("public_id", params.publicId)
-    .single()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<{
+    invoice: Invoice & { customer: any }
+    items: InvoiceItem[]
+    companyDetails: CompanyDetails | null
+  } | null>(null)
 
-  if (invoiceError || !invoice) {
-    notFound()
+  useEffect(() => {
+    async function fetchInvoice() {
+      try {
+        const response = await fetch(`/api/invoices/public/${publicId}`)
+
+        if (!response.ok) {
+          throw new Error("Factura no encontrada")
+        }
+
+        const result = await response.json()
+        setData(result)
+      } catch (err) {
+        console.error("[v0] Error fetching invoice:", err)
+        setError(err instanceof Error ? err.message : "Error al cargar la factura")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInvoice()
+  }, [publicId])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Cargando factura...</p>
+        </div>
+      </div>
+    )
   }
 
-  const [{ data: items, error: itemsError }, { data: companyDetails }] = await Promise.all([
-    supabase.from("invoice_items").select("*").eq("invoice_id", invoice.id).order("created_at", { ascending: true }),
-    supabase.from("company_details").select("*").eq("user_id", invoice.user_id).single(),
-  ])
-
-  if (itemsError) {
-    notFound()
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Factura no encontrada</h1>
+          <p className="text-muted-foreground">{error || "La factura que buscas no existe"}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -32,10 +69,10 @@ export default async function PublicInvoiceDownloadPage({ params }: { params: { 
       <div className="container max-w-4xl mx-auto px-4">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Factura {invoice.invoice_number}</h1>
+            <h1 className="text-2xl font-bold">Factura {data.invoice.invoice_number}</h1>
             <p className="text-muted-foreground">Vista previa de la factura</p>
           </div>
-          <Link href={`/api/invoices/download/${params.publicId}`} target="_blank">
+          <Link href={`/api/invoices/download/${publicId}`} target="_blank">
             <Button size="lg">
               <Download className="mr-2 h-5 w-5" />
               Descargar PDF
@@ -43,7 +80,7 @@ export default async function PublicInvoiceDownloadPage({ params }: { params: { 
           </Link>
         </div>
 
-        <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />
+        <InvoicePreview invoice={data.invoice} items={data.items} companyDetails={data.companyDetails} />
       </div>
     </div>
   )

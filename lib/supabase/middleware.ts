@@ -10,12 +10,12 @@ export async function updateSession(request: NextRequest) {
     console.error("[v0] NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl ? "present" : "missing")
     console.error("[v0] NEXT_PUBLIC_SUPABASE_ANON_KEY:", supabaseAnonKey ? "present" : "missing")
 
-    // Allow public routes to work even without Supabase
     const isPublicDownloadPage = request.nextUrl.pathname.startsWith("/invoices/download/")
     const isPublicDownloadAPI = request.nextUrl.pathname.startsWith("/api/invoices/download/")
+    const isPublicAPI = request.nextUrl.pathname.startsWith("/api/invoices/public/")
     const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
 
-    if (isPublicDownloadPage || isPublicDownloadAPI || isAuthPage) {
+    if (isPublicDownloadPage || isPublicDownloadAPI || isPublicAPI || isAuthPage) {
       return NextResponse.next({ request })
     }
 
@@ -50,9 +50,10 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicDownloadPage = request.nextUrl.pathname.startsWith("/invoices/download/")
   const isPublicDownloadAPI = request.nextUrl.pathname.startsWith("/api/invoices/download/")
+  const isPublicAPI = request.nextUrl.pathname.startsWith("/api/invoices/public/")
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
 
-  if (!user && !isPublicDownloadPage && !isPublicDownloadAPI && !isAuthPage) {
+  if (!user && !isPublicDownloadPage && !isPublicDownloadAPI && !isPublicAPI && !isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"
     return NextResponse.redirect(url)
