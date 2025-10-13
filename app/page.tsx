@@ -68,9 +68,16 @@ export default async function HomePage() {
             <CardTitle className="text-2xl text-red-600">{stats.overdueInvoices}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <span>Vyžaduje pozornost</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <span>Vyžaduje pozornost</span>
+              </div>
+              {stats.overdueInvoices > 0 && (
+                <Button asChild variant="outline" size="sm" className="w-full bg-transparent">
+                  <Link href="/invoices?status=overdue">Zobrazit faktury</Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
