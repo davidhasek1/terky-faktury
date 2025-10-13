@@ -119,18 +119,31 @@
     @apply text-muted-foreground/30;
   }
 
-  /* Explicitní solidní pozadí pro všechny popovery a dialogy */
-  [data-slot="popover-content"],
-  [data-slot="dialog-content"],
-  [data-radix-popper-content-wrapper] {
-    background-color: var(--color-popover) !important;
+  /* Explicitní solidní pozadí pro všechny dialogy a popovery s nejvyšší prioritou */
+  [data-slot="dialog-content"] {
+    background-color: #ffffff !important;
     opacity: 1 !important;
+    z-index: 301 !important;
+  }
+
+  [data-slot="dialog-overlay"] {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: 300 !important;
+  }
+
+  [data-slot="popover-content"],
+  [data-radix-popper-content-wrapper] {
+    background-color: #ffffff !important;
+    opacity: 1 !important;
+    z-index: 302 !important;
+  }
+
+  .dark [data-slot="dialog-content"] {
+    background-color: oklch(0.25 0 0) !important;
   }
 
   .dark [data-slot="popover-content"],
-  .dark [data-slot="dialog-content"],
   .dark [data-radix-popper-content-wrapper] {
     background-color: oklch(0.25 0 0) !important;
-    opacity: 1 !important;
   }
 }
