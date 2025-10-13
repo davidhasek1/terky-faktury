@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     console.log("[v0] Sending email to:", invoice.customer.email)
     const { error: emailError } = await resend.emails.send({
-      from: "Facturas <onboarding@resend.dev>",
+      from: "Terky Faktury <faktury@terkyfaktury.site>",
       to: [invoice.customer.email],
       subject: `Factura ${invoice.invoice_number}`,
       html: `
