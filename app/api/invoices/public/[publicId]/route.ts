@@ -8,12 +8,17 @@ export async function GET(request: Request, { params }: { params: { publicId: st
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+    console.log("[v0] Fetching invoice with public_id:", params.publicId)
+
     // Fetch invoice by public_id
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .select("*, customer:customers(*)")
       .eq("public_id", params.publicId)
       .single()
+
+    console.log("[v0] Invoice data:", invoice)
+    console.log("[v0] Customer data:", invoice?.customer)
 
     if (invoiceError || !invoice) {
       console.error("[v0] Error fetching invoice:", invoiceError)

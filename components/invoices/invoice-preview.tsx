@@ -20,6 +20,16 @@ interface InvoicePreviewProps {
 }
 
 export function InvoicePreview({ invoice, items, companyDetails }: InvoicePreviewProps) {
+  if (!invoice.customer) {
+    return (
+      <Card className="print:shadow-none">
+        <CardContent className="p-8 md:p-12">
+          <p className="text-center text-muted-foreground">Error: Datos del cliente no disponibles</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="print:shadow-none" id="invoice-preview">
       <CardContent className="p-8 md:p-12">
