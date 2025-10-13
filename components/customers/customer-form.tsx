@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
 import type { Customer } from "@/lib/types"
+import { toast } from "sonner"
 
 interface CustomerFormProps {
   customer?: Customer
@@ -18,7 +19,6 @@ interface CustomerFormProps {
 export function CustomerForm({ customer }: CustomerFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     name: customer?.name || "",
@@ -32,7 +32,6 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
 
     const supabase = createClient()
 
@@ -57,11 +56,12 @@ export function CustomerForm({ customer }: CustomerFormProps) {
         if (error) throw error
       }
 
+      toast.success(customer ? "Zákazník byl úspěšně aktualizován" : "Zákazník byl úspěšně vytvořen")
       router.push("/customers")
       router.refresh()
     } catch (err) {
       console.error("[v0] Error saving customer:", err)
-      setError(err instanceof Error ? err.message : "Nepodařilo se uložit zákazníka")
+      toast.error(err instanceof Error ? err.message : "Nepodařilo se uložit zákazníka")
     } finally {
       setIsLoading(false)
     }
@@ -122,8 +122,6 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           <Input id="dic" value={formData.dic} onChange={(e) => setFormData({ ...formData, dic: e.target.value })} />
         </div>
       </div>
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-4">
         <Button type="submit" disabled={isLoading}>

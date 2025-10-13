@@ -14,6 +14,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Customer, Invoice, InvoiceItem } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface InvoiceFormProps {
   customers: Customer[]
@@ -24,21 +25,31 @@ interface InvoiceFormProps {
 export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     invoice_number: invoice?.invoice_number || `F${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
     customer_id: invoice?.customer_id || undefined,
     issue_date: invoice?.issue_date || new Date().toISOString().split("T")[0],
     due_date: invoice?.due_date || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    tax_rate: invoice?.tax_rate || 21,
-    retention_rate: invoice?.retention_rate || 0,
+    tax_rate: invoice?.tax_rate?.toString() || "21",
+    retention_rate: invoice?.retention_rate?.toString() || "15",
     notes: invoice?.notes || "",
   })
 
   const [items, setItems] = useState<InvoiceItem[]>(
-    existingItems.length > 0 ? existingItems : [{ description: "", quantity: 1, unit_price: 0, total: 0 }],
+    existingItems.length > 0
+      ? existingItems.map((item) => ({
+          ...item,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        }))
+      : [{ description: "", quantity: 1, unit_price: 0, total: 0 }],
   )
+
+  const isValidNumber = (value: string): boolean => {
+    if (value === "" || value === ".") return true
+    return /^\d*\.?\d*$/.test(value)
+  }
 
   const calculateItemTotal = (quantity: number, unitPrice: number) => {
     return quantity * unitPrice
@@ -49,11 +60,13 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
   }
 
   const calculateTax = () => {
-    return (calculateSubtotal() * formData.tax_rate) / 100
+    const taxRate = Number.parseFloat(formData.tax_rate) || 0
+    return (calculateSubtotal() * taxRate) / 100
   }
 
   const calculateRetention = () => {
-    return (calculateSubtotal() * formData.retention_rate) / 100
+    const retentionRate = Number.parseFloat(formData.retention_rate) || 0
+    return (calculateSubtotal() * retentionRate) / 100
   }
 
   const calculateTotal = () => {
@@ -84,19 +97,45 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
 
     if (!formData.customer_id) {
-      setError("Musíte vybrat zákazníka")
+      toast.error("Musíte vybrat zákazníka")
       setIsLoading(false)
       return
+    }
+
+    const taxRate = Number.parseFloat(formData.tax_rate)
+    const retentionRate = Number.parseFloat(formData.retention_rate)
+
+    if (Number.isNaN(taxRate) || taxRate < 0) {
+      toast.error("Sazba DPH musí být platné číslo")
+      setIsLoading(false)
+      return
+    }
+
+    if (Number.isNaN(retentionRate) || retentionRate < 0) {
+      toast.error("Retención musí být platné číslo")
+      setIsLoading(false)
+      return
+    }
+
+    // Validate items
+    for (const item of items) {
+      if (Number.isNaN(item.quantity) || item.quantity <= 0) {
+        toast.error("Množství musí být platné číslo větší než 0")
+        setIsLoading(false)
+        return
+      }
+      if (Number.isNaN(item.unit_price) || item.unit_price < 0) {
+        toast.error("Cena/ks musí být platné číslo")
+        setIsLoading(false)
+        return
+      }
     }
 
     const supabase = createClient()
 
     try {
-      console.log("[v0] Saving invoice with data:", formData)
-
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -115,8 +154,8 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
         customer_id: formData.customer_id,
         issue_date: formData.issue_date,
         due_date: formData.due_date,
-        tax_rate: formData.tax_rate,
-        retention_rate: formData.retention_rate,
+        tax_rate: taxRate,
+        retention_rate: retentionRate,
         notes: formData.notes,
         subtotal,
         tax_amount: taxAmount,
@@ -127,23 +166,18 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
       let invoiceId = invoice?.id
 
       if (invoice) {
-        console.log("[v0] Updating invoice:", invoice.id)
         const { error: invoiceError } = await supabase.from("invoices").update(baseInvoiceData).eq("id", invoice.id)
 
         if (invoiceError) {
-          console.error("[v0] Error updating invoice:", invoiceError)
           throw invoiceError
         }
 
-        console.log("[v0] Deleting old items for invoice:", invoice.id)
         const { error: deleteError } = await supabase.from("invoice_items").delete().eq("invoice_id", invoice.id)
 
         if (deleteError) {
-          console.error("[v0] Error deleting items:", deleteError)
           throw deleteError
         }
       } else {
-        console.log("[v0] Creating new invoice")
         const newInvoiceData = {
           ...baseInvoiceData,
           user_id: user.id,
@@ -156,11 +190,9 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
           .single()
 
         if (invoiceError) {
-          console.error("[v0] Error creating invoice:", invoiceError)
           throw invoiceError
         }
 
-        console.log("[v0] Created invoice:", newInvoice)
         invoiceId = newInvoice.id
       }
 
@@ -172,20 +204,17 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
         total: item.total,
       }))
 
-      console.log("[v0] Inserting items:", itemsData)
       const { error: itemsError } = await supabase.from("invoice_items").insert(itemsData)
 
       if (itemsError) {
-        console.error("[v0] Error inserting items:", itemsError)
         throw itemsError
       }
 
-      console.log("[v0] Invoice saved successfully")
+      toast.success(invoice ? "Faktura byla úspěšně aktualizována" : "Faktura byla úspěšně vytvořena")
       router.push("/invoices")
       router.refresh()
     } catch (err) {
-      console.error("[v0] Error saving invoice:", err)
-      setError(err instanceof Error ? err.message : "Nepodařilo se uložit fakturu")
+      toast.error(err instanceof Error ? err.message : "Nepodařilo se uložit fakturu")
     } finally {
       setIsLoading(false)
     }
@@ -260,13 +289,16 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
           </Label>
           <Input
             id="tax_rate"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             required
             value={formData.tax_rate}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => {
               const value = e.target.value
-              setFormData({ ...formData, tax_rate: value === "" ? 0 : Number.parseFloat(value) })
+              if (isValidNumber(value)) {
+                setFormData({ ...formData, tax_rate: value })
+              }
             }}
           />
         </div>
@@ -275,12 +307,15 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
           <Label htmlFor="retention_rate">Retención (%)</Label>
           <Input
             id="retention_rate"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={formData.retention_rate}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => {
               const value = e.target.value
-              setFormData({ ...formData, retention_rate: value === "" ? 0 : Number.parseFloat(value) })
+              if (isValidNumber(value)) {
+                setFormData({ ...formData, retention_rate: value })
+              }
             }}
           />
           <p className="text-xs text-muted-foreground">Obvykle 15% pro španělské faktury</p>
@@ -314,13 +349,16 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
                 <Label htmlFor={`quantity-${index}`}>Množství</Label>
                 <Input
                   id={`quantity-${index}`}
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   required
                   value={item.quantity}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => {
                     const value = e.target.value
-                    updateItem(index, "quantity", value === "" ? 0 : Number.parseFloat(value))
+                    if (isValidNumber(value)) {
+                      updateItem(index, "quantity", value === "" ? 0 : Number.parseFloat(value) || 0)
+                    }
                   }}
                 />
               </div>
@@ -329,13 +367,16 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
                 <Label htmlFor={`unit_price-${index}`}>Cena/ks</Label>
                 <Input
                   id={`unit_price-${index}`}
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   required
                   value={item.unit_price}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => {
                     const value = e.target.value
-                    updateItem(index, "unit_price", value === "" ? 0 : Number.parseFloat(value))
+                    if (isValidNumber(value)) {
+                      updateItem(index, "unit_price", value === "" ? 0 : Number.parseFloat(value) || 0)
+                    }
                   }}
                 />
               </div>
@@ -372,7 +413,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
               <span className="text-muted-foreground">DPH ({formData.tax_rate}%):</span>
               <span className="font-medium">{formatCurrency(calculateTax())}</span>
             </div>
-            {formData.retention_rate > 0 && (
+            {Number.parseFloat(formData.retention_rate) > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Retención (-{formData.retention_rate}%):</span>
                 <span className="font-medium text-destructive">-{formatCurrency(calculateRetention())}</span>
@@ -395,8 +436,6 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
           rows={3}
         />
       </div>
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-4">
         <Button type="submit" disabled={isLoading}>

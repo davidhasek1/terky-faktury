@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { createClient } from "@/lib/supabase/server"
 import { Suspense } from "react"
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
   title: "Fakturační systém",
@@ -31,6 +32,7 @@ export default async function RootLayout({
         <Suspense>{user && <Header />}</Suspense>
         <main className="flex-1">{children}</main>
         <Suspense>{user && <Footer />}</Suspense>
+        <Toaster />
         <Analytics />
       </body>
     </html>

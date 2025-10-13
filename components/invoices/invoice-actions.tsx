@@ -17,6 +17,7 @@ import {
 import { MoreHorizontal, Pencil, Trash2, FileText, Download, CheckCircle, XCircle, Mail } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { MarkAsPaidButton } from "./mark-as-paid-button"
+import { toast } from "sonner"
 
 interface InvoiceActionsProps {
   invoiceId: string
@@ -57,11 +58,12 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
       }
 
       console.log("[v0] Invoice deleted successfully")
+      toast.success("Faktura byla úspěšně smazána")
       router.refresh()
       setShowDeleteDialog(false)
     } catch (err) {
       console.error("[v0] Error deleting invoice:", err)
-      alert("Nepodařilo se smazat fakturu: " + (err instanceof Error ? err.message : "Neznámá chyba"))
+      toast.error("Nepodařilo se smazat fakturu: " + (err instanceof Error ? err.message : "Neznámá chyba"))
     } finally {
       setIsDeleting(false)
     }
@@ -76,11 +78,12 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
 
       if (error) throw error
 
+      toast.success("Platba faktury byla zrušena")
       router.refresh()
       setShowUnmarkPaidDialog(false)
     } catch (err) {
       console.error("[v0] Error unmarking invoice as paid:", err)
-      alert("Nepodařilo se zrušit platbu faktury")
+      toast.error("Nepodařilo se zrušit platbu faktury")
     } finally {
       setIsUpdatingPayment(false)
     }
@@ -92,7 +95,7 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
 
   const handleSendEmail = async () => {
     if (!customerEmail) {
-      alert("Zákazník nemá vyplněný email")
+      toast.error("Zákazník nemá vyplněný email")
       return
     }
 
@@ -116,10 +119,10 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
 
       const result = await response.json()
       console.log("[v0] Email sent successfully:", result)
-      alert("Email byl úspěšně odeslán!")
+      toast.success("Email byl úspěšně odeslán!")
     } catch (err) {
       console.error("[v0] Error sending email:", err)
-      alert(err instanceof Error ? err.message : "Nepodařilo se odeslat email")
+      toast.error(err instanceof Error ? err.message : "Nepodařilo se odeslat email")
     } finally {
       setIsSendingEmail(false)
     }
