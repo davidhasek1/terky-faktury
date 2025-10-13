@@ -42,6 +42,12 @@ export default function PublicInvoiceDownloadPage() {
     fetchInvoice()
   }, [publicId])
 
+  useEffect(() => {
+    if (data?.invoice) {
+      document.title = `Factura ${data.invoice.invoice_number}`
+    }
+  }, [data])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
