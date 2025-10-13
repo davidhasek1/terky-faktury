@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +26,28 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
+  const getLocalDate = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, "0")
+    const day = String(now.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
   const [formData, setFormData] = useState({
     invoice_number: invoice?.invoice_number || `F${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
     customer_id: invoice?.customer_id || undefined,
-    issue_date: invoice?.issue_date || new Date().toISOString().split("T")[0],
-    due_date: invoice?.due_date || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    issue_date: invoice?.issue_date || getLocalDate(),
+    due_date:
+      invoice?.due_date ||
+      (() => {
+        const dueDate = new Date()
+        dueDate.setDate(dueDate.getDate() + 14)
+        const year = dueDate.getFullYear()
+        const month = String(dueDate.getMonth() + 1).padStart(2, "0")
+        const day = String(dueDate.getDate()).padStart(2, "0")
+        return `${year}-${month}-${day}`
+      })(),
     tax_rate: invoice?.tax_rate?.toString() || "21",
     retention_rate: invoice?.retention_rate?.toString() || "15",
     notes: invoice?.notes || "",
@@ -45,6 +62,24 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
         }))
       : [{ description: "", quantity: 1, unit_price: 0, total: 0 }],
   )
+
+  useEffect(() => {
+    if (!invoice) {
+      const today = getLocalDate()
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 14)
+      const year = dueDate.getFullYear()
+      const month = String(dueDate.getMonth() + 1).padStart(2, "0")
+      const day = String(dueDate.getDate()).padStart(2, "0")
+      const dueDateStr = `${year}-${month}-${day}`
+
+      setFormData((prev) => ({
+        ...prev,
+        issue_date: today,
+        due_date: dueDateStr,
+      }))
+    }
+  }, []) // Prázdný dependency array - spustí se při každém mount komponenty
 
   const isValidNumber = (value: string): boolean => {
     if (value === "" || value === ".") return true
@@ -119,7 +154,6 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
       return
     }
 
-    // Validate items
     for (const item of items) {
       if (Number.isNaN(item.quantity) || item.quantity <= 0) {
         toast.error("Množství musí být platné číslo větší než 0")

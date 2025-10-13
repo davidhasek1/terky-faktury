@@ -7,6 +7,8 @@ export default async function NewInvoicePage() {
 
   const { data: customers } = await supabase.from("customers").select("*").order("name")
 
+  const resetKey = Math.random()
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
       <Card>
@@ -15,7 +17,7 @@ export default async function NewInvoicePage() {
           <CardDescription>Vytvořte novou fakturu pro zákazníka</CardDescription>
         </CardHeader>
         <CardContent>
-          <InvoiceForm customers={customers || []} />
+          <InvoiceForm key={resetKey} customers={customers || []} />
         </CardContent>
       </Card>
     </div>
