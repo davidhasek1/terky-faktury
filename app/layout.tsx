@@ -11,7 +11,7 @@ import { Suspense } from "react"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
-  title: "Fakturační systém",
+  title: "Terky fakturační udělátko",
   description: "Systém pro vytváření a správu faktur",
   generator: "v0.app",
 }

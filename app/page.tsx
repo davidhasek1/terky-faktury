@@ -11,11 +11,20 @@ export default async function HomePage() {
   const { data: invoices } = await supabase.from("invoices").select("*")
   const { data: customers } = await supabase.from("customers").select("*")
 
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
   const stats = {
     totalInvoices: invoices?.length || 0,
     totalCustomers: customers?.length || 0,
     paidInvoices: invoices?.filter((inv) => inv.paid_date).length || 0,
-    overdueInvoices: invoices?.filter((inv) => !inv.paid_date && new Date(inv.due_date) < new Date()).length || 0,
+    overdueInvoices:
+      invoices?.filter((inv) => {
+        if (inv.paid_date) return false
+        const dueDate = new Date(inv.due_date)
+        dueDate.setHours(0, 0, 0, 0)
+        return dueDate < today
+      }).length || 0,
     totalRevenue: invoices?.filter((inv) => inv.paid_date).reduce((sum, inv) => sum + inv.total, 0) || 0,
     pendingRevenue: invoices?.filter((inv) => !inv.paid_date).reduce((sum, inv) => sum + inv.total, 0) || 0,
   }
