@@ -6,9 +6,20 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 interface InvoicePreviewProps {
   invoice: Invoice & { customer: Customer }
   items: InvoiceItem[]
+  companyDetails?: {
+    company_name: string
+    nie?: string
+    nif?: string
+    street?: string
+    city?: string
+    postal_code?: string
+    country?: string
+    bank_account?: string
+    iban?: string
+  } | null
 }
 
-export function InvoicePreview({ invoice, items }: InvoicePreviewProps) {
+export function InvoicePreview({ invoice, items, companyDetails }: InvoicePreviewProps) {
   return (
     <Card className="print:shadow-none" id="invoice-preview">
       <CardContent className="p-8 md:p-12">
@@ -34,11 +45,16 @@ export function InvoicePreview({ invoice, items }: InvoicePreviewProps) {
             <div>
               <h3 className="font-semibold mb-2">Proveedor</h3>
               <div className="text-sm space-y-1">
-                <p className="font-medium">Vaše firma s.r.o.</p>
-                <p>Hlavní 123</p>
-                <p>110 00 Praha 1</p>
-                <p className="mt-2">NIE: 12345678</p>
-                <p>NIF: CZ12345678</p>
+                <p className="font-medium">{companyDetails?.company_name || "Vaše firma"}</p>
+                {companyDetails?.street && <p>{companyDetails.street}</p>}
+                {(companyDetails?.postal_code || companyDetails?.city) && (
+                  <p>
+                    {companyDetails.postal_code} {companyDetails.city}
+                  </p>
+                )}
+                {companyDetails?.country && <p>{companyDetails.country}</p>}
+                {companyDetails?.nie && <p className="mt-2">NIE: {companyDetails.nie}</p>}
+                {companyDetails?.nif && <p>NIF: {companyDetails.nif}</p>}
               </div>
             </div>
             <div>
@@ -123,7 +139,8 @@ export function InvoicePreview({ invoice, items }: InvoicePreviewProps) {
           <Separator />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium mb-2">Datos de pago:</p>
-            <p>Número de cuenta: 123456789/0100</p>
+            {companyDetails?.iban && <p>IBAN: {companyDetails.iban}</p>}
+            {companyDetails?.bank_account && <p>Número de cuenta: {companyDetails.bank_account}</p>}
             <p>Referencia: {invoice.invoice_number.replace(/\D/g, "")}</p>
           </div>
         </div>

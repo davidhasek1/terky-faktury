@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import Link from "next/link"
 
-export default async function PublicInvoiceDownloadPage({
-  params,
-}: {
-  params: { publicId: string }
-}) {
+export default async function PublicInvoiceDownloadPage({ params }: { params: { publicId: string } }) {
   const supabase = await createClient()
 
   const { data: invoice, error: invoiceError } = await supabase
@@ -22,11 +18,10 @@ export default async function PublicInvoiceDownloadPage({
     notFound()
   }
 
-  const { data: items, error: itemsError } = await supabase
-    .from("invoice_items")
-    .select("*")
-    .eq("invoice_id", invoice.id)
-    .order("created_at", { ascending: true })
+  const [{ data: items, error: itemsError }, { data: companyDetails }] = await Promise.all([
+    supabase.from("invoice_items").select("*").eq("invoice_id", invoice.id).order("created_at", { ascending: true }),
+    supabase.from("company_details").select("*").eq("user_id", invoice.user_id).single(),
+  ])
 
   if (itemsError) {
     notFound()
@@ -48,7 +43,7 @@ export default async function PublicInvoiceDownloadPage({
           </Link>
         </div>
 
-        <InvoicePreview invoice={invoice} items={items || []} />
+        <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />
       </div>
     </div>
   )

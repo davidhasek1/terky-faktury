@@ -11,7 +11,7 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: invoice, error: invoiceError }, { data: items }] = await Promise.all([
+  const [{ data: invoice, error: invoiceError }, { data: items }, { data: companyDetails }] = await Promise.all([
     supabase
       .from("invoices")
       .select(
@@ -23,6 +23,7 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
       .eq("id", id)
       .single(),
     supabase.from("invoice_items").select("*").eq("invoice_id", id),
+    supabase.from("company_details").select("*").single(),
   ])
 
   if (invoiceError || !invoice) {
@@ -62,7 +63,7 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
         </Card>
       )}
 
-      <InvoicePreview invoice={invoice} items={items || []} />
+      <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />
     </div>
   )
 }

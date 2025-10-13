@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { LogOut, Home, Users, FileText } from "lucide-react"
+import { LogOut, Home, Users, FileText, Building2 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -22,6 +22,7 @@ export function Header() {
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/customers", label: "Zákazníci", icon: Users },
     { href: "/invoices", label: "Faktury", icon: FileText },
+    { href: "/company", label: "Moje údaje", icon: Building2 },
   ]
 
   return (

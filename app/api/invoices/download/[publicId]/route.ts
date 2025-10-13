@@ -27,10 +27,10 @@ export async function GET(request: NextRequest, { params }: { params: { publicId
 
     console.log("[v0] Invoice found:", invoice.invoice_number)
 
-    const { data: items, error: itemsError } = await supabase
-      .from("invoice_items")
-      .select("*")
-      .eq("invoice_id", invoice.id)
+    const [{ data: items, error: itemsError }, { data: companyDetails }] = await Promise.all([
+      supabase.from("invoice_items").select("*").eq("invoice_id", invoice.id),
+      supabase.from("company_details").select("*").eq("user_id", invoice.user_id).single(),
+    ])
 
     if (itemsError) {
       console.error("[v0] Error fetching items:", itemsError)
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: { publicId
 
     console.log("[v0] Items found:", items?.length || 0)
 
-    const pdfBuffer = await generateInvoicePDF(invoice, items || [])
+    const pdfBuffer = await generateInvoicePDF(invoice, items || [], companyDetails)
 
     console.log("[v0] PDF generated successfully")
 

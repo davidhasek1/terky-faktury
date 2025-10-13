@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
-import type { Invoice, InvoiceItem, Customer } from "./types"
+import type { Invoice, InvoiceItem, Customer, CompanyDetails } from "./types"
 
 // Styly pro PDF
 const styles = StyleSheet.create({
@@ -156,9 +156,11 @@ const formatDate = (date: string) => {
 export const InvoicePDF = ({
   invoice,
   items,
+  companyDetails,
 }: {
   invoice: Invoice & { customer: Customer }
   items: InvoiceItem[]
+  companyDetails?: CompanyDetails | null
 }) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -182,11 +184,16 @@ export const InvoicePDF = ({
       <View style={styles.infoRow}>
         <View style={styles.infoColumn}>
           <Text style={styles.sectionTitle}>Proveedor</Text>
-          <Text style={styles.text}>Vaše firma s.r.o.</Text>
-          <Text style={styles.text}>Hlavní 123</Text>
-          <Text style={styles.text}>110 00 Praha 1</Text>
-          <Text style={styles.text}>NIE: 12345678</Text>
-          <Text style={styles.text}>NIF: CZ12345678</Text>
+          <Text style={styles.text}>{companyDetails?.company_name || "Vaše firma"}</Text>
+          {companyDetails?.street && <Text style={styles.text}>{companyDetails.street}</Text>}
+          {(companyDetails?.postal_code || companyDetails?.city) && (
+            <Text style={styles.text}>
+              {companyDetails.postal_code} {companyDetails.city}
+            </Text>
+          )}
+          {companyDetails?.country && <Text style={styles.text}>{companyDetails.country}</Text>}
+          {companyDetails?.nie && <Text style={styles.text}>NIE: {companyDetails.nie}</Text>}
+          {companyDetails?.nif && <Text style={styles.text}>NIF: {companyDetails.nif}</Text>}
         </View>
         <View style={styles.infoColumn}>
           <Text style={styles.sectionTitle}>Cliente</Text>
@@ -256,7 +263,10 @@ export const InvoicePDF = ({
       {/* Payment Info */}
       <View style={styles.paymentInfo}>
         <Text style={styles.textBold}>Datos de pago:</Text>
-        <Text style={styles.text}>Número de cuenta: 123456789/0100</Text>
+        {companyDetails?.iban && <Text style={styles.text}>IBAN: {companyDetails.iban}</Text>}
+        {companyDetails?.bank_account && (
+          <Text style={styles.text}>Número de cuenta: {companyDetails.bank_account}</Text>
+        )}
         <Text style={styles.text}>Referencia: {invoice.invoice_number.replace(/\D/g, "")}</Text>
       </View>
     </Page>
@@ -266,9 +276,10 @@ export const InvoicePDF = ({
 export async function generateInvoicePDF(
   invoice: Invoice & { customer: Customer },
   items: InvoiceItem[],
+  companyDetails?: CompanyDetails | null,
 ): Promise<Buffer> {
   const ReactPDF = await import("@react-pdf/renderer")
-  const pdfDoc = ReactPDF.pdf(<InvoicePDF invoice={invoice} items={items} />)
+  const pdfDoc = ReactPDF.pdf(<InvoicePDF invoice={invoice} items={items} companyDetails={companyDetails} />)
   const buffer = await pdfDoc.toBuffer()
   return buffer
 }

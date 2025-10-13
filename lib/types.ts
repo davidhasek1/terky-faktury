@@ -40,3 +40,22 @@ export interface Invoice {
   customer?: Customer
   items?: InvoiceItem[]
 }
+
+export interface CompanyDetails {
+  id: string
+  user_id: string
+  company_name: string
+  nie?: string
+  nif?: string
+  street?: string
+  city?: string
+  postal_code?: string
+  country?: string
+  email?: string
+  phone?: string
+  bank_account?: string
+  iban?: string
+  swift_bic?: string
+  created_at: string
+  updated_at: string
+}
