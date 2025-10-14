@@ -263,10 +263,12 @@ export const InvoicePDF = ({
       {/* Payment Info */}
       <View style={styles.paymentInfo}>
         <Text style={styles.textBold}>Datos de pago:</Text>
+        <Text style={styles.text}>Forma de pago: Transferencia bancaria</Text>
         {companyDetails?.iban && <Text style={styles.text}>IBAN: {companyDetails.iban}</Text>}
         {companyDetails?.bank_account && (
           <Text style={styles.text}>Número de cuenta: {companyDetails.bank_account}</Text>
         )}
+        {companyDetails?.swift_bic && <Text style={styles.text}>SWIFT/BIC: {companyDetails.swift_bic}</Text>}
         <Text style={styles.text}>Referencia: {invoice.invoice_number.replace(/\D/g, "")}</Text>
       </View>
     </Page>

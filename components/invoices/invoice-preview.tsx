@@ -16,6 +16,7 @@ interface InvoicePreviewProps {
     country?: string
     bank_account?: string
     iban?: string
+    swift_bic?: string // Added swift_bic
   } | null
 }
 
@@ -149,8 +150,10 @@ export function InvoicePreview({ invoice, items, companyDetails }: InvoicePrevie
           <Separator />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium mb-2">Datos de pago:</p>
+            <p className="mb-2">Forma de pago: Transferencia bancaria</p>
             {companyDetails?.iban && <p>IBAN: {companyDetails.iban}</p>}
             {companyDetails?.bank_account && <p>Número de cuenta: {companyDetails.bank_account}</p>}
+            {companyDetails?.swift_bic && <p>SWIFT/BIC: {companyDetails.swift_bic}</p>}
             <p>Referencia: {invoice.invoice_number.replace(/\D/g, "")}</p>
           </div>
         </div>

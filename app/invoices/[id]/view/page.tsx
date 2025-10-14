@@ -63,6 +63,19 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
         </Card>
       )}
 
+      {invoice.email_sent_at && (
+        <Card className="mb-6 bg-blue-50 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-blue-700">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">
+                Email byl odeslán dne {new Date(invoice.email_sent_at).toLocaleDateString("cs-CZ")}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />
     </div>
   )

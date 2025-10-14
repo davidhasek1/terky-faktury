@@ -137,6 +137,7 @@ export default async function InvoicesPage({
                   <TableHead>Datum vystavení</TableHead>
                   <TableHead>Datum splatnosti</TableHead>
                   <TableHead>Proplaceno</TableHead>
+                  <TableHead>Email odeslán</TableHead>
                   <TableHead>Částka</TableHead>
                   <TableHead>Stav</TableHead>
                   <TableHead className="text-right">Akce</TableHead>
@@ -150,6 +151,7 @@ export default async function InvoicesPage({
                     <TableCell>{formatDate(invoice.issue_date)}</TableCell>
                     <TableCell>{formatDate(invoice.due_date)}</TableCell>
                     <TableCell>{invoice.paid_date ? formatDate(invoice.paid_date) : "-"}</TableCell>
+                    <TableCell>{invoice.email_sent_at ? formatDate(invoice.email_sent_at) : "-"}</TableCell>
                     <TableCell>{formatCurrency(invoice.total)}</TableCell>
                     <TableCell>
                       {invoice.paid_date ? (

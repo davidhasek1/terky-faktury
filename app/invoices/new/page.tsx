@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default async function NewInvoicePage() {
   const supabase = await createClient()
 
-  const { data: customers } = await supabase.from("customers").select("*").order("name")
+  const [{ data: customers }, { data: invoices }] = await Promise.all([
+    supabase.from("customers").select("*").order("name"),
+    supabase.from("invoices").select("invoice_number").order("created_at", { ascending: false }),
+  ])
 
   const resetKey = Math.random()
 
@@ -17,7 +20,7 @@ export default async function NewInvoicePage() {
           <CardDescription>Vytvořte novou fakturu pro zákazníka</CardDescription>
         </CardHeader>
         <CardContent>
-          <InvoiceForm key={resetKey} customers={customers || []} />
+          <InvoiceForm key={resetKey} customers={customers || []} existingInvoices={invoices || []} />
         </CardContent>
       </Card>
     </div>

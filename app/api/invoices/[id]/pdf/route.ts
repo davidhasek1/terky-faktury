@@ -7,24 +7,27 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const supabase = await createClient()
 
   try {
-    const [{ data: invoice, error: invoiceError }, { data: items }, { data: companyDetails }] = await Promise.all([
-      supabase
-        .from("invoices")
-        .select(
-          `
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("invoices")
+      .select(
+        `
         *,
         customer:customers(*)
       `,
-        )
-        .eq("id", id)
-        .single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", id),
-      supabase.from("company_details").select("*").single(),
-    ])
+      )
+      .eq("id", id)
+      .single()
 
     if (invoiceError || !invoice) {
       return NextResponse.json({ error: "Faktura nenalezena" }, { status: 404 })
     }
+
+    const [{ data: items }, { data: companyDetails }] = await Promise.all([
+      supabase.from("invoice_items").select("*").eq("invoice_id", id),
+      supabase.from("company_details").select("*").eq("user_id", invoice.user_id).maybeSingle(),
+    ])
+
+    console.log("[v0] Generating PDF with company details:", companyDetails)
 
     const pdfBuffer = await generateInvoicePDF(invoice, items || [], companyDetails)
 
@@ -32,6 +35,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="faktura-${invoice.invoice_number}.pdf"`,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     })
   } catch (error) {

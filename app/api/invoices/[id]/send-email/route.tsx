@@ -73,6 +73,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: "Nepodařilo se odeslat email: " + emailError.message }, { status: 500 })
     }
 
+    console.log("[v0] Email sent successfully, updating email_sent_at")
+    const { error: updateError } = await supabase
+      .from("invoices")
+      .update({ email_sent_at: new Date().toISOString() })
+      .eq("id", id)
+
+    if (updateError) {
+      console.error("[v0] Error updating email_sent_at:", updateError)
+      // Don't fail the request if update fails, email was sent successfully
+    }
+
     console.log("[v0] Email sent successfully")
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -20,9 +20,46 @@ interface InvoiceFormProps {
   customers: Customer[]
   invoice?: Invoice
   existingItems?: InvoiceItem[]
+  existingInvoices?: { invoice_number: string }[]
 }
 
-export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceFormProps) {
+const generateNextInvoiceNumber = (existingInvoices: { invoice_number: string }[]): string => {
+  const currentYear = new Date().getFullYear()
+
+  // Najít všechny faktury pro aktuální rok
+  const currentYearInvoices = existingInvoices.filter((inv) => {
+    // Formát: YYYY-XXX
+    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/)
+    if (match) {
+      const year = Number.parseInt(match[1])
+      return year === currentYear
+    }
+    return false
+  })
+
+  if (currentYearInvoices.length === 0) {
+    // První faktura v roce
+    return `${currentYear}-001`
+  }
+
+  // Najít nejvyšší číslo
+  let maxNumber = 0
+  for (const inv of currentYearInvoices) {
+    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/)
+    if (match) {
+      const num = Number.parseInt(match[2])
+      if (num > maxNumber) {
+        maxNumber = num
+      }
+    }
+  }
+
+  // Inkrementovat a formátovat s leading zeros
+  const nextNumber = maxNumber + 1
+  return `${currentYear}-${String(nextNumber).padStart(3, "0")}`
+}
+
+export function InvoiceForm({ customers, invoice, existingItems = [], existingInvoices = [] }: InvoiceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -35,7 +72,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
   }
 
   const [formData, setFormData] = useState({
-    invoice_number: invoice?.invoice_number || `F${new Date().getFullYear()}${String(Date.now()).slice(-6)}`,
+    invoice_number: invoice?.invoice_number || generateNextInvoiceNumber(existingInvoices),
     customer_id: invoice?.customer_id || undefined,
     issue_date: invoice?.issue_date || getLocalDate(),
     due_date:
@@ -79,7 +116,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [] }: InvoiceF
         due_date: dueDateStr,
       }))
     }
-  }, []) // Prázdný dependency array - spustí se při každém mount komponenty
+  }, [])
 
   const isValidNumber = (value: string): boolean => {
     if (value === "" || value === ".") return true
