@@ -17,11 +17,17 @@ export function formatDate(date: string): string {
 }
 
 export function formatDateTime(date: string): string {
+  const d = new Date(date)
+  console.log("[v0] formatDateTime input:", date)
+  console.log("[v0] formatDateTime parsed:", d.toString())
+  console.log("[v0] formatDateTime ISO:", d.toISOString())
+
   return new Intl.DateTimeFormat("cs-CZ", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(date))
+    hour12: false,
+  }).format(d)
 }
