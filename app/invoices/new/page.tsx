@@ -5,9 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default async function NewInvoicePage() {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return null
+  }
+
   const [{ data: customers }, { data: invoices }] = await Promise.all([
-    supabase.from("customers").select("*").order("name"),
-    supabase.from("invoices").select("invoice_number").order("created_at", { ascending: false }),
+    supabase.from("customers").select("*").eq("user_id", user.id).order("name"),
+    supabase.from("invoices").select("invoice_number").eq("user_id", user.id).order("created_at", { ascending: false }),
   ])
 
   const resetKey = Math.random()

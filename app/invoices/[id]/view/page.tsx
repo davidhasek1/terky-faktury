@@ -12,24 +12,25 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: invoice, error: invoiceError }, { data: items }, { data: companyDetails }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select(
-        `
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .select(
+      `
       *,
       customer:customers(*)
     `,
-      )
-      .eq("id", id)
-      .single(),
-    supabase.from("invoice_items").select("*").eq("invoice_id", id),
-    supabase.from("company_details").select("*").single(),
-  ])
+    )
+    .eq("id", id)
+    .single()
 
   if (invoiceError || !invoice) {
     notFound()
   }
+
+  const [{ data: items }, { data: companyDetails }] = await Promise.all([
+    supabase.from("invoice_items").select("*").eq("invoice_id", id),
+    supabase.from("company_details").select("*").eq("user_id", invoice.user_id).maybeSingle(),
+  ])
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">

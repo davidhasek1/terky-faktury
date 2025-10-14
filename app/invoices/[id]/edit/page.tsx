@@ -7,9 +7,17 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { id } = await params
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return null
+  }
+
   const [{ data: invoice, error: invoiceError }, { data: customers }, { data: items }] = await Promise.all([
-    supabase.from("invoices").select("*").eq("id", id).single(),
-    supabase.from("customers").select("*").order("name"),
+    supabase.from("invoices").select("*").eq("id", id).eq("user_id", user.id).single(),
+    supabase.from("customers").select("*").eq("user_id", user.id).order("name"),
     supabase.from("invoice_items").select("*").eq("invoice_id", id),
   ])
 
