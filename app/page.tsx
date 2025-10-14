@@ -30,21 +30,21 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight mb-2">Fakturační systém</h1>
-        <p className="text-muted-foreground text-lg">Vytvářejte a spravujte faktury jednoduše</p>
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Fakturační systém</h1>
+        <p className="text-muted-foreground text-base sm:text-lg">Vytvářejte a spravujte faktury jednoduše</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Celkové tržby</CardDescription>
-            <CardTitle className="text-2xl">{formatCurrency(stats.totalRevenue)}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{formatCurrency(stats.totalRevenue)}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-green-600 flex-shrink-0" />
               <span>{stats.paidInvoices} zaplacených faktur</span>
             </div>
           </CardContent>
@@ -53,7 +53,7 @@ export default async function HomePage() {
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Čeká na platbu</CardDescription>
-            <CardTitle className="text-2xl">{formatCurrency(stats.pendingRevenue)}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{formatCurrency(stats.pendingRevenue)}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
@@ -65,12 +65,12 @@ export default async function HomePage() {
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Po splatnosti</CardDescription>
-            <CardTitle className="text-2xl text-red-600">{stats.overdueInvoices}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl text-red-600">{stats.overdueInvoices}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
                 <span>Vyžaduje pozornost</span>
               </div>
               {stats.overdueInvoices > 0 && (
@@ -85,7 +85,7 @@ export default async function HomePage() {
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Zákazníci</CardDescription>
-            <CardTitle className="text-2xl">{stats.totalCustomers}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{stats.totalCustomers}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Aktivní protistrany</p>
@@ -93,24 +93,24 @@ export default async function HomePage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <FileText className="h-5 w-5 flex-shrink-0" />
               Faktury
             </CardTitle>
             <CardDescription>Vytvářejte a spravujte faktury</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button asChild className="flex-1">
                 <Link href="/invoices/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Nová faktura
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="sm:w-auto bg-transparent">
                 <Link href="/invoices">Zobrazit vše</Link>
               </Button>
             </div>
@@ -119,31 +119,31 @@ export default async function HomePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Users className="h-5 w-5 flex-shrink-0" />
               Zákazníci
             </CardTitle>
             <CardDescription>Spravujte své zákazníky</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button asChild className="flex-1">
                 <Link href="/customers/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Nový zákazník
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="sm:w-auto bg-transparent">
                 <Link href="/customers">Zobrazit vše</Link>
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="md:col-span-2 lg:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
               Upozornění
             </CardTitle>
             <CardDescription>Faktury vyžadující pozornost</CardDescription>

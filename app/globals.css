@@ -138,12 +138,28 @@
     z-index: 302 !important;
   }
 
+  /* Přidáno explicitní pozadí pro Sheet komponenty */
+  [data-slot="sheet-content"] {
+    background-color: #ffffff !important;
+    opacity: 1 !important;
+    z-index: 501 !important;
+  }
+
+  [data-slot="sheet-overlay"] {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: 500 !important;
+  }
+
   .dark [data-slot="dialog-content"] {
     background-color: oklch(0.25 0 0) !important;
   }
 
   .dark [data-slot="popover-content"],
   .dark [data-radix-popper-content-wrapper] {
+    background-color: oklch(0.25 0 0) !important;
+  }
+
+  .dark [data-slot="sheet-content"] {
     background-color: oklch(0.25 0 0) !important;
   }
 }
