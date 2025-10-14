@@ -18,6 +18,14 @@ export default async function InvoicesPage({
   const params = await searchParams
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return null
+  }
+
   let query = supabase
     .from("invoices")
     .select(
@@ -26,6 +34,7 @@ export default async function InvoicesPage({
       customer:customers(name, email)
     `,
     )
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   // Filter by payment status
@@ -43,7 +52,7 @@ export default async function InvoicesPage({
     console.error("[v0] Error fetching invoices:", error)
   }
 
-  const { data: allInvoices } = await supabase.from("invoices").select("*")
+  const { data: allInvoices } = await supabase.from("invoices").select("*").eq("user_id", user.id)
   const stats = {
     total: allInvoices?.length || 0,
     paid: allInvoices?.filter((inv) => inv.paid_date).length || 0,

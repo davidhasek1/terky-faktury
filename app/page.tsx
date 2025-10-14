@@ -8,8 +8,16 @@ import { formatCurrency } from "@/lib/utils"
 export default async function HomePage() {
   const supabase = await createClient()
 
-  const { data: invoices } = await supabase.from("invoices").select("*")
-  const { data: customers } = await supabase.from("customers").select("*")
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return null
+  }
+
+  const { data: invoices } = await supabase.from("invoices").select("*").eq("user_id", user.id)
+  const { data: customers } = await supabase.from("customers").select("*").eq("user_id", user.id)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
