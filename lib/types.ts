@@ -6,6 +6,7 @@ export interface Customer {
   address?: string
   ico?: string
   dic?: string
+  is_business?: boolean // Přidán flag pro podnikající subjekt
   user_id?: string // Added user_id for RLS
   created_at: string
 }

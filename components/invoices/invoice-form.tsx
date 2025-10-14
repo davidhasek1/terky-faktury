@@ -97,7 +97,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
         return `${year}-${month}-${day}`
       })(),
     tax_rate: invoice?.tax_rate?.toString() || "21",
-    retention_rate: invoice?.retention_rate?.toString() || "15",
+    retention_rate: invoice?.retention_rate?.toString() || "0",
     notes: invoice?.notes || "",
   })
 
@@ -128,6 +128,19 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
       }))
     }
   }, [])
+
+  useEffect(() => {
+    if (formData.customer_id && !invoice) {
+      const selectedCustomer = customers.find((c) => c.id === formData.customer_id)
+      if (selectedCustomer) {
+        const retentionRate = selectedCustomer.is_business ? "15" : "0"
+        setFormData((prev) => ({
+          ...prev,
+          retention_rate: retentionRate,
+        }))
+      }
+    }
+  }, [formData.customer_id, customers, invoice])
 
   const isValidNumber = (value: string): boolean => {
     if (value === "" || value === ".") return true
@@ -304,13 +317,11 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Pokud faktura byla odeslána emailem, zobrazit varování
     if (invoice?.email_sent_at) {
       setShowEmailWarning(true)
       return
     }
 
-    // Jinak rovnou uložit
     await saveInvoice()
   }
 
@@ -437,7 +448,9 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
                 }
               }}
             />
-            <p className="text-xs text-muted-foreground">Obvykle 15% pro španělské faktury</p>
+            <p className="text-xs text-muted-foreground">
+              Automaticky nastaveno podle typu zákazníka (15% pro podnikající subjekt, 0% pro ostatní)
+            </p>
           </div>
         </div>
 

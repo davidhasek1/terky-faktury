@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { createClient } from "@/lib/supabase/client"
 import type { Customer } from "@/lib/types"
 import { toast } from "sonner"
@@ -27,6 +28,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
     address: customer?.address || "",
     ico: customer?.ico || "",
     dic: customer?.dic || "",
+    is_business: customer?.is_business || false,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,6 +123,17 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           <Label htmlFor="dic">NIF</Label>
           <Input id="dic" value={formData.dic} onChange={(e) => setFormData({ ...formData, dic: e.target.value })} />
         </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="is_business"
+          checked={formData.is_business}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_business: checked === true })}
+        />
+        <Label htmlFor="is_business" className="text-sm font-normal cursor-pointer">
+          Podnikající subjekt
+        </Label>
       </div>
 
       <div className="flex gap-4">

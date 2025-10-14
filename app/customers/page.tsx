@@ -55,6 +55,7 @@ export default async function CustomersPage() {
                   <TableHead>Telefon</TableHead>
                   <TableHead>NIE</TableHead>
                   <TableHead>NIF</TableHead>
+                  <TableHead>Podnikající subjekt</TableHead>
                   <TableHead className="text-right">Akce</TableHead>
                 </TableRow>
               </TableHeader>
@@ -66,6 +67,7 @@ export default async function CustomersPage() {
                     <TableCell>{customer.phone || "-"}</TableCell>
                     <TableCell>{customer.ico || "-"}</TableCell>
                     <TableCell>{customer.dic || "-"}</TableCell>
+                    <TableCell>{customer.is_business ? "ANO" : "NE"}</TableCell>
                     <TableCell className="text-right">
                       <CustomerActions customerId={customer.id} />
                     </TableCell>
