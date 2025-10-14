@@ -6,6 +6,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { InvoicePreview } from "@/components/invoices/invoice-preview"
 import { MarkAsPaidButton } from "@/components/invoices/mark-as-paid-button"
+import { formatDateTime } from "@/lib/utils"
 
 export default async function ViewInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -68,9 +69,7 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-blue-700">
               <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">
-                Email byl odeslán dne {new Date(invoice.email_sent_at).toLocaleDateString("cs-CZ")}
-              </span>
+              <span className="font-medium">Email byl odeslán {formatDateTime(invoice.email_sent_at)}</span>
             </div>
           </CardContent>
         </Card>

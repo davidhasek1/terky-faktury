@@ -10,6 +10,16 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Plus, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Customer, Invoice, InvoiceItem } from "@/lib/types"
@@ -59,17 +69,19 @@ const generateNextInvoiceNumber = (existingInvoices: { invoice_number: string }[
   return `${currentYear}-${String(nextNumber).padStart(3, "0")}`
 }
 
+const getLocalDate = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 export function InvoiceForm({ customers, invoice, existingItems = [], existingInvoices = [] }: InvoiceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-
-  const getLocalDate = () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, "0")
-    const day = String(now.getDate()).padStart(2, "0")
-    return `${year}-${month}-${day}`
-  }
+  const [showEmailWarning, setShowEmailWarning] = useState(false)
+  const [pendingSubmit, setPendingSubmit] = useState<React.FormEvent | null>(null)
 
   const [formData, setFormData] = useState({
     invoice_number: invoice?.invoice_number || generateNextInvoiceNumber(existingInvoices),
@@ -168,6 +180,13 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (invoice?.email_sent_at && !pendingSubmit) {
+      setPendingSubmit(e)
+      setShowEmailWarning(true)
+      return
+    }
+
     setIsLoading(true)
 
     if (!formData.customer_id) {
@@ -291,231 +310,258 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
     }
   }
 
+  const handleConfirmEdit = async () => {
+    setShowEmailWarning(false)
+    if (pendingSubmit) {
+      setPendingSubmit(null)
+      await handleSubmit(pendingSubmit)
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="invoice_number">
-            Číslo faktury <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="invoice_number"
-            required
-            value={formData.invoice_number}
-            onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-          />
-        </div>
+    <>
+      <AlertDialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Faktura již byla odeslána</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Tato faktura již byla odeslána emailem zákazníkovi.</p>
+              <p className="font-medium">Opravdu chcete změnit fakturu?</p>
+              <p className="text-amber-600">⚠️ Po uložení změn bude potřeba email znovu odeslat zákazníkovi.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingSubmit(null)}>Zrušit</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmEdit}>Ano, uložit změny</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <div className="space-y-2">
-          <Label htmlFor="customer_id">
-            Zákazník <span className="text-destructive">*</span>
-          </Label>
-          <Select
-            value={formData.customer_id}
-            onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id}>
-                  {customer.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="issue_date">
-            Datum vystavení <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="issue_date"
-            type="date"
-            required
-            value={formData.issue_date}
-            onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="due_date">
-            Datum splatnosti <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="due_date"
-            type="date"
-            required
-            value={formData.due_date}
-            onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="tax_rate">
-            Sazba DPH (%) <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="tax_rate"
-            type="text"
-            inputMode="decimal"
-            required
-            value={formData.tax_rate}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => {
-              const value = e.target.value
-              if (isValidNumber(value)) {
-                setFormData({ ...formData, tax_rate: value })
-              }
-            }}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="retention_rate">Retención (%)</Label>
-          <Input
-            id="retention_rate"
-            type="text"
-            inputMode="decimal"
-            value={formData.retention_rate}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => {
-              const value = e.target.value
-              if (isValidNumber(value)) {
-                setFormData({ ...formData, retention_rate: value })
-              }
-            }}
-          />
-          <p className="text-xs text-muted-foreground">Obvykle 15% pro španělské faktury</p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Položky faktury</CardTitle>
-            <Button type="button" variant="outline" size="sm" onClick={addItem}>
-              <Plus className="mr-2 h-4 w-4" />
-              Přidat položku
-            </Button>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="invoice_number">
+              Číslo faktury <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="invoice_number"
+              required
+              value={formData.invoice_number}
+              onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+            />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {items.map((item, index) => (
-            <div key={index} className="grid gap-4 md:grid-cols-12 items-end p-4 border rounded-lg">
-              <div className="md:col-span-5 space-y-2">
-                <Label htmlFor={`description-${index}`}>Popis</Label>
-                <Input
-                  id={`description-${index}`}
-                  required
-                  value={item.description}
-                  onChange={(e) => updateItem(index, "description", e.target.value)}
-                />
-              </div>
 
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor={`quantity-${index}`}>Množství</Label>
-                <Input
-                  id={`quantity-${index}`}
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  value={item.quantity}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (isValidNumber(value)) {
-                      updateItem(index, "quantity", value === "" ? 0 : Number.parseFloat(value) || 0)
-                    }
-                  }}
-                />
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="customer_id">
+              Zákazník <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={formData.customer_id}
+              onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {customers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor={`unit_price-${index}`}>Cena/ks</Label>
-                <Input
-                  id={`unit_price-${index}`}
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  value={item.unit_price}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (isValidNumber(value)) {
-                      updateItem(index, "unit_price", value === "" ? 0 : Number.parseFloat(value) || 0)
-                    }
-                  }}
-                />
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="issue_date">
+              Datum vystavení <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="issue_date"
+              type="date"
+              required
+              value={formData.issue_date}
+              onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
+            />
+          </div>
 
-              <div className="md:col-span-2 space-y-2">
-                <Label>Celkem</Label>
-                <div className="h-10 flex items-center font-medium">{formatCurrency(item.total)}</div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="due_date">
+              Datum splatnosti <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="due_date"
+              type="date"
+              required
+              value={formData.due_date}
+              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+            />
+          </div>
 
-              <div className="md:col-span-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeItem(index)}
-                  disabled={items.length === 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="tax_rate">
+              Sazba DPH (%) <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="tax_rate"
+              type="text"
+              inputMode="decimal"
+              required
+              value={formData.tax_rate}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const value = e.target.value
+                if (isValidNumber(value)) {
+                  setFormData({ ...formData, tax_rate: value })
+                }
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="retention_rate">Retención (%)</Label>
+            <Input
+              id="retention_rate"
+              type="text"
+              inputMode="decimal"
+              value={formData.retention_rate}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const value = e.target.value
+                if (isValidNumber(value)) {
+                  setFormData({ ...formData, retention_rate: value })
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">Obvykle 15% pro španělské faktury</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Položky faktury</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                <Plus className="mr-2 h-4 w-4" />
+                Přidat položku
+              </Button>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {items.map((item, index) => (
+              <div key={index} className="grid gap-4 md:grid-cols-12 items-end p-4 border rounded-lg">
+                <div className="md:col-span-5 space-y-2">
+                  <Label htmlFor={`description-${index}`}>Popis</Label>
+                  <Input
+                    id={`description-${index}`}
+                    required
+                    value={item.description}
+                    onChange={(e) => updateItem(index, "description", e.target.value)}
+                  />
+                </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2 max-w-sm ml-auto">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Mezisoučet:</span>
-              <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">DPH ({formData.tax_rate}%):</span>
-              <span className="font-medium">{formatCurrency(calculateTax())}</span>
-            </div>
-            {Number.parseFloat(formData.retention_rate) > 0 && (
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor={`quantity-${index}`}>Množství</Label>
+                  <Input
+                    id={`quantity-${index}`}
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    value={item.quantity}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (isValidNumber(value)) {
+                        updateItem(index, "quantity", value === "" ? 0 : Number.parseFloat(value) || 0)
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor={`unit_price-${index}`}>Cena/ks</Label>
+                  <Input
+                    id={`unit_price-${index}`}
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    value={item.unit_price}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (isValidNumber(value)) {
+                        updateItem(index, "unit_price", value === "" ? 0 : Number.parseFloat(value) || 0)
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
+                  <Label>Celkem</Label>
+                  <div className="h-10 flex items-center font-medium">{formatCurrency(item.total)}</div>
+                </div>
+
+                <div className="md:col-span-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeItem(index)}
+                    disabled={items.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2 max-w-sm ml-auto">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Retención (-{formData.retention_rate}%):</span>
-                <span className="font-medium text-destructive">-{formatCurrency(calculateRetention())}</span>
+                <span className="text-muted-foreground">Mezisoučet:</span>
+                <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
               </div>
-            )}
-            <div className="flex justify-between text-lg font-bold pt-2 border-t">
-              <span>Celkem:</span>
-              <span>{formatCurrency(calculateTotal())}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">DPH ({formData.tax_rate}%):</span>
+                <span className="font-medium">{formatCurrency(calculateTax())}</span>
+              </div>
+              {Number.parseFloat(formData.retention_rate) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Retención (-{formData.retention_rate}%):</span>
+                  <span className="font-medium text-destructive">-{formatCurrency(calculateRetention())}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                <span>Celkem:</span>
+                <span>{formatCurrency(calculateTotal())}</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <div className="space-y-2">
-        <Label htmlFor="notes">Poznámky</Label>
-        <Textarea
-          id="notes"
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          rows={3}
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="notes">Poznámky</Label>
+          <Textarea
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            rows={3}
+          />
+        </div>
 
-      <div className="flex gap-4">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Ukládám..." : invoice ? "Uložit změny" : "Vytvořit fakturu"}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
-          Zrušit
-        </Button>
-      </div>
-    </form>
+        <div className="flex gap-4">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Ukládám..." : invoice ? "Uložit změny" : "Vytvořit fakturu"}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
+            Zrušit
+          </Button>
+        </div>
+      </form>
+    </>
   )
 }
