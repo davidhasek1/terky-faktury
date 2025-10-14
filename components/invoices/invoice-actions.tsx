@@ -59,8 +59,8 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
 
       console.log("[v0] Invoice deleted successfully")
       toast.success("Faktura byla úspěšně smazána")
-      router.refresh()
       setShowDeleteDialog(false)
+      router.push("/invoices")
     } catch (err) {
       console.error("[v0] Error deleting invoice:", err)
       toast.error("Nepodařilo se smazat fakturu: " + (err instanceof Error ? err.message : "Neznámá chyba"))
@@ -79,8 +79,8 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
       if (error) throw error
 
       toast.success("Platba faktury byla zrušena")
-      router.refresh()
       setShowUnmarkPaidDialog(false)
+      router.push("/invoices")
     } catch (err) {
       console.error("[v0] Error unmarking invoice as paid:", err)
       toast.error("Nepodařilo se zrušit platbu faktury")
@@ -120,6 +120,7 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
       const result = await response.json()
       console.log("[v0] Email sent successfully:", result)
       toast.success("Email byl úspěšně odeslán!")
+      router.refresh()
     } catch (err) {
       console.error("[v0] Error sending email:", err)
       toast.error(err instanceof Error ? err.message : "Nepodařilo se odeslat email")
