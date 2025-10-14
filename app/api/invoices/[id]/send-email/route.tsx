@@ -74,12 +74,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     console.log("[v0] Email sent successfully, updating email_sent_at")
-    const now = new Date()
-    const isoString = now.toISOString()
-    console.log("[v0] Current time (local):", now.toString())
-    console.log("[v0] Current time (ISO/UTC):", isoString)
-
-    const { error: updateError } = await supabase.from("invoices").update({ email_sent_at: isoString }).eq("id", id)
+    const { error: updateError } = await supabase
+      .from("invoices")
+      .update({ email_sent_at: new Date().toISOString() })
+      .eq("id", id)
 
     if (updateError) {
       console.error("[v0] Error updating email_sent_at:", updateError)
