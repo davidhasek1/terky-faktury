@@ -69,19 +69,18 @@ const generateNextInvoiceNumber = (existingInvoices: { invoice_number: string }[
   return `${currentYear}-${String(nextNumber).padStart(3, "0")}`
 }
 
+const getLocalDate = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 export function InvoiceForm({ customers, invoice, existingItems = [], existingInvoices = [] }: InvoiceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [showEmailWarning, setShowEmailWarning] = useState(false)
-  const [pendingSubmit, setPendingSubmit] = useState(false)
-
-  const getLocalDate = () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, "0")
-    const day = String(now.getDate()).padStart(2, "0")
-    return `${year}-${month}-${day}`
-  }
 
   const [formData, setFormData] = useState({
     invoice_number: invoice?.invoice_number || generateNextInvoiceNumber(existingInvoices),
@@ -178,14 +177,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
     setItems(newItems)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (invoice?.email_sent_at && !pendingSubmit) {
-      setShowEmailWarning(true)
-      return
-    }
-
+  const saveInvoice = async () => {
     setIsLoading(true)
 
     if (!formData.customer_id) {
@@ -309,13 +301,22 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
     }
   }
 
-  const handleConfirmEdit = () => {
-    setShowEmailWarning(false)
-    setPendingSubmit(true)
-    const form = document.querySelector("form")
-    if (form) {
-      form.requestSubmit()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Pokud faktura byla odeslána emailem, zobrazit varování
+    if (invoice?.email_sent_at) {
+      setShowEmailWarning(true)
+      return
     }
+
+    // Jinak rovnou uložit
+    await saveInvoice()
+  }
+
+  const handleConfirmEdit = async () => {
+    setShowEmailWarning(false)
+    await saveInvoice()
   }
 
   return (
@@ -325,11 +326,11 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
           <AlertDialogHeader>
             <AlertDialogTitle>Faktura již byla odeslána</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>Tato faktura již byla odeslána emailem zákazníkovi.</p>
-              <p className="font-semibold">Opravdu chcete změnit fakturu?</p>
-              <p className="text-sm text-muted-foreground">
+              <div>Tato faktura již byla odeslána emailem zákazníkovi.</div>
+              <div className="font-semibold">Opravdu chcete změnit fakturu?</div>
+              <div className="text-sm text-muted-foreground">
                 Po uložení změn bude potřeba fakturu znovu odeslat emailem, aby zákazník obdržel aktualizovanou verzi.
-              </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
