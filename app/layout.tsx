@@ -14,6 +14,19 @@ export const metadata: Metadata = {
   title: "Terky fakturační udělátko",
   description: "Systém pro vytváření a správu faktur",
   generator: "v0.app",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Faktury",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 }
 
 export default async function RootLayout({
