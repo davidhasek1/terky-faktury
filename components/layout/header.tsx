@@ -2,17 +2,31 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { LogOut, Home, Users, FileText, Building2, Menu } from "lucide-react"
+import { LogOut, Home, Users, FileText, Building2, Menu, User } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user?.email) {
+        setUserEmail(user.email)
+      }
+    }
+    loadUser()
+  }, [])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -57,6 +71,13 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          {userEmail && (
+            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-2">
+              <User className="h-4 w-4" />
+              <span>{userEmail}</span>
+            </div>
+          )}
+
           <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden md:flex">
             <LogOut className="mr-2 h-4 w-4" />
             Odhlásit se
@@ -93,6 +114,12 @@ export function Header() {
                   )
                 })}
                 <div className="border-t pt-4 mt-4">
+                  {userEmail && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 px-3">
+                      <User className="h-4 w-4" />
+                      <span>{userEmail}</span>
+                    </div>
+                  )}
                   <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full justify-start">
                     <LogOut className="mr-2 h-4 w-4" />
                     Odhlásit se
