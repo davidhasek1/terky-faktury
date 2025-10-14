@@ -461,7 +461,13 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
                     required
                     value={item.description}
                     onChange={(e) => updateItem(index, "description", e.target.value)}
+                    list={`description-options-${index}`}
+                    placeholder="Vyberte nebo napište popis"
                   />
+                  <datalist id={`description-options-${index}`}>
+                    <option value="Limpieza de apartamentos" />
+                    <option value="Lavado de ropa" />
+                  </datalist>
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
