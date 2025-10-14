@@ -130,7 +130,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
   }, [])
 
   useEffect(() => {
-    if (formData.customer_id && !invoice) {
+    if (formData.customer_id) {
       const selectedCustomer = customers.find((c) => c.id === formData.customer_id)
       if (selectedCustomer) {
         const retentionRate = selectedCustomer.is_business ? "15" : "0"
@@ -140,7 +140,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
         }))
       }
     }
-  }, [formData.customer_id, customers, invoice])
+  }, [formData.customer_id, customers])
 
   const isValidNumber = (value: string): boolean => {
     if (value === "" || value === ".") return true
