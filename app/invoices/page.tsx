@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, FileText } from "lucide-react"
 import Link from "next/link"
 import { InvoiceActions } from "@/components/invoices/invoice-actions"
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 import { InvoiceFilters } from "@/components/invoices/invoice-filters"
+import { DateTimeDisplay } from "@/components/ui/date-time-display"
 
 export default async function InvoicesPage({
   searchParams,
@@ -151,7 +152,9 @@ export default async function InvoicesPage({
                     <TableCell>{formatDate(invoice.issue_date)}</TableCell>
                     <TableCell>{formatDate(invoice.due_date)}</TableCell>
                     <TableCell>{invoice.paid_date ? formatDate(invoice.paid_date) : "-"}</TableCell>
-                    <TableCell>{invoice.email_sent_at ? formatDateTime(invoice.email_sent_at) : "-"}</TableCell>
+                    <TableCell>
+                      {invoice.email_sent_at ? <DateTimeDisplay date={invoice.email_sent_at} /> : "-"}
+                    </TableCell>
                     <TableCell>{formatCurrency(invoice.total)}</TableCell>
                     <TableCell>
                       {invoice.paid_date ? (
