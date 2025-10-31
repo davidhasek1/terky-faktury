@@ -77,6 +77,13 @@ const getLocalDate = () => {
   return `${year}-${month}-${day}`
 }
 
+type FormInvoiceItem = {
+  description: string
+  quantity: string
+  unit_price: string
+  total: number
+}
+
 export function InvoiceForm({ customers, invoice, existingItems = [], existingInvoices = [] }: InvoiceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -101,14 +108,15 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
     notes: invoice?.notes || "",
   })
 
-  const [items, setItems] = useState<InvoiceItem[]>(
+  const [items, setItems] = useState<FormInvoiceItem[]>(
     existingItems.length > 0
       ? existingItems.map((item) => ({
-          ...item,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
+          description: item.description,
+          quantity: item.quantity.toString(),
+          unit_price: item.unit_price.toString(),
+          total: item.total,
         }))
-      : [{ description: "", quantity: 1, unit_price: 0, total: 0 }],
+      : [{ description: "", quantity: "1", unit_price: "0", total: 0 }],
   )
 
   useEffect(() => {
@@ -143,12 +151,18 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
   }, [formData.customer_id, customers])
 
   const isValidNumber = (value: string): boolean => {
-    if (value === "" || value === ".") return true
-    return /^\d*\.?\d*$/.test(value)
+    if (value === "" || value === "." || value === ",") return true
+    return /^\d*[.,]?\d*$/.test(value)
   }
 
-  const calculateItemTotal = (quantity: number, unitPrice: number) => {
-    return quantity * unitPrice
+  const parseNumber = (value: string): number => {
+    const normalized = value.replace(",", ".")
+    const parsed = Number.parseFloat(normalized)
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+
+  const calculateItemTotal = (quantity: string, unitPrice: string) => {
+    return parseNumber(quantity) * parseNumber(unitPrice)
   }
 
   const calculateSubtotal = () => {
@@ -170,7 +184,7 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
   }
 
   const addItem = () => {
-    setItems([...items, { description: "", quantity: 1, unit_price: 0, total: 0 }])
+    setItems([...items, { description: "", quantity: "1", unit_price: "0", total: 0 }])
   }
 
   const removeItem = (index: number) => {
@@ -179,12 +193,12 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
     }
   }
 
-  const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
+  const updateItem = (index: number, field: keyof FormInvoiceItem, value: string | number) => {
     const newItems = [...items]
     newItems[index] = { ...newItems[index], [field]: value }
 
     if (field === "quantity" || field === "unit_price") {
-      newItems[index].total = calculateItemTotal(Number(newItems[index].quantity), Number(newItems[index].unit_price))
+      newItems[index].total = calculateItemTotal(newItems[index].quantity, newItems[index].unit_price)
     }
 
     setItems(newItems)
@@ -215,12 +229,15 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
     }
 
     for (const item of items) {
-      if (Number.isNaN(item.quantity) || item.quantity <= 0) {
+      const quantity = parseNumber(item.quantity)
+      const unitPrice = parseNumber(item.unit_price)
+
+      if (Number.isNaN(quantity) || quantity <= 0) {
         toast.error("Množství musí být platné číslo větší než 0")
         setIsLoading(false)
         return
       }
-      if (Number.isNaN(item.unit_price) || item.unit_price < 0) {
+      if (Number.isNaN(unitPrice) || unitPrice < 0) {
         toast.error("Cena/ks musí být platné číslo")
         setIsLoading(false)
         return
@@ -293,8 +310,8 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
       const itemsData = items.map((item) => ({
         invoice_id: invoiceId,
         description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
+        quantity: parseNumber(item.quantity),
+        unit_price: parseNumber(item.unit_price),
         total: item.total,
       }))
 
@@ -482,7 +499,6 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
                     <option value="Lavado de ropa" />
                   </datalist>
                 </div>
-
                 <div className="md:col-span-2 space-y-2">
                   <Label htmlFor={`quantity-${index}`}>Množství</Label>
                   <Input
@@ -493,14 +509,10 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
                     value={item.quantity}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
-                      const value = e.target.value
-                      if (isValidNumber(value)) {
-                        updateItem(index, "quantity", value === "" ? 0 : Number.parseFloat(value) || 0)
-                      }
+                      updateItem(index, "quantity", e.target.value)
                     }}
                   />
                 </div>
-
                 <div className="md:col-span-2 space-y-2">
                   <Label htmlFor={`unit_price-${index}`}>Cena/ks</Label>
                   <Input
@@ -511,19 +523,14 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
                     value={item.unit_price}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
-                      const value = e.target.value
-                      if (isValidNumber(value)) {
-                        updateItem(index, "unit_price", value === "" ? 0 : Number.parseFloat(value) || 0)
-                      }
+                      updateItem(index, "unit_price", e.target.value)
                     }}
                   />
                 </div>
-
                 <div className="md:col-span-2 space-y-2">
                   <Label>Celkem</Label>
                   <div className="h-10 flex items-center font-medium">{formatCurrency(item.total)}</div>
                 </div>
-
                 <div className="md:col-span-1">
                   <Button
                     type="button"
