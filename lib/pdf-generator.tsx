@@ -264,6 +264,7 @@ export const InvoicePDF = ({
       <View style={styles.paymentInfo}>
         <Text style={styles.textBold}>Datos de pago:</Text>
         <Text style={styles.text}>Forma de pago: Transferencia bancaria</Text>
+        {companyDetails?.bank_name && <Text style={styles.text}>Banco: {companyDetails.bank_name}</Text>}
         {companyDetails?.iban && <Text style={styles.text}>IBAN: {companyDetails.iban}</Text>}
         {companyDetails?.bank_account && (
           <Text style={styles.text}>Número de cuenta: {companyDetails.bank_account}</Text>
@@ -282,6 +283,10 @@ export async function generateInvoicePDF(
 ): Promise<Buffer> {
   const ReactPDF = await import("@react-pdf/renderer")
   const pdfDoc = ReactPDF.pdf(<InvoicePDF invoice={invoice} items={items} companyDetails={companyDetails} />)
-  const buffer = await pdfDoc.toBuffer()
-  return buffer
+  const stream = (await pdfDoc.toBuffer()) as unknown as NodeJS.ReadableStream
+  const chunks: Uint8Array[] = []
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === "string" ? new TextEncoder().encode(chunk) : new Uint8Array(chunk as Buffer))
+  }
+  return Buffer.concat(chunks)
 }

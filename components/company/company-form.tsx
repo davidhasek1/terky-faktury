@@ -30,6 +30,7 @@ export function CompanyForm({ companyDetails, userId }: CompanyFormProps) {
     country: companyDetails?.country || "España",
     email: companyDetails?.email || "",
     phone: companyDetails?.phone || "",
+    bank_name: companyDetails?.bank_name || "",
     bank_account: companyDetails?.bank_account || "",
     iban: companyDetails?.iban || "",
     swift_bic: companyDetails?.swift_bic || "",
@@ -201,6 +202,15 @@ export function CompanyForm({ companyDetails, userId }: CompanyFormProps) {
             <CardDescription>Bankovní účet pro příjem plateb</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="bank_name">Název banky</Label>
+              <Input
+                id="bank_name"
+                value={formData.bank_name}
+                onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+              />
+            </div>
+
             <div>
               <Label htmlFor="bank_account">Číslo účtu</Label>
               <Input

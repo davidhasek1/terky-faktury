@@ -6,7 +6,7 @@ import { InvoicePreview } from "@/components/invoices/invoice-preview"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2 } from "lucide-react"
 import Link from "next/link"
-import type { Invoice, InvoiceItem, CompanyDetails } from "@/lib/types"
+import type { Invoice, InvoiceItem, CompanyDetails, Customer } from "@/lib/types"
 
 export default function PublicInvoiceDownloadPage() {
   const params = useParams()
@@ -15,7 +15,7 @@ export default function PublicInvoiceDownloadPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<{
-    invoice: Invoice & { customer: any }
+    invoice: Invoice & { customer: Customer }
     items: InvoiceItem[]
     companyDetails: CompanyDetails | null
   } | null>(null)
@@ -32,7 +32,7 @@ export default function PublicInvoiceDownloadPage() {
         const result = await response.json()
         setData(result)
       } catch (err) {
-        console.error("[v0] Error fetching invoice:", err)
+        console.error("Error fetching invoice:", err)
         setError(err instanceof Error ? err.message : "Error al cargar la factura")
       } finally {
         setLoading(false)

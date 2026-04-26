@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
 
   try {
@@ -27,11 +27,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
       supabase.from("company_details").select("*").eq("user_id", invoice.user_id).maybeSingle(),
     ])
 
-    console.log("[v0] Generating PDF with company details:", companyDetails)
-
     const pdfBuffer = await generateInvoicePDF(invoice, items || [], companyDetails)
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="faktura-${invoice.invoice_number}.pdf"`,
@@ -39,7 +37,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       },
     })
   } catch (error) {
-    console.error("[v0] Error generating PDF:", error)
+    console.error("Error generating PDF:", error)
     return NextResponse.json({ error: "Nepodařilo se vygenerovat PDF" }, { status: 500 })
   }
 }

@@ -35,6 +35,7 @@ export interface Invoice {
   total: number
   notes?: string
   paid_date?: string
+  email_sent_at?: string
   user_id?: string // Added user_id for RLS
   created_at: string
   updated_at: string
@@ -54,6 +55,7 @@ export interface CompanyDetails {
   country?: string
   email?: string
   phone?: string
+  bank_name?: string
   bank_account?: string
   iban?: string
   swift_bic?: string

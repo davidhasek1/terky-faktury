@@ -2,27 +2,41 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log("[v0] Starting send-email route for invoice:", params.id)
-
-    const { id } = params
+    const { id } = await params
 
     if (!process.env.RESEND_API_KEY) {
-      console.error("[v0] RESEND_API_KEY is not set")
+      console.error("RESEND_API_KEY is not set")
       return NextResponse.json(
         { error: "RESEND_API_KEY není nastavený. Přidejte ho do environment variables." },
         { status: 500 },
       )
     }
 
-    console.log("[v0] RESEND_API_KEY is set")
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
+    if (!process.env.NEXT_PUBLIC_SITE_URL) {
+      console.error("NEXT_PUBLIC_SITE_URL is not set")
+      return NextResponse.json(
+        { error: "NEXT_PUBLIC_SITE_URL není nastavený. Přidejte ho do environment variables." },
+        { status: 500 },
+      )
+    }
+
+    if (!process.env.SENDER_EMAIL) {
+      console.error("SENDER_EMAIL is not set")
+      return NextResponse.json(
+        { error: "SENDER_EMAIL není nastavený. Přidejte ho do environment variables." },
+        { status: 500 },
+      )
+    }
+
+    const senderName = process.env.SENDER_NAME || "Faktury"
+    const fromAddress = `${senderName} <${process.env.SENDER_EMAIL}>`
 
     const supabase = await createClient()
 
-    console.log("[v0] Fetching invoice from database")
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .select(
@@ -34,24 +48,19 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       .eq("id", id)
       .single()
 
-    console.log("[v0] Invoice data:", invoice)
-
     if (invoiceError || !invoice) {
-      console.error("[v0] Invoice not found:", invoiceError)
+      console.error("Invoice not found:", invoiceError)
       return NextResponse.json({ error: "Faktura nenalezena" }, { status: 404 })
     }
 
     if (!invoice.customer?.email) {
-      console.error("[v0] Customer email not found")
       return NextResponse.json({ error: "Zákazník nemá vyplněný email" }, { status: 400 })
     }
 
-    const downloadUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/invoices/download/${invoice.public_id}`
-    console.log("[v0] Download URL:", downloadUrl)
+    const downloadUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/invoices/download/${invoice.public_id}`
 
-    console.log("[v0] Sending email to:", invoice.customer.email)
     const { error: emailError } = await resend.emails.send({
-      from: "Terky Faktury <faktury@terkyfaktury.site>",
+      from: fromAddress,
       to: [invoice.customer.email],
       subject: `Factura ${invoice.invoice_number}`,
       html: `
@@ -68,25 +77,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
 
     if (emailError) {
-      console.error("[v0] Error sending email:", emailError)
+      console.error("Error sending email:", emailError)
       return NextResponse.json({ error: "Nepodařilo se odeslat email: " + emailError.message }, { status: 500 })
     }
 
-    console.log("[v0] Email sent successfully, updating email_sent_at")
     const { error: updateError } = await supabase
       .from("invoices")
       .update({ email_sent_at: new Date().toISOString() })
       .eq("id", id)
 
     if (updateError) {
-      console.error("[v0] Error updating email_sent_at:", updateError)
-      // Don't fail the request if update fails, email was sent successfully
+      console.error("Error updating email_sent_at:", updateError)
     }
 
-    console.log("[v0] Email sent successfully")
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error in send-email route:", error)
+    console.error("Error in send-email route:", error)
     return NextResponse.json(
       { error: "Interní chyba serveru: " + (error instanceof Error ? error.message : "Neznámá chyba") },
       { status: 500 },
