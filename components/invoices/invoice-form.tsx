@@ -1,15 +1,21 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,94 +25,102 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Plus, Trash2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import type { Customer, Invoice, InvoiceItem } from "@/lib/types"
-import { formatCurrency } from "@/lib/utils"
-import { toast } from "sonner"
+} from '@/components/ui/alert-dialog';
+import { Plus, Trash2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import type { Customer, Invoice, InvoiceItem } from '@/lib/types';
+import { formatCurrency } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface InvoiceFormProps {
-  customers: Customer[]
-  invoice?: Invoice
-  existingItems?: InvoiceItem[]
-  existingInvoices?: { invoice_number: string }[]
+  customers: Customer[];
+  invoice?: Invoice;
+  existingItems?: InvoiceItem[];
+  existingInvoices?: { invoice_number: string }[];
 }
 
-const generateNextInvoiceNumber = (existingInvoices: { invoice_number: string }[]): string => {
-  const currentYear = new Date().getFullYear()
+const generateNextInvoiceNumber = (
+  existingInvoices: { invoice_number: string }[],
+): string => {
+  const currentYear = new Date().getFullYear();
 
   // Najít všechny faktury pro aktuální rok
   const currentYearInvoices = existingInvoices.filter((inv) => {
     // Formát: YYYY-XXX
-    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/)
+    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/);
     if (match) {
-      const year = Number.parseInt(match[1])
-      return year === currentYear
+      const year = Number.parseInt(match[1]);
+      return year === currentYear;
     }
-    return false
-  })
+    return false;
+  });
 
   if (currentYearInvoices.length === 0) {
     // První faktura v roce
-    return `${currentYear}-001`
+    return `${currentYear}-001`;
   }
 
   // Najít nejvyšší číslo
-  let maxNumber = 0
+  let maxNumber = 0;
   for (const inv of currentYearInvoices) {
-    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/)
+    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/);
     if (match) {
-      const num = Number.parseInt(match[2])
+      const num = Number.parseInt(match[2]);
       if (num > maxNumber) {
-        maxNumber = num
+        maxNumber = num;
       }
     }
   }
 
   // Inkrementovat a formátovat s leading zeros
-  const nextNumber = maxNumber + 1
-  return `${currentYear}-${String(nextNumber).padStart(3, "0")}`
-}
+  const nextNumber = maxNumber + 1;
+  return `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
+};
 
 const getLocalDate = () => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, "0")
-  const day = String(now.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 type FormInvoiceItem = {
-  description: string
-  quantity: string
-  unit_price: string
-  total: number
-}
+  description: string;
+  quantity: string;
+  unit_price: string;
+  total: number;
+};
 
-export function InvoiceForm({ customers, invoice, existingItems = [], existingInvoices = [] }: InvoiceFormProps) {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showEmailWarning, setShowEmailWarning] = useState(false)
+export function InvoiceForm({
+  customers,
+  invoice,
+  existingItems = [],
+  existingInvoices = [],
+}: InvoiceFormProps) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showEmailWarning, setShowEmailWarning] = useState(false);
 
   const [formData, setFormData] = useState({
-    invoice_number: invoice?.invoice_number || generateNextInvoiceNumber(existingInvoices),
+    invoice_number:
+      invoice?.invoice_number || generateNextInvoiceNumber(existingInvoices),
     customer_id: invoice?.customer_id || undefined,
     issue_date: invoice?.issue_date || getLocalDate(),
     due_date:
       invoice?.due_date ||
       (() => {
-        const dueDate = new Date()
-        dueDate.setDate(dueDate.getDate() + 14)
-        const year = dueDate.getFullYear()
-        const month = String(dueDate.getMonth() + 1).padStart(2, "0")
-        const day = String(dueDate.getDate()).padStart(2, "0")
-        return `${year}-${month}-${day}`
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 14);
+        const year = dueDate.getFullYear();
+        const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+        const day = String(dueDate.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       })(),
-    tax_rate: invoice?.tax_rate?.toString() || "21",
-    retention_rate: invoice?.retention_rate?.toString() || "0",
-    notes: invoice?.notes || "",
-  })
+    tax_rate: invoice?.tax_rate?.toString() || '21',
+    retention_rate: invoice?.retention_rate?.toString() || '0',
+    notes: invoice?.notes || '',
+  });
 
   const [items, setItems] = useState<FormInvoiceItem[]>(
     existingItems.length > 0
@@ -116,149 +130,161 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
           unit_price: item.unit_price.toString(),
           total: item.total,
         }))
-      : [{ description: "", quantity: "1", unit_price: "0", total: 0 }],
-  )
+      : [{ description: '', quantity: '1', unit_price: '0', total: 0 }],
+  );
 
   useEffect(() => {
     if (!invoice) {
-      const today = getLocalDate()
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 14)
-      const year = dueDate.getFullYear()
-      const month = String(dueDate.getMonth() + 1).padStart(2, "0")
-      const day = String(dueDate.getDate()).padStart(2, "0")
-      const dueDateStr = `${year}-${month}-${day}`
+      const today = getLocalDate();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 14);
+      const year = dueDate.getFullYear();
+      const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+      const day = String(dueDate.getDate()).padStart(2, '0');
+      const dueDateStr = `${year}-${month}-${day}`;
 
       setFormData((prev) => ({
         ...prev,
         issue_date: today,
         due_date: dueDateStr,
-      }))
+      }));
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (formData.customer_id) {
-      const selectedCustomer = customers.find((c) => c.id === formData.customer_id)
+      const selectedCustomer = customers.find(
+        (c) => c.id === formData.customer_id,
+      );
       if (selectedCustomer) {
-        const retentionRate = selectedCustomer.is_business ? "15" : "0"
+        const retentionRate = selectedCustomer.is_business ? '15' : '0';
         setFormData((prev) => ({
           ...prev,
           retention_rate: retentionRate,
-        }))
+        }));
       }
     }
-  }, [formData.customer_id, customers])
+  }, [formData.customer_id, customers]);
 
   const isValidNumber = (value: string): boolean => {
-    if (value === "" || value === "." || value === ",") return true
-    return /^\d*[.,]?\d*$/.test(value)
-  }
+    if (value === '' || value === '.' || value === ',') return true;
+    return /^\d*[.,]?\d*$/.test(value);
+  };
 
   const parseNumber = (value: string): number => {
-    const normalized = value.replace(",", ".")
-    const parsed = Number.parseFloat(normalized)
-    return Number.isNaN(parsed) ? 0 : parsed
-  }
+    const normalized = value.replace(',', '.');
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
 
   const calculateItemTotal = (quantity: string, unitPrice: string) => {
-    return parseNumber(quantity) * parseNumber(unitPrice)
-  }
+    return parseNumber(quantity) * parseNumber(unitPrice);
+  };
 
   const calculateSubtotal = () => {
-    return items.reduce((sum, item) => sum + item.total, 0)
-  }
+    return items.reduce((sum, item) => sum + item.total, 0);
+  };
 
   const calculateTax = () => {
-    const taxRate = Number.parseFloat(formData.tax_rate) || 0
-    return (calculateSubtotal() * taxRate) / 100
-  }
+    const taxRate = Number.parseFloat(formData.tax_rate) || 0;
+    return (calculateSubtotal() * taxRate) / 100;
+  };
 
   const calculateRetention = () => {
-    const retentionRate = Number.parseFloat(formData.retention_rate) || 0
-    return (calculateSubtotal() * retentionRate) / 100
-  }
+    const retentionRate = Number.parseFloat(formData.retention_rate) || 0;
+    return (calculateSubtotal() * retentionRate) / 100;
+  };
 
   const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax() - calculateRetention()
-  }
+    return calculateSubtotal() + calculateTax() - calculateRetention();
+  };
 
   const addItem = () => {
-    setItems([...items, { description: "", quantity: "1", unit_price: "0", total: 0 }])
-  }
+    setItems([
+      ...items,
+      { description: '', quantity: '1', unit_price: '0', total: 0 },
+    ]);
+  };
 
   const removeItem = (index: number) => {
     if (items.length > 1) {
-      setItems(items.filter((_, i) => i !== index))
+      setItems(items.filter((_, i) => i !== index));
     }
-  }
+  };
 
-  const updateItem = (index: number, field: keyof FormInvoiceItem, value: string | number) => {
-    const newItems = [...items]
-    newItems[index] = { ...newItems[index], [field]: value }
+  const updateItem = (
+    index: number,
+    field: keyof FormInvoiceItem,
+    value: string | number,
+  ) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
 
-    if (field === "quantity" || field === "unit_price") {
-      newItems[index].total = calculateItemTotal(newItems[index].quantity, newItems[index].unit_price)
+    if (field === 'quantity' || field === 'unit_price') {
+      newItems[index].total = calculateItemTotal(
+        newItems[index].quantity,
+        newItems[index].unit_price,
+      );
     }
 
-    setItems(newItems)
-  }
+    setItems(newItems);
+  };
 
   const saveInvoice = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
 
     if (!formData.customer_id) {
-      toast.error("Musíte vybrat zákazníka")
-      setIsLoading(false)
-      return
+      toast.error('Musíte vybrat zákazníka');
+      setIsLoading(false);
+      return;
     }
 
-    const taxRate = Number.parseFloat(formData.tax_rate)
-    const retentionRate = Number.parseFloat(formData.retention_rate)
+    const taxRate = Number.parseFloat(formData.tax_rate);
+    const retentionRate = Number.parseFloat(formData.retention_rate);
 
     if (Number.isNaN(taxRate) || taxRate < 0) {
-      toast.error("Sazba DPH musí být platné číslo")
-      setIsLoading(false)
-      return
+      toast.error('Sazba DPH musí být platné číslo');
+      setIsLoading(false);
+      return;
     }
 
     if (Number.isNaN(retentionRate) || retentionRate < 0) {
-      toast.error("Retención musí být platné číslo")
-      setIsLoading(false)
-      return
+      toast.error('Retención musí být platné číslo');
+      setIsLoading(false);
+      return;
     }
 
     for (const item of items) {
-      const quantity = parseNumber(item.quantity)
-      const unitPrice = parseNumber(item.unit_price)
+      const quantity = parseNumber(item.quantity);
+      const unitPrice = parseNumber(item.unit_price);
 
       if (Number.isNaN(quantity) || quantity <= 0) {
-        toast.error("Množství musí být platné číslo větší než 0")
-        setIsLoading(false)
-        return
+        toast.error('Množství musí být platné číslo větší než 0');
+        setIsLoading(false);
+        return;
       }
-      if (Number.isNaN(unitPrice) || unitPrice < 0) {
-        toast.error("Cena/ks musí být platné číslo")
-        setIsLoading(false)
-        return
+      if (Number.isNaN(unitPrice)) {
+        toast.error('Cena/ks musí být platné číslo');
+        setIsLoading(false);
+        return;
       }
     }
 
-    const supabase = createClient()
+    const supabase = createClient();
 
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
       if (!user) {
-        throw new Error("Musíte být přihlášeni")
+        throw new Error('Musíte být přihlášeni');
       }
 
-      const subtotal = calculateSubtotal()
-      const taxAmount = calculateTax()
-      const retentionAmount = calculateRetention()
-      const total = calculateTotal()
+      const subtotal = calculateSubtotal();
+      const taxAmount = calculateTax();
+      const retentionAmount = calculateRetention();
+      const total = calculateTotal();
 
       const baseInvoiceData = {
         invoice_number: formData.invoice_number,
@@ -272,39 +298,45 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
         tax_amount: taxAmount,
         retention_amount: retentionAmount,
         total,
-      }
+      };
 
-      let invoiceId = invoice?.id
+      let invoiceId = invoice?.id;
 
       if (invoice) {
-        const { error: invoiceError } = await supabase.from("invoices").update(baseInvoiceData).eq("id", invoice.id)
+        const { error: invoiceError } = await supabase
+          .from('invoices')
+          .update(baseInvoiceData)
+          .eq('id', invoice.id);
 
         if (invoiceError) {
-          throw invoiceError
+          throw invoiceError;
         }
 
-        const { error: deleteError } = await supabase.from("invoice_items").delete().eq("invoice_id", invoice.id)
+        const { error: deleteError } = await supabase
+          .from('invoice_items')
+          .delete()
+          .eq('invoice_id', invoice.id);
 
         if (deleteError) {
-          throw deleteError
+          throw deleteError;
         }
       } else {
         const newInvoiceData = {
           ...baseInvoiceData,
           user_id: user.id,
-        }
+        };
 
         const { data: newInvoice, error: invoiceError } = await supabase
-          .from("invoices")
+          .from('invoices')
           .insert([newInvoiceData])
           .select()
-          .single()
+          .single();
 
         if (invoiceError) {
-          throw invoiceError
+          throw invoiceError;
         }
 
-        invoiceId = newInvoice.id
+        invoiceId = newInvoice.id;
       }
 
       const itemsData = items.map((item) => ({
@@ -313,82 +345,99 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
         quantity: parseNumber(item.quantity),
         unit_price: parseNumber(item.unit_price),
         total: item.total,
-      }))
+      }));
 
-      const { error: itemsError } = await supabase.from("invoice_items").insert(itemsData)
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(itemsData);
 
       if (itemsError) {
-        throw itemsError
+        throw itemsError;
       }
 
-      toast.success(invoice ? "Faktura byla úspěšně aktualizována" : "Faktura byla úspěšně vytvořena")
-      router.push("/invoices")
-      router.refresh()
+      toast.success(
+        invoice
+          ? 'Faktura byla úspěšně aktualizována'
+          : 'Faktura byla úspěšně vytvořena',
+      );
+      router.push('/invoices');
+      router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Nepodařilo se uložit fakturu")
+      toast.error(
+        err instanceof Error ? err.message : 'Nepodařilo se uložit fakturu',
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (invoice?.email_sent_at) {
-      setShowEmailWarning(true)
-      return
+      setShowEmailWarning(true);
+      return;
     }
 
-    await saveInvoice()
-  }
+    await saveInvoice();
+  };
 
   const handleConfirmEdit = async () => {
-    setShowEmailWarning(false)
-    await saveInvoice()
-  }
+    setShowEmailWarning(false);
+    await saveInvoice();
+  };
 
   return (
     <>
       <AlertDialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
-        <AlertDialogContent style={{ backgroundColor: "white", zIndex: 9999 }}>
+        <AlertDialogContent style={{ backgroundColor: 'white', zIndex: 9999 }}>
           <AlertDialogHeader>
             <AlertDialogTitle>Faktura již byla odeslána</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
+            <AlertDialogDescription className='space-y-2'>
               <div>Tato faktura již byla odeslána emailem zákazníkovi.</div>
-              <div className="font-semibold">Opravdu chcete změnit fakturu?</div>
-              <div className="text-sm text-muted-foreground">
-                Po uložení změn bude potřeba fakturu znovu odeslat emailem, aby zákazník obdržel aktualizovanou verzi.
+              <div className='font-semibold'>
+                Opravdu chcete změnit fakturu?
+              </div>
+              <div className='text-sm text-muted-foreground'>
+                Po uložení změn bude potřeba fakturu znovu odeslat emailem, aby
+                zákazník obdržel aktualizovanou verzi.
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Zrušit</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmEdit}>Ano, změnit fakturu</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmEdit}>
+              Ano, změnit fakturu
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="invoice_number">
-              Číslo faktury <span className="text-destructive">*</span>
+      <form onSubmit={handleSubmit} className='space-y-6'>
+        <div className='grid gap-6 md:grid-cols-2'>
+          <div className='space-y-2'>
+            <Label htmlFor='invoice_number'>
+              Číslo faktury <span className='text-destructive'>*</span>
             </Label>
             <Input
-              id="invoice_number"
+              id='invoice_number'
               required
               value={formData.invoice_number}
-              onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, invoice_number: e.target.value })
+              }
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="customer_id">
-              Zákazník <span className="text-destructive">*</span>
+          <div className='space-y-2'>
+            <Label htmlFor='customer_id'>
+              Zákazník <span className='text-destructive'>*</span>
             </Label>
             <Select
               value={formData.customer_id}
-              onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
+              onValueChange={(value) =>
+                setFormData({ ...formData, customer_id: value })
+              }
               required
             >
               <SelectTrigger>
@@ -404,142 +453,159 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="issue_date">
-              Datum vystavení <span className="text-destructive">*</span>
+          <div className='space-y-2'>
+            <Label htmlFor='issue_date'>
+              Datum vystavení <span className='text-destructive'>*</span>
             </Label>
             <Input
-              id="issue_date"
-              type="date"
+              id='issue_date'
+              type='date'
               required
               value={formData.issue_date}
-              onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, issue_date: e.target.value })
+              }
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="due_date">
-              Datum splatnosti <span className="text-destructive">*</span>
+          <div className='space-y-2'>
+            <Label htmlFor='due_date'>
+              Datum splatnosti <span className='text-destructive'>*</span>
             </Label>
             <Input
-              id="due_date"
-              type="date"
+              id='due_date'
+              type='date'
               required
               value={formData.due_date}
-              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, due_date: e.target.value })
+              }
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tax_rate">
-              Sazba DPH (%) <span className="text-destructive">*</span>
+          <div className='space-y-2'>
+            <Label htmlFor='tax_rate'>
+              Sazba DPH (%) <span className='text-destructive'>*</span>
             </Label>
             <Input
-              id="tax_rate"
-              type="text"
-              inputMode="decimal"
+              id='tax_rate'
+              type='text'
+              inputMode='decimal'
               required
               value={formData.tax_rate}
               onFocus={(e) => e.target.select()}
               onChange={(e) => {
-                const value = e.target.value
+                const value = e.target.value;
                 if (isValidNumber(value)) {
-                  setFormData({ ...formData, tax_rate: value })
+                  setFormData({ ...formData, tax_rate: value });
                 }
               }}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="retention_rate">Retención (%)</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='retention_rate'>Retención (%)</Label>
             <Input
-              id="retention_rate"
-              type="text"
-              inputMode="decimal"
+              id='retention_rate'
+              type='text'
+              inputMode='decimal'
               value={formData.retention_rate}
               onFocus={(e) => e.target.select()}
               onChange={(e) => {
-                const value = e.target.value
+                const value = e.target.value;
                 if (isValidNumber(value)) {
-                  setFormData({ ...formData, retention_rate: value })
+                  setFormData({ ...formData, retention_rate: value });
                 }
               }}
             />
-            <p className="text-xs text-muted-foreground">
-              Automaticky nastaveno podle typu zákazníka (15% pro podnikající subjekt, 0% pro ostatní)
+            <p className='text-xs text-muted-foreground'>
+              Automaticky nastaveno podle typu zákazníka (15% pro podnikající
+              subjekt, 0% pro ostatní)
             </p>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className='flex items-center justify-between'>
               <CardTitle>Položky faktury</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={addItem}
+              >
+                <Plus className='mr-2 h-4 w-4' />
                 Přidat položku
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className='space-y-4'>
             {items.map((item, index) => (
-              <div key={index} className="grid gap-4 md:grid-cols-12 items-end p-4 border rounded-lg">
-                <div className="md:col-span-5 space-y-2">
+              <div
+                key={index}
+                className='grid gap-4 md:grid-cols-12 items-end p-4 border rounded-lg'
+              >
+                <div className='md:col-span-5 space-y-2'>
                   <Label htmlFor={`description-${index}`}>Popis</Label>
                   <Input
                     id={`description-${index}`}
                     required
                     value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
+                    onChange={(e) =>
+                      updateItem(index, 'description', e.target.value)
+                    }
                     list={`description-options-${index}`}
-                    placeholder="Vyberte nebo napište popis"
+                    placeholder='Vyberte nebo napište popis'
                   />
                   <datalist id={`description-options-${index}`}>
-                    <option value="Limpieza de apartamentos" />
-                    <option value="Lavado de ropa" />
+                    <option value='Limpieza de apartamentos' />
+                    <option value='Lavado de ropa' />
                   </datalist>
                 </div>
-                <div className="md:col-span-2 space-y-2">
+                <div className='md:col-span-2 space-y-2'>
                   <Label htmlFor={`quantity-${index}`}>Množství</Label>
                   <Input
                     id={`quantity-${index}`}
-                    type="text"
-                    inputMode="decimal"
+                    type='text'
+                    inputMode='decimal'
                     required
                     value={item.quantity}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
-                      updateItem(index, "quantity", e.target.value)
+                      updateItem(index, 'quantity', e.target.value);
                     }}
                   />
                 </div>
-                <div className="md:col-span-2 space-y-2">
+                <div className='md:col-span-2 space-y-2'>
                   <Label htmlFor={`unit_price-${index}`}>Cena/ks</Label>
                   <Input
                     id={`unit_price-${index}`}
-                    type="text"
-                    inputMode="decimal"
+                    type='text'
+                    inputMode='decimal'
                     required
                     value={item.unit_price}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
-                      updateItem(index, "unit_price", e.target.value)
+                      updateItem(index, 'unit_price', e.target.value);
                     }}
                   />
                 </div>
-                <div className="md:col-span-2 space-y-2">
+                <div className='md:col-span-2 space-y-2'>
                   <Label>Celkem</Label>
-                  <div className="h-10 flex items-center font-medium">{formatCurrency(item.total)}</div>
+                  <div className='h-10 flex items-center font-medium'>
+                    {formatCurrency(item.total)}
+                  </div>
                 </div>
-                <div className="md:col-span-1">
+                <div className='md:col-span-1'>
                   <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
+                    type='button'
+                    variant='ghost'
+                    size='icon'
                     onClick={() => removeItem(index)}
                     disabled={items.length === 1}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className='h-4 w-4' />
                   </Button>
                 </div>
               </div>
@@ -548,23 +614,33 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2 max-w-sm ml-auto">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Mezisoučet:</span>
-                <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
+          <CardContent className='pt-6'>
+            <div className='space-y-2 max-w-sm ml-auto'>
+              <div className='flex justify-between text-sm'>
+                <span className='text-muted-foreground'>Mezisoučet:</span>
+                <span className='font-medium'>
+                  {formatCurrency(calculateSubtotal())}
+                </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">DPH ({formData.tax_rate}%):</span>
-                <span className="font-medium">{formatCurrency(calculateTax())}</span>
+              <div className='flex justify-between text-sm'>
+                <span className='text-muted-foreground'>
+                  DPH ({formData.tax_rate}%):
+                </span>
+                <span className='font-medium'>
+                  {formatCurrency(calculateTax())}
+                </span>
               </div>
               {Number.parseFloat(formData.retention_rate) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Retención (-{formData.retention_rate}%):</span>
-                  <span className="font-medium text-destructive">-{formatCurrency(calculateRetention())}</span>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>
+                    Retención (-{formData.retention_rate}%):
+                  </span>
+                  <span className='font-medium text-destructive'>
+                    -{formatCurrency(calculateRetention())}
+                  </span>
                 </div>
               )}
-              <div className="flex justify-between text-lg font-bold pt-2 border-t">
+              <div className='flex justify-between text-lg font-bold pt-2 border-t'>
                 <span>Celkem:</span>
                 <span>{formatCurrency(calculateTotal())}</span>
               </div>
@@ -572,25 +648,36 @@ export function InvoiceForm({ customers, invoice, existingItems = [], existingIn
           </CardContent>
         </Card>
 
-        <div className="space-y-2">
-          <Label htmlFor="notes">Poznámky</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='notes'>Poznámky</Label>
           <Textarea
-            id="notes"
+            id='notes'
             value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, notes: e.target.value })
+            }
             rows={3}
           />
         </div>
 
-        <div className="flex gap-4">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Ukládám..." : invoice ? "Uložit změny" : "Vytvořit fakturu"}
+        <div className='flex gap-4'>
+          <Button type='submit' disabled={isLoading}>
+            {isLoading
+              ? 'Ukládám...'
+              : invoice
+                ? 'Uložit změny'
+                : 'Vytvořit fakturu'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => router.back()}
+            disabled={isLoading}
+          >
             Zrušit
           </Button>
         </div>
       </form>
     </>
-  )
+  );
 }
