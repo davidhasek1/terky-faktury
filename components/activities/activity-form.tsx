@@ -203,14 +203,16 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
               className="grid grid-cols-1 md:grid-cols-[1fr_180px_2fr_auto] gap-4 items-end border-b border-border/60 pb-6"
             >
               <div>
-                <Label className={fieldLabel}>Služba</Label>
+                <Label htmlFor={`service-type-${index}`} className={fieldLabel}>
+                  Služba
+                </Label>
                 <Select
                   value={row.service_type}
                   onValueChange={(value) =>
                     updateService(index, { service_type: value as ServiceType })
                   }
                 >
-                  <SelectTrigger className={inputBoxed}>
+                  <SelectTrigger id={`service-type-${index}`} className={inputBoxed}>
                     <SelectValue placeholder="Vyberte" />
                   </SelectTrigger>
                   <SelectContent>
@@ -223,8 +225,11 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
                 </Select>
               </div>
               <div>
-                <Label className={fieldLabel}>Cena (€)</Label>
+                <Label htmlFor={`service-price-${index}`} className={fieldLabel}>
+                  Cena (€)
+                </Label>
                 <Input
+                  id={`service-price-${index}`}
                   type="number"
                   inputMode="decimal"
                   step="0.01"
@@ -235,8 +240,11 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
                 />
               </div>
               <div>
-                <Label className={fieldLabel}>Poznámka (volitelné)</Label>
+                <Label htmlFor={`service-note-${index}`} className={fieldLabel}>
+                  Poznámka (volitelné)
+                </Label>
                 <Textarea
+                  id={`service-note-${index}`}
                   rows={1}
                   maxLength={200}
                   value={row.note}
@@ -293,7 +301,7 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
           disabled={isSaving}
           className="text-[11px] uppercase tracking-[0.22em]"
         >
-          {isSaving ? "Ukládám..." : isEdit ? "Uložit změny" : "Vytvořit aktivitu"}
+          {isSaving ? "Ukládám…" : isEdit ? "Uložit změny" : "Vytvořit aktivitu"}
         </Button>
       </div>
     </form>
