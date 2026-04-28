@@ -1,5 +1,5 @@
 import type { Activity } from "@/lib/types"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 import { SERVICE_LABELS } from "./service-labels"
 import { ActivityStatusToggle } from "./activity-status-toggle"
 import { ActivityRowActions } from "./activity-row-actions"
@@ -85,11 +85,6 @@ function ServiceBreakdown({ services }: { services: NonNullable<Activity["servic
       ))}
     </div>
   )
-}
-
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split("-")
-  return `${Number(d)}. ${Number(m)}. ${y}`
 }
 
 function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
