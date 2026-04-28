@@ -1,52 +1,105 @@
 -- Aktivity (deník služeb pro zákazníky) a jejich služby
 -- Mirrors invoices + invoice_items pattern with RLS scoped to user_id.
 
-create type service_type as enum ('cleaning', 'laundry', 'apartment_service');
-create type activity_status as enum ('unpaid', 'paid');
+-- Enums
+CREATE TYPE service_type AS ENUM ('cleaning', 'laundry', 'apartment_service');
+CREATE TYPE activity_status AS ENUM ('unpaid', 'paid');
 
-create table activities (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  customer_id uuid not null references customers(id) on delete cascade,
-  activity_date date not null,
-  status activity_status not null default 'unpaid',
-  total_amount numeric(10, 2) not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+-- Activities table
+CREATE TABLE IF NOT EXISTS activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  activity_date DATE NOT NULL,
+  status activity_status NOT NULL DEFAULT 'unpaid',
+  total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-create table activity_services (
-  id uuid primary key default gen_random_uuid(),
-  activity_id uuid not null references activities(id) on delete cascade,
-  service_type service_type not null,
-  price numeric(10, 2) not null,
-  note text
+-- Activity services (line items per activity)
+CREATE TABLE IF NOT EXISTS activity_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  service_type service_type NOT NULL,
+  price DECIMAL(10, 2) NOT NULL,
+  note TEXT
 );
 
-create index activities_user_customer_date_idx
-  on activities (user_id, customer_id, activity_date desc);
-create index activity_services_activity_idx
-  on activity_services (activity_id);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_activities_user_customer_date
+  ON activities (user_id, customer_id, activity_date DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_services_activity_id
+  ON activity_services (activity_id);
 
-alter table activities enable row level security;
-alter table activity_services enable row level security;
+-- Enable Row Level Security
+ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_services ENABLE ROW LEVEL SECURITY;
 
-create policy "activities_owner_all"
-  on activities for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+-- Drop existing policies if they exist (idempotent rerun)
+DROP POLICY IF EXISTS "Users can view their own activities" ON activities;
+DROP POLICY IF EXISTS "Users can insert their own activities" ON activities;
+DROP POLICY IF EXISTS "Users can update their own activities" ON activities;
+DROP POLICY IF EXISTS "Users can delete their own activities" ON activities;
 
-create policy "activity_services_via_owner_all"
-  on activity_services for all
-  using (
-    exists (
-      select 1 from activities a
-      where a.id = activity_id and a.user_id = auth.uid()
-    )
-  )
-  with check (
-    exists (
-      select 1 from activities a
-      where a.id = activity_id and a.user_id = auth.uid()
+DROP POLICY IF EXISTS "Users can view their own activity services" ON activity_services;
+DROP POLICY IF EXISTS "Users can insert their own activity services" ON activity_services;
+DROP POLICY IF EXISTS "Users can update their own activity services" ON activity_services;
+DROP POLICY IF EXISTS "Users can delete their own activity services" ON activity_services;
+
+-- Activities policies
+CREATE POLICY "Users can view their own activities" ON activities
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own activities" ON activities
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own activities" ON activities
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own activities" ON activities
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Activity services policies (access via parent activity ownership)
+CREATE POLICY "Users can view their own activity services" ON activity_services
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM activities
+      WHERE activities.id = activity_services.activity_id
+      AND activities.user_id = auth.uid()
     )
   );
+
+CREATE POLICY "Users can insert their own activity services" ON activity_services
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM activities
+      WHERE activities.id = activity_services.activity_id
+      AND activities.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update their own activity services" ON activity_services
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM activities
+      WHERE activities.id = activity_services.activity_id
+      AND activities.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete their own activity services" ON activity_services
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM activities
+      WHERE activities.id = activity_services.activity_id
+      AND activities.user_id = auth.uid()
+    )
+  );
+
+-- Auto-update updated_at on activities (function defined in 001_create_tables.sql)
+DROP TRIGGER IF EXISTS update_activities_updated_at ON activities;
+CREATE TRIGGER update_activities_updated_at
+  BEFORE UPDATE ON activities
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
