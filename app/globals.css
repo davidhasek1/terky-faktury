@@ -42,28 +42,28 @@
 @theme inline {
   --font-sans: "Geist Sans", system-ui, sans-serif;
   --font-mono: "Geist Mono", monospace;
+  --font-serif: var(--font-serif), "Cormorant Garamond", "Georgia", serif;
 
-  /* Přidány barvy pro fakturační aplikaci */
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
+  /* Editorial boutique — ivory & mulberry */
+  --color-background: #faf6f1;
+  --color-foreground: #1f1318;
   --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
-  /* Explicitní bílé pozadí pro popover */
+  --color-card-foreground: #1f1318;
   --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
-  --color-primary: #2563eb;
-  --color-primary-foreground: #f8fafc;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #0f172a;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-accent: #f1f5f9;
-  --color-accent-foreground: #0f172a;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #2563eb;
+  --color-popover-foreground: #1f1318;
+  --color-primary: #9d4a64;
+  --color-primary-foreground: #fbf6f3;
+  --color-secondary: #f3e8e7;
+  --color-secondary-foreground: #4a2a36;
+  --color-muted: #efe5e1;
+  --color-muted-foreground: #7a6168;
+  --color-accent: #f3e8e7;
+  --color-accent-foreground: #4a2a36;
+  --color-destructive: #b54257;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e7dad3;
+  --color-input: #e7dad3;
+  --color-ring: #9d4a64;
   --radius: 0.5rem;
 }
 

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { InvoiceForm } from "@/components/invoices/invoice-form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/layout/page-header"
 
 export default async function NewInvoicePage() {
   const supabase = await createClient()
@@ -21,16 +21,17 @@ export default async function NewInvoicePage() {
   const resetKey = Math.random()
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nová faktura</CardTitle>
-          <CardDescription>Vytvořte novou fakturu pro zákazníka</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InvoiceForm key={resetKey} customers={customers || []} existingInvoices={invoices || []} />
-        </CardContent>
-      </Card>
+    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-5xl">
+      <PageHeader
+        eyebrow="Nový dokument"
+        title={
+          <>
+            Nová <span className="italic text-primary">faktura</span>
+          </>
+        }
+        description="Vystavte fakturu pro zákazníka. Po uložení ji můžete stáhnout jako PDF nebo poslat e-mailem."
+      />
+      <InvoiceForm key={resetKey} customers={customers || []} existingInvoices={invoices || []} />
     </div>
   )
 }

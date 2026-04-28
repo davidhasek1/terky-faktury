@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, ArrowLeft, CheckCircle } from "lucide-react"
+import { Download, ArrowLeft, CheckCircle, Mail } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { InvoicePreview } from "@/components/invoices/invoice-preview"
@@ -33,49 +32,54 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
   ])
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" asChild>
+    <div className="container mx-auto py-8 sm:py-12 px-4 sm:px-8 max-w-5xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
+        <Button
+          variant="ghost"
+          asChild
+          className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground -ml-3"
+        >
           <Link href="/invoices">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 h-3.5 w-3.5" />
             Zpět na faktury
           </Link>
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {!invoice.paid_date && <MarkAsPaidButton invoiceId={invoice.id} />}
           <form action={`/api/invoices/${id}/pdf`} method="GET">
-            <Button type="submit">
-              <Download className="mr-2 h-4 w-4" />
+            <Button type="submit" className="text-[11px] uppercase tracking-[0.22em] shadow-none">
+              <Download className="mr-2 h-3.5 w-3.5" />
               Stáhnout PDF
             </Button>
           </form>
         </div>
       </div>
 
-      {invoice.paid_date && (
-        <Card className="mb-6 bg-green-50 border-green-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-green-700">
-              <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">
-                Faktura byla zaplacena dne {new Date(invoice.paid_date).toLocaleDateString("cs-CZ")}
-              </span>
+      {(invoice.paid_date || invoice.email_sent_at) && (
+        <div className="grid sm:grid-cols-2 gap-3 mb-8">
+          {invoice.paid_date && (
+            <div className="flex items-center gap-3 border border-emerald-200 bg-emerald-50/60 px-5 py-4">
+              <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+              <p className="text-sm text-emerald-800">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-emerald-700/70 mr-2">
+                  Zaplaceno
+                </span>
+                {new Date(invoice.paid_date).toLocaleDateString("cs-CZ")}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {invoice.email_sent_at && (
-        <Card className="mb-6 bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-blue-700">
-              <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">
-                Email byl odeslán <DateTimeDisplay date={invoice.email_sent_at} />
-              </span>
+          )}
+          {invoice.email_sent_at && (
+            <div className="flex items-center gap-3 border border-border bg-secondary/50 px-5 py-4">
+              <Mail className="h-4 w-4 text-primary shrink-0" />
+              <p className="text-sm text-foreground">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mr-2">
+                  E-mail
+                </span>
+                <DateTimeDisplay date={invoice.email_sent_at} />
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       )}
 
       <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />

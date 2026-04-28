@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { InvoiceForm } from "@/components/invoices/invoice-form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/layout/page-header"
 import { notFound } from "next/navigation"
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,16 +26,17 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Upravit fakturu</CardTitle>
-          <CardDescription>Upravte informace o faktuře</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InvoiceForm customers={customers || []} invoice={invoice} existingItems={items || []} />
-        </CardContent>
-      </Card>
+    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-5xl">
+      <PageHeader
+        eyebrow="Úprava faktury"
+        title={
+          <>
+            Faktura <span className="italic text-primary">{invoice.invoice_number}</span>
+          </>
+        }
+        description="Upravte údaje, položky nebo poznámku. Změny se uloží po stisku tlačítka."
+      />
+      <InvoiceForm customers={customers || []} invoice={invoice} existingItems={items || []} />
     </div>
   )
 }

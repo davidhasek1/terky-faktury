@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Plus, FileText } from "lucide-react"
+import { Plus, ArrowUpRight, FileText } from "lucide-react"
 import Link from "next/link"
 import { InvoiceActions } from "@/components/invoices/invoice-actions"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { formatCurrency, formatDate, cn } from "@/lib/utils"
 import { InvoiceFilters } from "@/components/invoices/invoice-filters"
 import { DateTimeDisplay } from "@/components/ui/date-time-display"
+import { PageHeader } from "@/components/layout/page-header"
+import { SectionLabel } from "@/components/layout/section-label"
 
 export default async function InvoicesPage({
   searchParams,
@@ -37,7 +36,6 @@ export default async function InvoicesPage({
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
-  // Filter by payment status
   if (params.status === "paid") {
     query = query.not("paid_date", "is", null)
   } else if (params.status === "unpaid") {
@@ -63,133 +61,267 @@ export default async function InvoicesPage({
     unpaidAmount: allInvoices?.filter((inv) => !inv.paid_date).reduce((sum, inv) => sum + inv.total, 0) || 0,
   }
 
+  const statItems = [
+    {
+      label: "Celkem faktur",
+      value: stats.total.toString(),
+      meta: formatCurrency(stats.totalAmount),
+      tone: "neutral" as const,
+    },
+    {
+      label: "Zaplaceno",
+      value: stats.paid.toString(),
+      meta: formatCurrency(stats.paidAmount),
+      tone: "positive" as const,
+    },
+    {
+      label: "Nezaplaceno",
+      value: stats.unpaid.toString(),
+      meta: formatCurrency(stats.unpaidAmount),
+      tone: "pending" as const,
+    },
+    {
+      label: "Po splatnosti",
+      value: stats.overdue.toString(),
+      meta: stats.overdue > 0 ? "Vyžaduje pozornost" : "Vše v pořádku",
+      tone: stats.overdue > 0 ? ("danger" as const) : ("neutral" as const),
+    },
+  ]
+
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Faktury</h1>
-          <p className="text-muted-foreground mt-2">Správa všech faktur</p>
-        </div>
-        <Button asChild>
-          <Link href="/invoices/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nová faktura
-          </Link>
-        </Button>
-      </div>
+    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-6xl">
+      <PageHeader
+        eyebrow={params.status ? `Filtr — ${labelFor(params.status)}` : "Všechny záznamy"}
+        title={
+          <>
+            Tvoje <span className="italic text-primary">faktury</span>
+          </>
+        }
+        description="Vystavujte, sledujte a posílejte faktury zákazníkům. Vše přehledně na jednom místě."
+        actions={
+          <Button asChild className="text-[11px] uppercase tracking-[0.22em] shadow-none">
+            <Link href="/invoices/new">
+              <Plus className="mr-2 h-3.5 w-3.5" />
+              Nová faktura
+            </Link>
+          </Button>
+        }
+      />
 
-      <div className="grid gap-4 md:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Celkem faktur</CardDescription>
-            <CardTitle className="text-3xl">{stats.total}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{formatCurrency(stats.totalAmount)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Zaplaceno</CardDescription>
-            <CardTitle className="text-3xl text-green-600">{stats.paid}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{formatCurrency(stats.paidAmount)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Nezaplaceno</CardDescription>
-            <CardTitle className="text-3xl text-blue-600">{stats.unpaid}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{formatCurrency(stats.unpaidAmount)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Po splatnosti</CardDescription>
-            <CardTitle className="text-3xl text-red-600">{stats.overdue}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Vyžaduje pozornost</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Seznam faktur</CardTitle>
-              <CardDescription>Všechny vytvořené faktury</CardDescription>
-            </div>
-            <InvoiceFilters currentStatus={params.status} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!invoices || invoices.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                {params.status ? "Žádné faktury pro tento filtr" : "Zatím nemáte žádné faktury"}
+      <section className="mb-12 sm:mb-16">
+        <SectionLabel number="01" title="Souhrn" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
+          {statItems.map((item) => (
+            <div key={item.label} className="bg-card px-5 py-7 sm:px-7 sm:py-9">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">
+                {item.label}
               </p>
-              <Button asChild variant="outline">
-                <Link href="/invoices/new">Vytvořit první fakturu</Link>
-              </Button>
+              <p
+                className={cn(
+                  "font-serif text-3xl sm:text-4xl leading-none mb-2 tabular-nums",
+                  toneClass(item.tone),
+                )}
+              >
+                {item.value}
+              </p>
+              <p className="text-xs text-muted-foreground">{item.meta}</p>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Číslo faktury</TableHead>
-                  <TableHead>Zákazník</TableHead>
-                  <TableHead>Datum vystavení</TableHead>
-                  <TableHead>Datum splatnosti</TableHead>
-                  <TableHead>Proplaceno</TableHead>
-                  <TableHead>Email odeslán</TableHead>
-                  <TableHead>Částka</TableHead>
-                  <TableHead>Stav</TableHead>
-                  <TableHead className="text-right">Akce</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                    <TableCell>{invoice.customer?.name || "-"}</TableCell>
-                    <TableCell>{formatDate(invoice.issue_date)}</TableCell>
-                    <TableCell>{formatDate(invoice.due_date)}</TableCell>
-                    <TableCell>{invoice.paid_date ? formatDate(invoice.paid_date) : "-"}</TableCell>
-                    <TableCell>
-                      {invoice.email_sent_at ? <DateTimeDisplay date={invoice.email_sent_at} /> : "-"}
-                    </TableCell>
-                    <TableCell>{formatCurrency(invoice.total)}</TableCell>
-                    <TableCell>
-                      {invoice.paid_date ? (
-                        <Badge variant="default" className="bg-green-600">
-                          Zaplaceno
-                        </Badge>
-                      ) : new Date(invoice.due_date) < new Date() ? (
-                        <Badge variant="destructive">Po splatnosti</Badge>
-                      ) : (
-                        <Badge variant="secondary">Nezaplaceno</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-6 sm:mb-8 gap-4">
+          <SectionLabelInline number="02" title="Seznam" />
+          <InvoiceFilters currentStatus={params.status} />
+        </div>
+
+        {!invoices || invoices.length === 0 ? (
+          <div className="border border-border bg-card px-6 py-20 text-center">
+            <FileText className="mx-auto h-10 w-10 text-muted-foreground/50 mb-6" />
+            <p className="font-serif italic text-2xl text-muted-foreground mb-6">
+              {params.status ? "Žádný záznam pro tento filtr." : "Zatím prázdno."}
+            </p>
+            <Button
+              asChild
+              variant="outline"
+              className="bg-transparent text-[11px] uppercase tracking-[0.22em]"
+            >
+              <Link href="/invoices/new">
+                Vytvořit první fakturu
+                <ArrowUpRight className="ml-2 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="border border-border bg-card overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <Th>Číslo</Th>
+                  <Th>Zákazník</Th>
+                  <Th>Vystavena</Th>
+                  <Th>Splatná</Th>
+                  <Th>Proplacena</Th>
+                  <Th>Email</Th>
+                  <Th align="right">Částka</Th>
+                  <Th>Stav</Th>
+                  <Th align="right">Akce</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((invoice, idx) => (
+                  <tr
+                    key={invoice.id}
+                    className={idx !== invoices.length - 1 ? "border-b border-border/60" : ""}
+                  >
+                    <Td>
+                      <Link
+                        href={`/invoices/${invoice.id}/view`}
+                        className="font-serif text-lg text-foreground hover:text-primary transition-colors"
+                      >
+                        {invoice.invoice_number}
+                      </Link>
+                    </Td>
+                    <Td>{invoice.customer?.name || <Dash />}</Td>
+                    <Td className="text-muted-foreground">{formatDate(invoice.issue_date)}</Td>
+                    <Td className="text-muted-foreground">{formatDate(invoice.due_date)}</Td>
+                    <Td className="text-muted-foreground">
+                      {invoice.paid_date ? formatDate(invoice.paid_date) : <Dash />}
+                    </Td>
+                    <Td className="text-muted-foreground text-xs">
+                      {invoice.email_sent_at ? <DateTimeDisplay date={invoice.email_sent_at} /> : <Dash />}
+                    </Td>
+                    <Td align="right">
+                      <span className="font-serif text-base text-foreground tabular-nums">
+                        {formatCurrency(invoice.total)}
+                      </span>
+                    </Td>
+                    <Td>
+                      <StatusPill
+                        paid={!!invoice.paid_date}
+                        overdue={!invoice.paid_date && new Date(invoice.due_date) < new Date()}
+                      />
+                    </Td>
+                    <Td align="right">
                       <InvoiceActions
                         invoiceId={invoice.id}
                         isPaid={!!invoice.paid_date}
                         customerEmail={invoice.customer?.email}
                       />
-                    </TableCell>
-                  </TableRow>
+                    </Td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   )
+}
+
+function toneClass(tone: "positive" | "pending" | "danger" | "neutral") {
+  switch (tone) {
+    case "positive":
+      return "text-emerald-700"
+    case "pending":
+      return "text-amber-700"
+    case "danger":
+      return "text-rose-700 italic"
+    default:
+      return "text-foreground"
+  }
+}
+
+function labelFor(status: string) {
+  switch (status) {
+    case "paid":
+      return "Zaplaceno"
+    case "unpaid":
+      return "Nezaplaceno"
+    case "overdue":
+      return "Po splatnosti"
+    default:
+      return "Vše"
+  }
+}
+
+function SectionLabelInline({ number, title }: { number: string; title: string }) {
+  return (
+    <div className="flex items-center gap-4 min-w-0 flex-1">
+      <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-medium tabular-nums">
+        {number}
+      </span>
+      <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground" aria-hidden="true">
+        —
+      </span>
+      <span className="font-serif italic text-xl sm:text-2xl text-foreground">{title}</span>
+      <span className="flex-1 h-px bg-border" aria-hidden="true" />
+    </div>
+  )
+}
+
+function StatusPill({ paid, overdue }: { paid: boolean; overdue: boolean }) {
+  if (paid) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium text-emerald-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+        Zaplaceno
+      </span>
+    )
+  }
+  if (overdue) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium text-primary">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+        Po splatnosti
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground">
+      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" aria-hidden="true" />
+      Nezaplaceno
+    </span>
+  )
+}
+
+function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
+  return (
+    <th
+      className={
+        "text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground py-4 px-5 " +
+        (align === "right" ? "text-right" : "text-left")
+      }
+    >
+      {children}
+    </th>
+  )
+}
+
+function Td({
+  children,
+  align,
+  className = "",
+}: {
+  children: React.ReactNode
+  align?: "right"
+  className?: string
+}) {
+  return (
+    <td
+      className={
+        "py-5 px-5 text-sm text-foreground " +
+        (align === "right" ? "text-right " : "") +
+        className
+      }
+    >
+      {children}
+    </td>
+  )
+}
+
+function Dash() {
+  return <span className="text-muted-foreground/50">—</span>
 }

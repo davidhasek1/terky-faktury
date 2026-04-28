@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Users, Plus, TrendingUp, AlertCircle } from "lucide-react"
+import { FileText, Users, Plus, ArrowUpRight, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, cn } from "@/lib/utils"
+import { SectionLabel } from "@/components/layout/section-label"
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -37,142 +37,193 @@ export default async function HomePage() {
     pendingRevenue: invoices?.filter((inv) => !inv.paid_date).reduce((sum, inv) => sum + inv.total, 0) || 0,
   }
 
+  const today_formatted = new Intl.DateTimeFormat("cs-CZ", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date())
+
+  const statItems = [
+    {
+      label: "Celkové tržby",
+      value: formatCurrency(stats.totalRevenue),
+      meta: `${stats.paidInvoices} zaplacených faktur`,
+      tone: "positive" as const,
+    },
+    {
+      label: "Čeká na platbu",
+      value: formatCurrency(stats.pendingRevenue),
+      meta: `${stats.totalInvoices - stats.paidInvoices} nezaplacených faktur`,
+      tone: "pending" as const,
+    },
+    {
+      label: "Po splatnosti",
+      value: stats.overdueInvoices.toString(),
+      meta: stats.overdueInvoices > 0 ? "Vyžaduje pozornost" : "Vše v pořádku",
+      tone: stats.overdueInvoices > 0 ? ("danger" as const) : ("neutral" as const),
+    },
+    {
+      label: "Zákazníci",
+      value: stats.totalCustomers.toString(),
+      meta: "Aktivní protistrany",
+      tone: "neutral" as const,
+    },
+  ]
+
   return (
-    <div className="container mx-auto py-4 sm:py-8 px-4">
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Fakturační systém</h1>
-        <p className="text-muted-foreground text-base sm:text-lg">Vytvářejte a spravujte faktury jednoduše</p>
+    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-6xl">
+      {/* Hero / Masthead */}
+      <header className="mb-16 sm:mb-24">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-6">
+          {today_formatted}
+        </p>
+        <h1 className="font-serif text-5xl sm:text-7xl leading-[1.05] tracking-tight text-foreground mb-6">
+          Vítej zpátky,
+          <br />
+          <span className="italic text-primary">Terko.</span>
+        </h1>
+        <p className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
+          Vytvářej faktury, sleduj platby a piš zákazníkům — všechno na jednom místě.
+        </p>
+      </header>
+
+      {/* 01 — Přehled */}
+      <section className="mb-16 sm:mb-20">
+        <SectionLabel number="01" title="Přehled" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
+          {statItems.map((item) => (
+            <div key={item.label} className="bg-card px-6 py-8 sm:px-8 sm:py-10">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-4">
+                {item.label}
+              </p>
+              <p
+                className={cn(
+                  "font-serif text-3xl sm:text-4xl leading-none mb-3 tabular-nums",
+                  toneClass(item.tone),
+                )}
+              >
+                {item.value}
+              </p>
+              <p className="text-xs text-muted-foreground">{item.meta}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 02 — Rychlé akce */}
+      <section className="mb-16 sm:mb-20">
+        <SectionLabel number="02" title="Rychlé akce" />
+        <div className="grid gap-px bg-border border border-border grid-cols-1 md:grid-cols-2">
+          <ActionPanel
+            icon={<FileText className="h-4 w-4" />}
+            eyebrow="Fakturace"
+            title="Nová faktura"
+            description="Vytvořte fakturu pro existujícího nebo nového zákazníka."
+            primaryHref="/invoices/new"
+            primaryLabel="Vystavit fakturu"
+            secondaryHref="/invoices"
+            secondaryLabel="Všechny faktury"
+          />
+          <ActionPanel
+            icon={<Users className="h-4 w-4" />}
+            eyebrow="Adresář"
+            title="Nový zákazník"
+            description="Přidejte protistranu, ať ji máte po ruce při fakturaci."
+            primaryHref="/customers/new"
+            primaryLabel="Přidat zákazníka"
+            secondaryHref="/customers"
+            secondaryLabel="Všichni zákazníci"
+          />
+        </div>
+      </section>
+
+      {/* 03 — Upozornění */}
+      {stats.overdueInvoices > 0 && (
+        <section className="mb-8">
+          <SectionLabel number="03" title="Upozornění" />
+          <div className="border border-border bg-card px-6 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3 flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5 text-primary" />
+                Po splatnosti
+              </p>
+              <p className="font-serif text-4xl sm:text-5xl text-foreground leading-none mb-3">
+                <span className="italic text-primary">{stats.overdueInvoices}</span>{" "}
+                {stats.overdueInvoices === 1 ? "faktura" : "faktur"}
+              </p>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Tyto faktury překročily datum splatnosti. Pošli připomínku nebo označ jako zaplacené.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="self-start sm:self-end bg-transparent text-[11px] uppercase tracking-[0.22em]">
+              <Link href="/invoices?status=overdue">
+                Zobrazit
+                <ArrowUpRight className="ml-2 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
+function toneClass(tone: "positive" | "pending" | "danger" | "neutral") {
+  switch (tone) {
+    case "positive":
+      return "text-emerald-700"
+    case "pending":
+      return "text-amber-700"
+    case "danger":
+      return "text-rose-700 italic"
+    default:
+      return "text-foreground"
+  }
+}
+
+function ActionPanel({
+  icon,
+  eyebrow,
+  title,
+  description,
+  primaryHref,
+  primaryLabel,
+  secondaryHref,
+  secondaryLabel,
+}: {
+  icon: React.ReactNode
+  eyebrow: string
+  title: string
+  description: string
+  primaryHref: string
+  primaryLabel: string
+  secondaryHref: string
+  secondaryLabel: string
+}) {
+  return (
+    <div className="bg-card px-6 py-8 sm:px-10 sm:py-10 flex flex-col gap-6">
+      <div className="flex items-center gap-3 text-muted-foreground">
+        <span className="text-primary">{icon}</span>
+        <span className="text-[10px] uppercase tracking-[0.25em]">{eyebrow}</span>
       </div>
-
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Celkové tržby</CardDescription>
-            <CardTitle className="text-xl sm:text-2xl">{formatCurrency(stats.totalRevenue)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4 text-green-600 flex-shrink-0" />
-              <span>{stats.paidInvoices} zaplacených faktur</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Čeká na platbu</CardDescription>
-            <CardTitle className="text-xl sm:text-2xl">{formatCurrency(stats.pendingRevenue)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {stats.totalInvoices - stats.paidInvoices} nezaplacených faktur
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Po splatnosti</CardDescription>
-            <CardTitle className="text-xl sm:text-2xl text-red-600">{stats.overdueInvoices}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                <span>Vyžaduje pozornost</span>
-              </div>
-              {stats.overdueInvoices > 0 && (
-                <Button asChild variant="outline" size="sm" className="w-full bg-transparent">
-                  <Link href="/invoices?status=overdue">Zobrazit faktury</Link>
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Zákazníci</CardDescription>
-            <CardTitle className="text-xl sm:text-2xl">{stats.totalCustomers}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Aktivní protistrany</p>
-          </CardContent>
-        </Card>
+      <div>
+        <h3 className="font-serif text-3xl sm:text-4xl text-foreground leading-tight mb-3">{title}</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">{description}</p>
       </div>
-
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6 sm:mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <FileText className="h-5 w-5 flex-shrink-0" />
-              Faktury
-            </CardTitle>
-            <CardDescription>Vytvářejte a spravujte faktury</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button asChild className="flex-1">
-                <Link href="/invoices/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nová faktura
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="sm:w-auto bg-transparent">
-                <Link href="/invoices">Zobrazit vše</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <Users className="h-5 w-5 flex-shrink-0" />
-              Zákazníci
-            </CardTitle>
-            <CardDescription>Spravujte své zákazníky</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button asChild className="flex-1">
-                <Link href="/customers/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nový zákazník
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="sm:w-auto bg-transparent">
-                <Link href="/customers">Zobrazit vše</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2 lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              Upozornění
-            </CardTitle>
-            <CardDescription>Faktury vyžadující pozornost</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {stats.overdueInvoices > 0 ? (
-                <>
-                  <p className="text-sm">
-                    <span className="font-medium text-red-600">{stats.overdueInvoices}</span> faktur po splatnosti
-                  </p>
-                  <Button asChild variant="outline" size="sm" className="w-full bg-transparent">
-                    <Link href="/invoices?status=overdue">Zobrazit faktury</Link>
-                  </Button>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Žádné faktury po splatnosti</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap gap-3 mt-auto pt-2">
+        <Button asChild className="text-[11px] uppercase tracking-[0.22em] shadow-none">
+          <Link href={primaryHref}>
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            {primaryLabel}
+          </Link>
+        </Button>
+        <Button asChild variant="ghost" className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground">
+          <Link href={secondaryHref}>
+            {secondaryLabel}
+            <ArrowUpRight className="ml-2 h-3.5 w-3.5" />
+          </Link>
+        </Button>
       </div>
     </div>
   )

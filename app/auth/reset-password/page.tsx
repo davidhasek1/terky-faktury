@@ -4,7 +4,6 @@ import type React from "react"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
@@ -55,58 +54,107 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Obnovit heslo</CardTitle>
-            <CardDescription>Zadejte své nové heslo</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {success ? (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Heslo bylo úspěšně změněno. Budete přesměrováni na přihlášení...
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleResetPassword}>
-                <div className="flex flex-col gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Nové heslo</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirmPassword">Potvrdit heslo</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </div>
-                  {error && <p className="text-sm text-destructive">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Ukládání..." : "Změnit heslo"}
-                  </Button>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  <Link href="/auth/login" className="underline underline-offset-4">
-                    Zpět na přihlášení
-                  </Link>
-                </div>
-              </form>
+        <div className="text-center mb-12">
+          <p className="font-serif italic text-2xl text-primary mb-3">Terky</p>
+          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
+            fakturační udělátko
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
+            Nové <span className="italic text-primary">heslo.</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Zadej nové heslo, ať se zase dostaneme dovnitř.
+          </p>
+        </div>
+
+        {success ? (
+          <div className="space-y-4 text-center">
+            <p className="font-serif italic text-lg text-foreground">
+              Heslo bylo úspěšně změněno.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Přesměruji tě na přihlášení…
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleResetPassword} className="space-y-6">
+            <Field
+              id="password"
+              label="Nové heslo"
+              type="password"
+              required
+              value={password}
+              onChange={setPassword}
+            />
+            <Field
+              id="confirmPassword"
+              label="Potvrď heslo"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+            />
+
+            {error && (
+              <p className="font-serif italic text-sm text-primary">{error}</p>
             )}
-          </CardContent>
-        </Card>
+
+            <Button
+              type="submit"
+              className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
+              disabled={isLoading}
+            >
+              {isLoading ? "Ukládám…" : "Změnit heslo"}
+            </Button>
+
+            <p className="text-center text-sm text-muted-foreground pt-2">
+              <Link
+                href="/auth/login"
+                className="text-foreground italic font-serif hover:text-primary transition-colors"
+              >
+                Zpět na přihlášení
+              </Link>
+            </p>
+          </form>
+        )}
       </div>
+    </div>
+  )
+}
+
+function Field({
+  id,
+  label,
+  required,
+  value,
+  onChange,
+  type = "text",
+}: {
+  id: string
+  label: string
+  required?: boolean
+  value: string
+  onChange: (v: string) => void
+  type?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <Label
+        htmlFor={id}
+        className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
+      >
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type={type}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
+      />
     </div>
   )
 }

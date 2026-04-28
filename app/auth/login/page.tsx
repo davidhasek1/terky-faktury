@@ -1,13 +1,11 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-
 import type React from "react"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -41,57 +39,117 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Přihlášení</CardTitle>
-            <CardDescription>Zadejte svůj email a heslo pro přihlášení</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin}>
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="vas@email.cz"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Heslo</Label>
-                    <Link href="/auth/forgot-password" className="text-sm underline underline-offset-4">
-                      Zapomněli jste heslo?
-                    </Link>
-                  </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Přihlašování..." : "Přihlásit se"}
-                </Button>
-              </div>
-              <div className="mt-4 text-center text-sm">
-                Nemáte účet?{" "}
-                <Link href="/auth/sign-up" className="underline underline-offset-4">
-                  Zaregistrujte se
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <div className="text-center mb-12">
+          <p className="font-serif italic text-2xl text-primary mb-3">Terky</p>
+          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
+            fakturační udělátko
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
+            Vítej <span className="italic text-primary">zpátky.</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Zadej e-mail a heslo pro přihlášení.
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <Field
+            id="email"
+            label="Email"
+            type="email"
+            required
+            value={email}
+            onChange={setEmail}
+            placeholder="vas@email.cz"
+          />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label
+                htmlFor="password"
+                className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
+              >
+                Heslo
+              </Label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-primary transition-colors"
+              >
+                Zapomněla jsi?
+              </Link>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
+            />
+          </div>
+
+          {error && (
+            <p className="font-serif italic text-sm text-primary">{error}</p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
+            disabled={isLoading}
+          >
+            {isLoading ? "Přihlašuji…" : "Přihlásit se"}
+          </Button>
+
+          <p className="text-center text-sm text-muted-foreground pt-2">
+            Nemáš účet?{" "}
+            <Link
+              href="/auth/sign-up"
+              className="text-foreground italic font-serif hover:text-primary transition-colors"
+            >
+              Zaregistruj se
+            </Link>
+          </p>
+        </form>
       </div>
+    </div>
+  )
+}
+
+function Field({
+  id,
+  label,
+  required,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+}: {
+  id: string
+  label: string
+  required?: boolean
+  value: string
+  onChange: (v: string) => void
+  type?: string
+  placeholder?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <Label
+        htmlFor={id}
+        className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
+      >
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type={type}
+        required={required}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
+      />
     </div>
   )
 }

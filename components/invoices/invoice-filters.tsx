@@ -23,14 +23,22 @@ export function InvoiceFilters({ currentStatus }: InvoiceFiltersProps) {
 
   return (
     <Select value={currentStatus || "all"} onValueChange={handleStatusChange}>
-      <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Filtrovat podle stavu" />
+      <SelectTrigger className="w-[200px] text-[11px] uppercase tracking-[0.18em] border-border bg-transparent shadow-none">
+        <SelectValue placeholder="Filtr" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="all">Všechny faktury</SelectItem>
-        <SelectItem value="paid">Zaplacené</SelectItem>
-        <SelectItem value="unpaid">Nezaplacené</SelectItem>
-        <SelectItem value="overdue">Po splatnosti</SelectItem>
+        <SelectItem value="all" className="text-[11px] uppercase tracking-[0.18em]">
+          Všechny faktury
+        </SelectItem>
+        <SelectItem value="paid" className="text-[11px] uppercase tracking-[0.18em]">
+          Zaplacené
+        </SelectItem>
+        <SelectItem value="unpaid" className="text-[11px] uppercase tracking-[0.18em]">
+          Nezaplacené
+        </SelectItem>
+        <SelectItem value="overdue" className="text-[11px] uppercase tracking-[0.18em]">
+          Po splatnosti
+        </SelectItem>
       </SelectContent>
     </Select>
   )

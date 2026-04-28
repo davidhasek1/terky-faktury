@@ -4,7 +4,6 @@ import type React from "react"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
@@ -37,46 +36,79 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Zapomenuté heslo</CardTitle>
-            <CardDescription>Zadejte svůj email a pošleme vám odkaz pro obnovení hesla</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {success ? (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Email s odkazem pro obnovení hesla byl odeslán na adresu <strong>{email}</strong>. Zkontrolujte svou
-                  emailovou schránku.
-                </p>
-                <Button asChild className="w-full">
-                  <Link href="/auth/login">Zpět na přihlášení</Link>
-                </Button>
-              </div>
-            ) : (
-              <form onSubmit={handleResetPassword}>
-                <div className="flex flex-col gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
-                  {error && <p className="text-sm text-destructive">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Odesílání..." : "Odeslat odkaz"}
-                  </Button>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  Vzpomněli jste si na heslo?{" "}
-                  <Link href="/auth/login" className="underline underline-offset-4">
-                    Přihlásit se
-                  </Link>
-                </div>
-              </form>
+        <div className="text-center mb-12">
+          <p className="font-serif italic text-2xl text-primary mb-3">Terky</p>
+          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
+            fakturační udělátko
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
+            Zapomenuté <span className="italic text-primary">heslo.</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Pošlu ti odkaz pro obnovení hesla.
+          </p>
+        </div>
+
+        {success ? (
+          <div className="space-y-6 text-center">
+            <p className="font-serif italic text-lg text-foreground leading-relaxed">
+              E-mail s odkazem byl odeslán na <br />
+              <span className="text-primary">{email}</span>.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Zkontroluj svou schránku.
+            </p>
+            <Button
+              asChild
+              className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
+            >
+              <Link href="/auth/login">Zpět na přihlášení</Link>
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleResetPassword} className="space-y-6">
+            <div className="space-y-2">
+              <Label
+                htmlFor="email"
+                className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
+              >
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
+              />
+            </div>
+
+            {error && (
+              <p className="font-serif italic text-sm text-primary">{error}</p>
             )}
-          </CardContent>
-        </Card>
+
+            <Button
+              type="submit"
+              className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
+              disabled={isLoading}
+            >
+              {isLoading ? "Odesílám…" : "Odeslat odkaz"}
+            </Button>
+
+            <p className="text-center text-sm text-muted-foreground pt-2">
+              Vzpomněla sis?{" "}
+              <Link
+                href="/auth/login"
+                className="text-foreground italic font-serif hover:text-primary transition-colors"
+              >
+                Přihlas se
+              </Link>
+            </p>
+          </form>
+        )}
       </div>
     </div>
   )

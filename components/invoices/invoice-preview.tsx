@@ -17,7 +17,7 @@ interface InvoicePreviewProps {
     bank_name?: string
     bank_account?: string
     iban?: string
-    swift_bic?: string // Added swift_bic
+    swift_bic?: string
   } | null
 }
 

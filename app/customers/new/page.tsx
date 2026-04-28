@@ -1,18 +1,19 @@
 import { CustomerForm } from "@/components/customers/customer-form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/layout/page-header"
 
 export default function NewCustomerPage() {
   return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nový zákazník</CardTitle>
-          <CardDescription>Přidejte nového zákazníka nebo protistranu</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CustomerForm />
-        </CardContent>
-      </Card>
+    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-3xl">
+      <PageHeader
+        eyebrow="Nový záznam"
+        title={
+          <>
+            Nový <span className="italic text-primary">zákazník</span>
+          </>
+        }
+        description="Přidejte protistranu — adresa, daňová čísla a kontakt se objeví na faktuře."
+      />
+      <CustomerForm />
     </div>
   )
 }

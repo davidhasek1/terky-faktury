@@ -36,51 +36,58 @@ export function Header() {
   }
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: Home },
+    { href: "/", label: "Přehled", icon: Home },
     { href: "/customers", label: "Zákazníci", icon: Users },
     { href: "/invoices", label: "Faktury", icon: FileText },
     { href: "/company", label: "Moje údaje", icon: Building2 },
   ]
 
   return (
-    <header className="border-b bg-background">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link href="/" className="text-xl font-bold hover:text-primary transition-colors">
-            Terky fakturační udělátko
-          </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-                    isActive ? "text-foreground" : "text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
+    <header className="border-b border-border/70 bg-background/85 backdrop-blur-sm sticky top-0 z-40">
+      <div className="container mx-auto px-4 sm:px-8 py-5 flex items-center justify-between gap-6">
+        <Link href="/" className="group flex items-baseline gap-3 shrink-0">
+          <span className="font-serif italic text-3xl leading-none text-foreground transition-colors group-hover:text-primary">
+            Terky
+          </span>
+          <span className="hidden sm:inline-block text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+            fakturační udělátko
+          </span>
+        </Link>
 
-        <div className="flex items-center gap-2">
+        <nav className="hidden md:flex items-center gap-8">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative text-[11px] uppercase tracking-[0.22em] font-medium transition-colors py-1",
+                  isActive
+                    ? "text-foreground after:absolute after:-bottom-[20px] after:left-0 after:right-0 after:h-px after:bg-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="flex items-center gap-3">
           {userEmail && (
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-2">
-              <User className="h-4 w-4" />
-              <span>{userEmail}</span>
-            </div>
+            <span className="hidden lg:inline-block text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {userEmail}
+            </span>
           )}
 
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden md:flex">
-            <LogOut className="mr-2 h-4 w-4" />
-            Odhlásit se
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="hidden md:inline-flex text-[10px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
+          >
+            Odhlásit
           </Button>
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -91,10 +98,10 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
+              <SheetHeader className="text-left">
+                <SheetTitle className="font-serif italic text-2xl font-normal">Menu</SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-4 mt-8">
+              <nav className="flex flex-col gap-1 mt-8">
                 {navItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.href
@@ -104,24 +111,31 @@ export function Header() {
                       href={item.href}
                       onClick={() => setOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 text-base font-medium transition-colors hover:text-primary p-3 rounded-lg hover:bg-accent",
-                        isActive ? "text-foreground bg-accent" : "text-muted-foreground",
+                        "flex items-center gap-3 text-sm font-medium transition-colors px-3 py-3 border-b border-border/50",
+                        isActive
+                          ? "text-primary"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      <Icon className="h-5 w-5" />
-                      {item.label}
+                      <Icon className="h-4 w-4" />
+                      <span className="uppercase tracking-[0.18em] text-[11px]">{item.label}</span>
                     </Link>
                   )
                 })}
-                <div className="border-t pt-4 mt-4">
+                <div className="pt-6 mt-6 border-t border-border/50">
                   {userEmail && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 px-3">
-                      <User className="h-4 w-4" />
-                      <span>{userEmail}</span>
+                    <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-4 px-3">
+                      <User className="h-3.5 w-3.5" />
+                      <span className="normal-case tracking-normal text-xs">{userEmail}</span>
                     </div>
                   )}
-                  <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full justify-start">
-                    <LogOut className="mr-2 h-4 w-4" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="w-full justify-start text-[11px] uppercase tracking-[0.22em]"
+                  >
+                    <LogOut className="mr-2 h-3.5 w-3.5" />
                     Odhlásit se
                   </Button>
                 </div>

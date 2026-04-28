@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Trash2 } from 'lucide-react';
+import { SectionLabel } from '@/components/layout/section-label';
 import { createClient } from '@/lib/supabase/client';
 import type { Customer, Invoice, InvoiceItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
@@ -44,9 +44,7 @@ const generateNextInvoiceNumber = (
 ): string => {
   const currentYear = new Date().getFullYear();
 
-  // Najít všechny faktury pro aktuální rok
   const currentYearInvoices = existingInvoices.filter((inv) => {
-    // Formát: YYYY-XXX
     const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/);
     if (match) {
       const year = Number.parseInt(match[1]);
@@ -56,11 +54,9 @@ const generateNextInvoiceNumber = (
   });
 
   if (currentYearInvoices.length === 0) {
-    // První faktura v roce
     return `${currentYear}-001`;
   }
 
-  // Najít nejvyšší číslo
   let maxNumber = 0;
   for (const inv of currentYearInvoices) {
     const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/);
@@ -72,7 +68,6 @@ const generateNextInvoiceNumber = (
     }
   }
 
-  // Inkrementovat a formátovat s leading zeros
   const nextNumber = maxNumber + 1;
   return `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
 };
@@ -91,6 +86,13 @@ type FormInvoiceItem = {
   unit_price: string;
   total: number;
 };
+
+const inputBare =
+  'border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent';
+const inputBoxed =
+  'border border-border rounded-md focus-visible:ring-1 focus-visible:ring-primary text-base bg-card';
+const fieldLabel =
+  'text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground';
 
 export function InvoiceForm({
   customers,
@@ -390,18 +392,22 @@ export function InvoiceForm({
   return (
     <>
       <AlertDialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
-        <AlertDialogContent style={{ backgroundColor: 'white', zIndex: 9999 }}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Faktura již byla odeslána</AlertDialogTitle>
+            <AlertDialogTitle className='font-serif italic text-2xl font-normal'>
+              Faktura již byla odeslána
+            </AlertDialogTitle>
             <AlertDialogDescription className='space-y-2'>
-              <div>Tato faktura již byla odeslána emailem zákazníkovi.</div>
-              <div className='font-semibold'>
+              <span className='block'>
+                Tato faktura již byla odeslána e-mailem zákazníkovi.
+              </span>
+              <span className='block font-semibold text-foreground'>
                 Opravdu chcete změnit fakturu?
-              </div>
-              <div className='text-sm text-muted-foreground'>
-                Po uložení změn bude potřeba fakturu znovu odeslat emailem, aby
+              </span>
+              <span className='block text-sm text-muted-foreground'>
+                Po uložení změn bude potřeba fakturu znovu odeslat e-mailem, aby
                 zákazník obdržel aktualizovanou verzi.
-              </div>
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -413,141 +419,173 @@ export function InvoiceForm({
         </AlertDialogContent>
       </AlertDialog>
 
-      <form onSubmit={handleSubmit} className='space-y-6'>
-        <div className='grid gap-6 md:grid-cols-2'>
-          <div className='space-y-2'>
-            <Label htmlFor='invoice_number'>
-              Číslo faktury <span className='text-destructive'>*</span>
-            </Label>
-            <Input
-              id='invoice_number'
-              required
-              value={formData.invoice_number}
-              onChange={(e) =>
-                setFormData({ ...formData, invoice_number: e.target.value })
-              }
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label htmlFor='customer_id'>
-              Zákazník <span className='text-destructive'>*</span>
-            </Label>
-            <Select
-              value={formData.customer_id}
-              onValueChange={(value) =>
-                setFormData({ ...formData, customer_id: value })
-              }
-              required
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className='space-y-2'>
-            <Label htmlFor='issue_date'>
-              Datum vystavení <span className='text-destructive'>*</span>
-            </Label>
-            <Input
-              id='issue_date'
-              type='date'
-              required
-              value={formData.issue_date}
-              onChange={(e) =>
-                setFormData({ ...formData, issue_date: e.target.value })
-              }
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label htmlFor='due_date'>
-              Datum splatnosti <span className='text-destructive'>*</span>
-            </Label>
-            <Input
-              id='due_date'
-              type='date'
-              required
-              value={formData.due_date}
-              onChange={(e) =>
-                setFormData({ ...formData, due_date: e.target.value })
-              }
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label htmlFor='tax_rate'>
-              Sazba DPH (%) <span className='text-destructive'>*</span>
-            </Label>
-            <Input
-              id='tax_rate'
-              type='text'
-              inputMode='decimal'
-              required
-              value={formData.tax_rate}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (isValidNumber(value)) {
-                  setFormData({ ...formData, tax_rate: value });
+      <form onSubmit={handleSubmit} className='space-y-12 sm:space-y-16'>
+        <section>
+          <SectionLabel number='01' title='Detaily' />
+          <div className='grid gap-6 sm:gap-8 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <Label htmlFor='invoice_number' className={fieldLabel}>
+                Číslo faktury <span className='text-primary'>*</span>
+              </Label>
+              <Input
+                id='invoice_number'
+                required
+                value={formData.invoice_number}
+                onChange={(e) =>
+                  setFormData({ ...formData, invoice_number: e.target.value })
                 }
-              }}
-            />
-          </div>
-
-          <div className='space-y-2'>
-            <Label htmlFor='retention_rate'>Retención (%)</Label>
-            <Input
-              id='retention_rate'
-              type='text'
-              inputMode='decimal'
-              value={formData.retention_rate}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (isValidNumber(value)) {
-                  setFormData({ ...formData, retention_rate: value });
-                }
-              }}
-            />
-            <p className='text-xs text-muted-foreground'>
-              Automaticky nastaveno podle typu zákazníka (15% pro podnikající
-              subjekt, 0% pro ostatní)
-            </p>
-          </div>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <div className='flex items-center justify-between'>
-              <CardTitle>Položky faktury</CardTitle>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                onClick={addItem}
-              >
-                <Plus className='mr-2 h-4 w-4' />
-                Přidat položku
-              </Button>
+                className={inputBare}
+              />
             </div>
-          </CardHeader>
-          <CardContent className='space-y-4'>
+
+            <div className='space-y-2'>
+              <Label htmlFor='customer_id' className={fieldLabel}>
+                Zákazník <span className='text-primary'>*</span>
+              </Label>
+              <Select
+                value={formData.customer_id}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, customer_id: value })
+                }
+                required
+              >
+                <SelectTrigger
+                  id='customer_id'
+                  className='border-0 border-b border-border rounded-none px-0 focus:ring-0 text-base bg-transparent shadow-none h-auto py-2'
+                >
+                  <SelectValue placeholder='Vybrat zákazníka' />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='issue_date' className={fieldLabel}>
+                Datum vystavení <span className='text-primary'>*</span>
+              </Label>
+              <Input
+                id='issue_date'
+                type='date'
+                required
+                value={formData.issue_date}
+                onChange={(e) =>
+                  setFormData({ ...formData, issue_date: e.target.value })
+                }
+                className={inputBare}
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='due_date' className={fieldLabel}>
+                Datum splatnosti <span className='text-primary'>*</span>
+              </Label>
+              <Input
+                id='due_date'
+                type='date'
+                required
+                value={formData.due_date}
+                onChange={(e) =>
+                  setFormData({ ...formData, due_date: e.target.value })
+                }
+                className={inputBare}
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='tax_rate' className={fieldLabel}>
+                Sazba DPH (%) <span className='text-primary'>*</span>
+              </Label>
+              <Input
+                id='tax_rate'
+                type='text'
+                inputMode='decimal'
+                required
+                value={formData.tax_rate}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isValidNumber(value)) {
+                    setFormData({ ...formData, tax_rate: value });
+                  }
+                }}
+                className={inputBare}
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='retention_rate' className={fieldLabel}>
+                Retención (%)
+              </Label>
+              <Input
+                id='retention_rate'
+                type='text'
+                inputMode='decimal'
+                value={formData.retention_rate}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (isValidNumber(value)) {
+                    setFormData({ ...formData, retention_rate: value });
+                  }
+                }}
+                className={inputBare}
+              />
+              <p className='text-xs text-muted-foreground italic'>
+                Automaticky nastaveno podle typu zákazníka (15 % pro podnikající
+                subjekt, 0 % pro ostatní).
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className='flex items-center justify-between gap-4 mb-6 sm:mb-8'>
+            <div className='flex items-center gap-4 min-w-0 flex-1'>
+              <span className='text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-medium tabular-nums'>
+                02
+              </span>
+              <span
+                className='text-[10px] uppercase tracking-[0.3em] text-muted-foreground'
+                aria-hidden='true'
+              >
+                —
+              </span>
+              <span className='font-serif italic text-xl sm:text-2xl text-foreground'>
+                Položky
+              </span>
+              <span className='flex-1 h-px bg-border' aria-hidden='true' />
+            </div>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={addItem}
+              className='text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground'
+            >
+              <Plus className='mr-2 h-3.5 w-3.5' />
+              Přidat položku
+            </Button>
+          </div>
+
+          <div className='border border-border bg-card divide-y divide-border'>
             {items.map((item, index) => (
               <div
                 key={index}
-                className='grid gap-4 md:grid-cols-12 items-end p-4 border rounded-lg'
+                className='grid gap-4 md:grid-cols-12 items-end px-5 py-6'
               >
                 <div className='md:col-span-5 space-y-2'>
-                  <Label htmlFor={`description-${index}`}>Popis</Label>
+                  <Label
+                    htmlFor={`description-${index}`}
+                    className={fieldLabel}
+                  >
+                    Popis
+                  </Label>
                   <Input
                     id={`description-${index}`}
                     required
@@ -557,6 +595,7 @@ export function InvoiceForm({
                     }
                     list={`description-options-${index}`}
                     placeholder='Vyberte nebo napište popis'
+                    className={inputBoxed}
                   />
                   <datalist id={`description-options-${index}`}>
                     <option value='Limpieza de apartamentos' />
@@ -564,7 +603,9 @@ export function InvoiceForm({
                   </datalist>
                 </div>
                 <div className='md:col-span-2 space-y-2'>
-                  <Label htmlFor={`quantity-${index}`}>Množství</Label>
+                  <Label htmlFor={`quantity-${index}`} className={fieldLabel}>
+                    Množství
+                  </Label>
                   <Input
                     id={`quantity-${index}`}
                     type='text'
@@ -572,13 +613,16 @@ export function InvoiceForm({
                     required
                     value={item.quantity}
                     onFocus={(e) => e.target.select()}
-                    onChange={(e) => {
-                      updateItem(index, 'quantity', e.target.value);
-                    }}
+                    onChange={(e) =>
+                      updateItem(index, 'quantity', e.target.value)
+                    }
+                    className={inputBoxed}
                   />
                 </div>
                 <div className='md:col-span-2 space-y-2'>
-                  <Label htmlFor={`unit_price-${index}`}>Cena/ks</Label>
+                  <Label htmlFor={`unit_price-${index}`} className={fieldLabel}>
+                    Cena/ks
+                  </Label>
                   <Input
                     id={`unit_price-${index}`}
                     type='text'
@@ -586,98 +630,129 @@ export function InvoiceForm({
                     required
                     value={item.unit_price}
                     onFocus={(e) => e.target.select()}
-                    onChange={(e) => {
-                      updateItem(index, 'unit_price', e.target.value);
-                    }}
+                    onChange={(e) =>
+                      updateItem(index, 'unit_price', e.target.value)
+                    }
+                    className={inputBoxed}
                   />
                 </div>
                 <div className='md:col-span-2 space-y-2'>
-                  <Label>Celkem</Label>
-                  <div className='h-10 flex items-center font-medium'>
+                  <Label className={fieldLabel}>Celkem</Label>
+                  <div className='h-10 flex items-center font-serif text-lg text-foreground tabular-nums'>
                     {formatCurrency(item.total)}
                   </div>
                 </div>
-                <div className='md:col-span-1'>
+                <div className='md:col-span-1 flex justify-end'>
                   <Button
                     type='button'
                     variant='ghost'
                     size='icon'
                     onClick={() => removeItem(index)}
                     disabled={items.length === 1}
+                    className='text-muted-foreground hover:text-primary'
                   >
                     <Trash2 className='h-4 w-4' />
                   </Button>
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardContent className='pt-6'>
-            <div className='space-y-2 max-w-sm ml-auto'>
-              <div className='flex justify-between text-sm'>
-                <span className='text-muted-foreground'>Mezisoučet:</span>
-                <span className='font-medium'>
-                  {formatCurrency(calculateSubtotal())}
-                </span>
-              </div>
-              <div className='flex justify-between text-sm'>
-                <span className='text-muted-foreground'>
-                  DPH ({formData.tax_rate}%):
-                </span>
-                <span className='font-medium'>
-                  {formatCurrency(calculateTax())}
-                </span>
-              </div>
+        <section>
+          <SectionLabel number='03' title='Souhrn' />
+          <div className='border border-border bg-card px-6 py-8 sm:px-10 sm:py-10'>
+            <div className='space-y-3 max-w-md ml-auto'>
+              <SummaryRow
+                label='Mezisoučet'
+                value={formatCurrency(calculateSubtotal())}
+              />
+              <SummaryRow
+                label={`DPH (${formData.tax_rate} %)`}
+                value={formatCurrency(calculateTax())}
+              />
               {Number.parseFloat(formData.retention_rate) > 0 && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>
-                    Retención (-{formData.retention_rate}%):
-                  </span>
-                  <span className='font-medium text-destructive'>
-                    -{formatCurrency(calculateRetention())}
-                  </span>
-                </div>
+                <SummaryRow
+                  label={`Retención (−${formData.retention_rate} %)`}
+                  value={`−${formatCurrency(calculateRetention())}`}
+                  destructive
+                />
               )}
-              <div className='flex justify-between text-lg font-bold pt-2 border-t'>
-                <span>Celkem:</span>
-                <span>{formatCurrency(calculateTotal())}</span>
+              <div className='flex items-baseline justify-between pt-4 border-t border-border'>
+                <span className='text-[10px] uppercase tracking-[0.25em] text-muted-foreground'>
+                  Celkem
+                </span>
+                <span className='font-serif text-3xl text-foreground tabular-nums'>
+                  {formatCurrency(calculateTotal())}
+                </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <div className='space-y-2'>
-          <Label htmlFor='notes'>Poznámky</Label>
+        <section>
+          <SectionLabel number='04' title='Poznámky' />
           <Textarea
             id='notes'
             value={formData.notes}
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value })
             }
-            rows={3}
+            rows={4}
+            placeholder='Volitelná poznámka, která se objeví na faktuře…'
+            className='border border-border bg-card rounded-md focus-visible:ring-1 focus-visible:ring-primary text-base resize-none'
           />
-        </div>
+        </section>
 
-        <div className='flex gap-4'>
-          <Button type='submit' disabled={isLoading}>
+        <div className='flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-border'>
+          <Button
+            type='button'
+            variant='ghost'
+            onClick={() => router.back()}
+            disabled={isLoading}
+            className='text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground'
+          >
+            Zrušit
+          </Button>
+          <Button
+            type='submit'
+            disabled={isLoading}
+            className='text-[11px] uppercase tracking-[0.22em] shadow-none'
+          >
             {isLoading
-              ? 'Ukládám...'
+              ? 'Ukládám…'
               : invoice
                 ? 'Uložit změny'
                 : 'Vytvořit fakturu'}
           </Button>
-          <Button
-            type='button'
-            variant='outline'
-            onClick={() => router.back()}
-            disabled={isLoading}
-          >
-            Zrušit
-          </Button>
         </div>
       </form>
     </>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  destructive,
+}: {
+  label: string;
+  value: string;
+  destructive?: boolean;
+}) {
+  return (
+    <div className='flex items-baseline justify-between'>
+      <span className='text-[10px] uppercase tracking-[0.22em] text-muted-foreground'>
+        {label}
+      </span>
+      <span
+        className={
+          'text-base tabular-nums ' +
+          (destructive ? 'text-primary italic' : 'text-foreground font-medium')
+        }
+      >
+        {value}
+      </span>
+    </div>
   );
 }
