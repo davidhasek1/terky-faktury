@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { LogOut, Home, Users, FileText, Building2, Menu, User } from "lucide-react"
+import { LogOut, Home, Users, FileText, Building2, Menu, User, ClipboardList } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -38,6 +38,7 @@ export function Header() {
   const navItems = [
     { href: "/", label: "Přehled", icon: Home },
     { href: "/customers", label: "Zákazníci", icon: Users },
+    { href: "/activities", label: "Aktivity", icon: ClipboardList },
     { href: "/invoices", label: "Faktury", icon: FileText },
     { href: "/company", label: "Moje údaje", icon: Building2 },
   ]
@@ -56,7 +57,8 @@ export function Header() {
 
         <nav className="hidden md:flex items-center gap-8">
           {navItems.map((item) => {
-            const isActive = pathname === item.href
+            const isActive =
+              item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(item.href + "/")
             return (
               <Link
                 key={item.href}
@@ -104,7 +106,8 @@ export function Header() {
               <nav className="flex flex-col gap-1 mt-8">
                 {navItems.map((item) => {
                   const Icon = item.icon
-                  const isActive = pathname === item.href
+                  const isActive =
+                    item.href === "/" ? pathname === "/" : pathname === item.href || pathname.startsWith(item.href + "/")
                   return (
                     <Link
                       key={item.href}
