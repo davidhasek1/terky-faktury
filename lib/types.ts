@@ -62,3 +62,27 @@ export interface CompanyDetails {
   created_at: string
   updated_at: string
 }
+
+export type ServiceType = "cleaning" | "laundry" | "apartment_service"
+export type ActivityStatus = "unpaid" | "paid"
+
+export interface ActivityService {
+  id?: string
+  activity_id?: string
+  service_type: ServiceType
+  price: number
+  note?: string
+}
+
+export interface Activity {
+  id: string
+  user_id?: string
+  customer_id: string
+  activity_date: string
+  status: ActivityStatus
+  total_amount: number
+  created_at: string
+  updated_at: string
+  customer?: Customer
+  services?: ActivityService[]
+}
