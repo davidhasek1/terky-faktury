@@ -14,8 +14,9 @@ export async function updateSession(request: NextRequest) {
     const isPublicDownloadAPI = request.nextUrl.pathname.startsWith("/api/invoices/download/")
     const isPublicAPI = request.nextUrl.pathname.startsWith("/api/invoices/public/")
     const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
+    const isMetadataTool = request.nextUrl.pathname.startsWith("/metadata")
 
-    if (isPublicDownloadPage || isPublicDownloadAPI || isPublicAPI || isAuthPage) {
+    if (isPublicDownloadPage || isPublicDownloadAPI || isPublicAPI || isAuthPage || isMetadataTool) {
       return NextResponse.next({ request })
     }
 
@@ -52,8 +53,16 @@ export async function updateSession(request: NextRequest) {
   const isPublicDownloadAPI = request.nextUrl.pathname.startsWith("/api/invoices/download/")
   const isPublicAPI = request.nextUrl.pathname.startsWith("/api/invoices/public/")
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
+  const isMetadataTool = request.nextUrl.pathname.startsWith("/metadata")
 
-  if (!user && !isPublicDownloadPage && !isPublicDownloadAPI && !isPublicAPI && !isAuthPage) {
+  if (
+    !user &&
+    !isPublicDownloadPage &&
+    !isPublicDownloadAPI &&
+    !isPublicAPI &&
+    !isAuthPage &&
+    !isMetadataTool
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"
     return NextResponse.redirect(url)
