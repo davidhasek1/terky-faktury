@@ -29,35 +29,43 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll()
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+        },
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-        supabaseResponse = NextResponse.next({
-          request,
-        })
-        cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
-      },
-    },
-  })
+    })
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  const isPublicDownloadPage = request.nextUrl.pathname.startsWith("/invoices/download/")
-  const isPublicDownloadAPI = request.nextUrl.pathname.startsWith("/api/invoices/download/")
-  const isPublicAPI = request.nextUrl.pathname.startsWith("/api/invoices/public/")
-  const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
+    const isPublicDownloadPage = request.nextUrl.pathname.startsWith("/invoices/download/")
+    const isPublicDownloadAPI = request.nextUrl.pathname.startsWith("/api/invoices/download/")
+    const isPublicAPI = request.nextUrl.pathname.startsWith("/api/invoices/public/")
+    const isAuthPage = request.nextUrl.pathname.startsWith("/auth")
 
-  if (!user && !isPublicDownloadPage && !isPublicDownloadAPI && !isPublicAPI && !isAuthPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
+    if (!user && !isPublicDownloadPage && !isPublicDownloadAPI && !isPublicAPI && !isAuthPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/auth/login"
+      return NextResponse.redirect(url)
+    }
+
+    return supabaseResponse
+  } catch (error) {
+    // Nikdy neshoď celý web na 500 (MIDDLEWARE_INVOCATION_FAILED). Když
+    // ověření session selže (síť, Edge, špatná konfigurace), pusť request
+    // dál — jednotlivé stránky si auth pohlídají samy.
+    console.error("[middleware] session check failed:", error)
+    return supabaseResponse
   }
-
-  return supabaseResponse
 }
