@@ -13,10 +13,11 @@ export default async function NewInvoicePage() {
     return null
   }
 
-  const [{ data: customers }, { data: invoices }] = await Promise.all([
-    supabase.from("customers").select("*").eq("user_id", user.id).order("name"),
-    supabase.from("invoices").select("invoice_number").eq("user_id", user.id).order("created_at", { ascending: false }),
-  ])
+  const { data: customers } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("name")
 
   const resetKey = Math.random()
 
@@ -26,12 +27,12 @@ export default async function NewInvoicePage() {
         eyebrow="Nový dokument"
         title={
           <>
-            Nová <span className="italic text-primary">faktura</span>
+            Nová <span className="text-primary">faktura</span>
           </>
         }
         description="Vystavte fakturu pro zákazníka. Po uložení ji můžete stáhnout jako PDF nebo poslat e-mailem."
       />
-      <InvoiceForm key={resetKey} customers={customers || []} existingInvoices={invoices || []} />
+      <InvoiceForm key={resetKey} customers={customers || []} />
     </div>
   )
 }

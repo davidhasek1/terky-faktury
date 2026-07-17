@@ -21,7 +21,7 @@ export default function GlobalError({
           Něco se nepovedlo
         </p>
         <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05] mb-4">
-          Něco se <span className="italic text-primary">pokazilo.</span>
+          Něco se <span className="text-primary">pokazilo.</span>
         </h1>
         <p className="text-muted-foreground mb-8 leading-relaxed">
           Došlo k neočekávané chybě. Zkus prosím obnovit stránku.

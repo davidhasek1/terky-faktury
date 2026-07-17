@@ -36,7 +36,7 @@ export default async function CustomersPage() {
         eyebrow={`${count} ${countLabel}`}
         title={
           <>
-            Adresář <span className="italic text-primary">zákazníků</span>
+            Adresář <span className="text-primary">zákazníků</span>
           </>
         }
         description="Spravujte protistrany — adresy, daňová čísla a kontaktní údaje, které se promítnou do faktur."
@@ -52,7 +52,7 @@ export default async function CustomersPage() {
 
       {!customers || customers.length === 0 ? (
         <div className="border border-border bg-card px-6 py-20 text-center">
-          <p className="font-serif italic text-2xl text-muted-foreground mb-6">Zatím prázdno.</p>
+          <p className="font-serif text-2xl text-muted-foreground mb-6">Zatím prázdno.</p>
           <p className="text-sm text-muted-foreground mb-8 max-w-sm mx-auto leading-relaxed">
             Přidejte prvního zákazníka, ať ho máte po ruce při vystavování faktur.
           </p>

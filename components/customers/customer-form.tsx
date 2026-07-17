@@ -139,7 +139,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               rows={3}
-              className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent resize-none"
+              className="resize-none"
             />
           </div>
         </div>
@@ -196,7 +196,6 @@ function Field({
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
       />
     </div>
   )

@@ -1,18 +1,23 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
-import { Cormorant_Garamond } from "next/font/google"
+import { Inter, Poppins } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
-const cormorant = Cormorant_Garamond({
+const inter = Inter({
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-serif",
+  variable: "--font-body",
   display: "swap",
 })
+
+const poppins = Poppins({
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+})
+
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { createClient } from "@/lib/supabase/server"
@@ -50,7 +55,7 @@ export default async function RootLayout({
 
   return (
     <html lang="cs">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} ${cormorant.variable} flex flex-col min-h-screen`}>
+      <body className={`font-sans ${GeistMono.variable} ${inter.variable} ${poppins.variable} flex flex-col min-h-screen`}>
         <Suspense>{user && <Header />}</Suspense>
         <main className="flex-1">{children}</main>
         <Suspense>{user && <Footer />}</Suspense>

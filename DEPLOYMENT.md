@@ -17,9 +17,49 @@ environment (Production, Preview, Development) or the build/runtime will fail.
 
 ## Database
 
-The database is Supabase Postgres. Schema lives in `scripts/001_*.sql` …
-`scripts/009_*.sql` and must be applied **in order** to a fresh project via the
-Supabase SQL editor or `psql`.
+The database is Supabase Postgres. Schema lives in `supabase/migrations/NNN_*.sql`
+(ordered migrations, e.g. `001_*.sql` … `013_*.sql`). New schema changes go in the
+next-numbered file. These are now managed by the **Supabase CLI** and applied by CI.
+
+### CI
+
+- **Validate (`.github/workflows/supabase-migrations-validate.yml`)** — on every PR
+  that touches `supabase/migrations/**`, boots a throwaway Postgres and applies all
+  migrations from scratch (`supabase start` + `supabase db reset`). Fails on bad SQL.
+- **Deploy (`.github/workflows/supabase-migrations-deploy.yml`)** — on push to
+  `master` touching `supabase/migrations/**`, runs `supabase db push` against the
+  production project (`kkcbmqqbpsjtojzswmsx`).
+
+Required GitHub secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Where to get it |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` | Supabase dashboard → Account → Access Tokens |
+| `SUPABASE_DB_PASSWORD` | Project Settings → Database → Password |
+
+### ⚠️ One-time baseline (do this before the first CI deploy)
+
+Migrations `001`–`011` were applied to production **manually** (via SQL editor),
+so they are **not** recorded in Supabase's migration history. Without a baseline,
+`supabase db push` would try to re-apply them and fail. Mark them as already
+applied once, locally, against production:
+
+```bash
+supabase login                      # paste an access token
+supabase link --project-ref kkcbmqqbpsjtojzswmsx
+supabase migration repair --status applied \
+  001 002 003 004 005 006 007 008 009 010 011
+# If you already ran 012 / 013 by hand, add them to the list above too.
+supabase migration list             # verify: local vs remote line up
+```
+
+After that, `supabase db push` (locally or via CI) applies only the pending
+migrations — the first run will apply `012` and `013`.
+
+### Manual apply (fresh project or without CI)
+
+Run the files in `supabase/migrations/` **in numeric order** via the Supabase SQL
+editor or `psql`, or link the project and run `supabase db push`.
 
 ## Build & runtime
 
@@ -47,8 +87,9 @@ project at the same repo.
 
 3. **Database**
    - If you're keeping the same Supabase project, just copy its URL + anon key.
-   - If you're migrating Supabase too: create the new project, run all SQL in
-     `scripts/` in order, then update Supabase Auth → URL Configuration with the
+   - If you're migrating Supabase too: create the new project, apply all
+     migrations in `supabase/migrations/` in order (SQL editor, `psql`, or
+     `supabase db push`), then update Supabase Auth → URL Configuration with the
      new site URL and redirect URLs (`/auth/callback`, `/auth/reset-password`).
 
 4. **Resend**

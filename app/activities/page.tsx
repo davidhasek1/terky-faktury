@@ -50,7 +50,7 @@ export default async function ActivitiesIndexPage() {
         eyebrow="Deník služeb"
         title={
           <>
-            Aktivity <span className="italic text-primary">u klientů</span>
+            Aktivity <span className="text-primary">u klientů</span>
           </>
         }
         description="Vyberte klienta pro zobrazení deníku odvedené práce a stavu plateb."
@@ -58,7 +58,7 @@ export default async function ActivitiesIndexPage() {
 
       {customers.length === 0 ? (
         <div className="border border-border bg-card px-6 py-20 text-center">
-          <p className="font-serif italic text-2xl text-muted-foreground mb-6">
+          <p className="font-serif text-2xl text-muted-foreground mb-6">
             Žádní zákazníci.
           </p>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">

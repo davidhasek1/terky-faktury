@@ -81,7 +81,7 @@ export default async function HomePage() {
         <h1 className="font-serif text-5xl sm:text-7xl leading-[1.05] tracking-tight text-foreground mb-6">
           Vítej zpátky,
           <br />
-          <span className="italic text-primary">Terko.</span>
+          <span className="text-primary">Terko.</span>
         </h1>
         <p className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
           Vytvářej faktury, sleduj platby a piš zákazníkům — všechno na jednom místě.
@@ -149,7 +149,7 @@ export default async function HomePage() {
                 Po splatnosti
               </p>
               <p className="font-serif text-4xl sm:text-5xl text-foreground leading-none mb-3">
-                <span className="italic text-primary">{stats.overdueInvoices}</span>{" "}
+                <span className="text-primary">{stats.overdueInvoices}</span>{" "}
                 {stats.overdueInvoices === 1 ? "faktura" : "faktur"}
               </p>
               <p className="text-sm text-muted-foreground max-w-md">

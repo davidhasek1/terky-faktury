@@ -19,7 +19,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
         eyebrow="Úprava záznamu"
         title={
           <>
-            <span className="italic">{customer.name}</span>
+            <span className="text-primary">{customer.name}</span>
           </>
         }
         description="Upravte údaje zákazníka. Změny se promítnou do nově vystavovaných faktur."
