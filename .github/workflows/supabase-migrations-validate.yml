@@ -1,0 +1,32 @@
+name: Validate DB migrations
+
+# Na každém PR, který sahá na migrace, ověří, že celá řada migrací jde
+# aplikovat od nuly na čistý Postgres (+ auth schéma). Chytí rozbité SQL
+# dřív, než se dostane na produkci. Nesahá na produkční databázi.
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-migrations-validate.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Nastartuje lokální Supabase stack (Postgres + Auth). Při startu se
+      # aplikují všechny migrace; rozbitá migrace start shodí.
+      - name: Start local Supabase stack
+        run: supabase start
+
+      # Explicitní reaplikace od čistého stavu = migrace musí jít pustit
+      # reprodukovatelně od nuly. Job spadne, když kterákoli migrace selže.
+      - name: Apply all migrations from scratch
+        run: supabase db reset

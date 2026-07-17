@@ -51,7 +51,7 @@ Never instantiate `createClient` from `@supabase/supabase-js` directly — alway
 
 ### Database
 
-Schema lives entirely in `scripts/NNN_*.sql` and **must be applied in numeric order** to a fresh Supabase project (via SQL editor or psql). Treat these as ordered migrations; new schema changes go in the next-numbered file. RLS is enabled — every user-owned table has a `user_id` column tied to `auth.uid()`. Public access for the download flow is granted by separate RLS policies (see `006_*` and `007_*`).
+Schema lives entirely in `supabase/migrations/NNN_*.sql` and **must be applied in numeric order** to a fresh Supabase project. Treat these as ordered migrations; new schema changes go in the next-numbered file (keep the numeric `NNN_` prefix). They are managed by the **Supabase CLI**: a PR workflow validates them from scratch and a `master` workflow runs `supabase db push` to production (see `.github/workflows/supabase-migrations-*.yml` and the "Database" section of `DEPLOYMENT.md`, including the one-time `migration repair` baseline). Locally you can still apply them via the SQL editor or `psql`. RLS is enabled — every user-owned table has a `user_id` column tied to `auth.uid()`. Public access for the download flow is granted by separate RLS policies (see `006_*` and `007_*`).
 
 Domain types are in `lib/types.ts`: `Customer`, `Invoice`, `InvoiceItem`, `CompanyDetails`. `Invoice.public_id` is the unguessable token used in public download URLs; `email_sent_at` is stamped by the send-email route.
 

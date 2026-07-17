@@ -1,0 +1,43 @@
+name: Deploy DB migrations
+
+# Po merge do master aplikuje nové migrace na produkční Supabase přes
+# `supabase db push`. Push aplikuje jen migrace, které v remote historii
+# ještě nejsou (viz supabase_migrations.schema_migrations).
+#
+# NUTNÉ nastavit v repu (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_ACCESS_TOKEN  -- Account -> Access Tokens v Supabase dashboardu
+#   SUPABASE_DB_PASSWORD   -- Project Settings -> Database -> heslo
+#
+# JEDNORÁZOVĚ před prvním během (protože 001–011 už na produkci běží, ale
+# nejsou zapsané v migrační historii) je potřeba baseline, jinak by push
+# zkusil aplikovat i je znovu. Viz DEPLOYMENT.md, sekce "Databázové migrace".
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "supabase/migrations/**"
+
+# Nikdy nepouštět dva deploy migrací naráz.
+concurrency:
+  group: supabase-migrations-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref kkcbmqqbpsjtojzswmsx
+
+      - name: Push migrations to production
+        run: supabase db push
