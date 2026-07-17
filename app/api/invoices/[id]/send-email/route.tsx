@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { Resend } from "resend"
+import InvoiceEmail from "@/emails/invoice-email"
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -63,17 +64,11 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
       from: fromAddress,
       to: [invoice.customer.email],
       subject: `Factura ${invoice.invoice_number}`,
-      html: `
-        <h2>Estimado/a cliente,</h2>
-        <p>Le enviamos la factura número <strong>${invoice.invoice_number}</strong>.</p>
-        <p><strong>Fecha de vencimiento:</strong> ${new Date(invoice.due_date).toLocaleDateString("es-ES")}</p>
-        <br>
-        <p><a href="${downloadUrl}" style="display: inline-block; padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">Factura ${invoice.invoice_number}</a></p>
-        <br>
-        <p style="color: #666; font-size: 14px;">O copie este enlace en su navegador:<br>${downloadUrl}</p>
-        <br>
-        <p>Atentamente,<br>Su equipo</p>
-      `,
+      react: InvoiceEmail({
+        invoiceNumber: invoice.invoice_number,
+        dueDate: invoice.due_date,
+        downloadUrl,
+      }),
     })
 
     if (emailError) {
