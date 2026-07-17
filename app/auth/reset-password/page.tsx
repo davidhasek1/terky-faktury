@@ -57,12 +57,12 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
-          <p className="font-serif italic text-2xl text-primary mb-3">Terky</p>
+          <p className="font-serif text-2xl text-primary mb-3">Terky</p>
           <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
             fakturační udělátko
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
-            Nové <span className="italic text-primary">heslo.</span>
+            Nové <span className="text-primary">heslo.</span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Zadej nové heslo, ať se zase dostaneme dovnitř.
@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
 
         {success ? (
           <div className="space-y-4 text-center">
-            <p className="font-serif italic text-lg text-foreground">
+            <p className="font-serif text-lg text-foreground">
               Heslo bylo úspěšně změněno.
             </p>
             <p className="text-sm text-muted-foreground">
@@ -98,7 +98,7 @@ export default function ResetPasswordPage() {
             />
 
             {error && (
-              <p className="font-serif italic text-sm text-primary">{error}</p>
+              <p className="font-serif text-sm text-primary">{error}</p>
             )}
 
             <Button
@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
             <p className="text-center text-sm text-muted-foreground pt-2">
               <Link
                 href="/auth/login"
-                className="text-foreground italic font-serif hover:text-primary transition-colors"
+                className="font-semibold text-primary hover:text-primary/80 transition-colors"
               >
                 Zpět na přihlášení
               </Link>
@@ -153,7 +153,6 @@ function Field({
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
       />
     </div>
   )

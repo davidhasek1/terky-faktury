@@ -31,7 +31,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         eyebrow="Úprava faktury"
         title={
           <>
-            Faktura <span className="italic text-primary">{invoice.invoice_number}</span>
+            Faktura <span className="text-primary">{invoice.invoice_number}</span>
           </>
         }
         description="Upravte údaje, položky nebo poznámku. Změny se uloží po stisku tlačítka."

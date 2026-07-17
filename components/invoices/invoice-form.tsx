@@ -36,41 +36,7 @@ interface InvoiceFormProps {
   customers: Customer[];
   invoice?: Invoice;
   existingItems?: InvoiceItem[];
-  existingInvoices?: { invoice_number: string }[];
 }
-
-const generateNextInvoiceNumber = (
-  existingInvoices: { invoice_number: string }[],
-): string => {
-  const currentYear = new Date().getFullYear();
-
-  const currentYearInvoices = existingInvoices.filter((inv) => {
-    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/);
-    if (match) {
-      const year = Number.parseInt(match[1]);
-      return year === currentYear;
-    }
-    return false;
-  });
-
-  if (currentYearInvoices.length === 0) {
-    return `${currentYear}-001`;
-  }
-
-  let maxNumber = 0;
-  for (const inv of currentYearInvoices) {
-    const match = inv.invoice_number.match(/^(\d{4})-(\d+)$/);
-    if (match) {
-      const num = Number.parseInt(match[2]);
-      if (num > maxNumber) {
-        maxNumber = num;
-      }
-    }
-  }
-
-  const nextNumber = maxNumber + 1;
-  return `${currentYear}-${String(nextNumber).padStart(3, '0')}`;
-};
 
 const getLocalDate = () => {
   const now = new Date();
@@ -87,26 +53,24 @@ type FormInvoiceItem = {
   total: number;
 };
 
-const inputBare =
-  'border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent';
-const inputBoxed =
-  'border border-border rounded-md focus-visible:ring-1 focus-visible:ring-primary text-base bg-card';
+// Klasické boxed inputy (styl řídí komponenta Input); necháváme prázdné,
+// ať se nepřepisuje nový výchozí vzhled.
+const inputBare = '';
+const inputBoxed = '';
 const fieldLabel =
-  'text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground';
+  'text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground';
 
 export function InvoiceForm({
   customers,
   invoice,
   existingItems = [],
-  existingInvoices = [],
 }: InvoiceFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailWarning, setShowEmailWarning] = useState(false);
 
   const [formData, setFormData] = useState({
-    invoice_number:
-      invoice?.invoice_number || generateNextInvoiceNumber(existingInvoices),
+    invoice_number: invoice?.invoice_number || '',
     customer_id: invoice?.customer_id || undefined,
     issue_date: invoice?.issue_date || getLocalDate(),
     due_date:
@@ -289,7 +253,6 @@ export function InvoiceForm({
       const total = calculateTotal();
 
       const baseInvoiceData = {
-        invoice_number: formData.invoice_number,
         customer_id: formData.customer_id,
         issue_date: formData.issue_date,
         due_date: formData.due_date,
@@ -303,6 +266,7 @@ export function InvoiceForm({
       };
 
       let invoiceId = invoice?.id;
+      let createdNumber: string | null = null;
 
       if (invoice) {
         const { error: invoiceError } = await supabase
@@ -339,6 +303,7 @@ export function InvoiceForm({
         }
 
         invoiceId = newInvoice.id;
+        createdNumber = newInvoice.invoice_number;
       }
 
       const itemsData = items.map((item) => ({
@@ -360,7 +325,7 @@ export function InvoiceForm({
       toast.success(
         invoice
           ? 'Faktura byla úspěšně aktualizována'
-          : 'Faktura byla úspěšně vytvořena',
+          : `Faktura ${createdNumber ?? ''} byla úspěšně vytvořena`.trim(),
       );
       router.push('/invoices');
       router.refresh();
@@ -394,7 +359,7 @@ export function InvoiceForm({
       <AlertDialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className='font-serif italic text-2xl font-normal'>
+            <AlertDialogTitle className='font-serif text-2xl font-normal'>
               Faktura již byla odeslána
             </AlertDialogTitle>
             <AlertDialogDescription className='space-y-2'>
@@ -425,14 +390,15 @@ export function InvoiceForm({
           <div className='grid gap-6 sm:gap-8 md:grid-cols-2'>
             <div className='space-y-2'>
               <Label htmlFor='invoice_number' className={fieldLabel}>
-                Číslo faktury <span className='text-primary'>*</span>
+                Číslo faktury
               </Label>
               <Input
                 id='invoice_number'
-                required
                 value={formData.invoice_number}
-                onChange={(e) =>
-                  setFormData({ ...formData, invoice_number: e.target.value })
+                readOnly
+                disabled
+                placeholder={
+                  invoice ? undefined : 'Přidělí se automaticky po uložení'
                 }
                 className={inputBare}
               />
@@ -449,10 +415,7 @@ export function InvoiceForm({
                 }
                 required
               >
-                <SelectTrigger
-                  id='customer_id'
-                  className='border-0 border-b border-border rounded-none px-0 focus:ring-0 text-base bg-transparent shadow-none h-auto py-2'
-                >
+                <SelectTrigger id='customer_id'>
                   <SelectValue placeholder='Vybrat zákazníka' />
                 </SelectTrigger>
                 <SelectContent>
@@ -546,17 +509,11 @@ export function InvoiceForm({
 
         <section>
           <div className='flex items-center justify-between gap-4 mb-6 sm:mb-8'>
-            <div className='flex items-center gap-4 min-w-0 flex-1'>
-              <span className='text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-medium tabular-nums'>
+            <div className='flex items-center gap-3 min-w-0 flex-1'>
+              <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-semibold tabular-nums'>
                 02
               </span>
-              <span
-                className='text-[10px] uppercase tracking-[0.3em] text-muted-foreground'
-                aria-hidden='true'
-              >
-                —
-              </span>
-              <span className='font-serif italic text-xl sm:text-2xl text-foreground'>
+              <span className='font-serif font-semibold text-lg sm:text-xl text-foreground'>
                 Položky
               </span>
               <span className='flex-1 h-px bg-border' aria-hidden='true' />
@@ -573,7 +530,7 @@ export function InvoiceForm({
             </Button>
           </div>
 
-          <div className='border border-border bg-card divide-y divide-border'>
+          <div className='rounded-2xl border border-border/70 bg-card divide-y divide-border shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)] overflow-hidden'>
             {items.map((item, index) => (
               <div
                 key={index}
@@ -661,7 +618,7 @@ export function InvoiceForm({
 
         <section>
           <SectionLabel number='03' title='Souhrn' />
-          <div className='border border-border bg-card px-6 py-8 sm:px-10 sm:py-10'>
+          <div className='rounded-2xl border border-border/70 bg-card px-6 py-8 sm:px-10 sm:py-10 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]'>
             <div className='space-y-3 max-w-md ml-auto'>
               <SummaryRow
                 label='Mezisoučet'
@@ -700,7 +657,7 @@ export function InvoiceForm({
             }
             rows={4}
             placeholder='Volitelná poznámka, která se objeví na faktuře…'
-            className='border border-border bg-card rounded-md focus-visible:ring-1 focus-visible:ring-primary text-base resize-none'
+            className='resize-none'
           />
         </section>
 

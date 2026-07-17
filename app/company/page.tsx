@@ -26,7 +26,7 @@ export default async function CompanyPage() {
         eyebrow="Vystavovatel"
         title={
           <>
-            Moje <span className="italic text-primary">údaje</span>
+            Moje <span className="text-primary">údaje</span>
           </>
         }
         description="Tyto údaje se zobrazí na všech vašich fakturách jako informace o vystavovateli."

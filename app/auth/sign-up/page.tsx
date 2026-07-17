@@ -51,12 +51,12 @@ export default function SignUpPage() {
     <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
-          <p className="font-serif italic text-2xl text-primary mb-3">Terky</p>
+          <p className="font-serif text-2xl text-primary mb-3">Terky</p>
           <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
             fakturační udělátko
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
-            Vytvoř <span className="italic text-primary">účet.</span>
+            Vytvoř <span className="text-primary">účet.</span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Pár polí a jsme tu spolu.
@@ -91,7 +91,7 @@ export default function SignUpPage() {
           />
 
           {error && (
-            <p className="font-serif italic text-sm text-primary">{error}</p>
+            <p className="font-serif text-sm text-primary">{error}</p>
           )}
 
           <Button
@@ -106,7 +106,7 @@ export default function SignUpPage() {
             Už máš účet?{" "}
             <Link
               href="/auth/login"
-              className="text-foreground italic font-serif hover:text-primary transition-colors"
+              className="font-semibold text-primary hover:text-primary/80 transition-colors"
             >
               Přihlas se
             </Link>
@@ -149,7 +149,6 @@ function Field({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
       />
     </div>
   )

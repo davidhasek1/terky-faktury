@@ -39,12 +39,12 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
-          <p className="font-serif italic text-2xl text-primary mb-3">Terky</p>
+          <p className="font-serif text-2xl text-primary mb-3">Terky</p>
           <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
             fakturační udělátko
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
-            Zapomenuté <span className="italic text-primary">heslo.</span>
+            Zapomenuté <span className="text-primary">heslo.</span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Pošlu ti odkaz pro obnovení hesla.
@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
 
         {success ? (
           <div className="space-y-6 text-center">
-            <p className="font-serif italic text-lg text-foreground leading-relaxed">
+            <p className="font-serif text-lg text-foreground leading-relaxed">
               E-mail s odkazem byl odeslán na <br />
               <span className="text-primary">{email}</span>.
             </p>
@@ -82,12 +82,11 @@ export default function ForgotPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-base bg-transparent"
               />
             </div>
 
             {error && (
-              <p className="font-serif italic text-sm text-primary">{error}</p>
+              <p className="font-serif text-sm text-primary">{error}</p>
             )}
 
             <Button
@@ -102,7 +101,7 @@ export default function ForgotPasswordPage() {
               Vzpomněla sis?{" "}
               <Link
                 href="/auth/login"
-                className="text-foreground italic font-serif hover:text-primary transition-colors"
+                className="font-semibold text-primary hover:text-primary/80 transition-colors"
               >
                 Přihlas se
               </Link>

@@ -94,7 +94,7 @@ export default async function InvoicesPage({
         eyebrow={params.status ? `Filtr — ${labelFor(params.status)}` : "Všechny záznamy"}
         title={
           <>
-            Tvoje <span className="italic text-primary">faktury</span>
+            Tvoje <span className="text-primary">faktury</span>
           </>
         }
         description="Vystavujte, sledujte a posílejte faktury zákazníkům. Vše přehledně na jednom místě."
@@ -139,7 +139,7 @@ export default async function InvoicesPage({
         {!invoices || invoices.length === 0 ? (
           <div className="border border-border bg-card px-6 py-20 text-center">
             <FileText className="mx-auto h-10 w-10 text-muted-foreground/50 mb-6" />
-            <p className="font-serif italic text-2xl text-muted-foreground mb-6">
+            <p className="font-serif text-2xl text-muted-foreground mb-6">
               {params.status ? "Žádný záznam pro tento filtr." : "Zatím prázdno."}
             </p>
             <Button
@@ -256,7 +256,7 @@ function SectionLabelInline({ number, title }: { number: string; title: string }
       <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground" aria-hidden="true">
         —
       </span>
-      <span className="font-serif italic text-xl sm:text-2xl text-foreground">{title}</span>
+      <span className="font-serif text-xl sm:text-2xl text-foreground">{title}</span>
       <span className="flex-1 h-px bg-border" aria-hidden="true" />
     </div>
   )

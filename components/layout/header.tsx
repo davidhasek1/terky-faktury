@@ -47,7 +47,7 @@ export function Header() {
     <header className="border-b border-border/70 bg-background/85 backdrop-blur-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 sm:px-8 py-5 flex items-center justify-between gap-6">
         <Link href="/" className="group flex items-baseline gap-3 shrink-0">
-          <span className="font-serif italic text-3xl leading-none text-foreground transition-colors group-hover:text-primary">
+          <span className="font-serif font-bold text-2xl leading-none text-foreground transition-colors group-hover:text-primary">
             Terky
           </span>
           <span className="hidden sm:inline-block text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
@@ -101,7 +101,7 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px]">
               <SheetHeader className="text-left">
-                <SheetTitle className="font-serif italic text-2xl font-normal">Menu</SheetTitle>
+                <SheetTitle className="font-serif font-semibold text-xl">Menu</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 mt-8">
                 {navItems.map((item) => {

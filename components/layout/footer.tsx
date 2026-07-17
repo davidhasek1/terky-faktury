@@ -8,7 +8,7 @@ export function Footer() {
             href='https://love-days-vert.vercel.app/'
             target='_blank'
             rel='noopener noreferrer'
-            className='font-serif italic text-lg text-foreground hover:text-primary transition-colors'
+            className='text-sm font-medium text-primary hover:text-primary/80 transition-colors'
           >
             Nevadí že jsem tady?
           </a>

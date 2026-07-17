@@ -3,6 +3,30 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Joober — violet & lavender (light theme). Tyto proměnné čte druhý @theme
+   blok níže (--color-*: var(--*)). */
+:root {
+  --background: #e8e8f3;
+  --foreground: #1b1731;
+  --card: #ffffff;
+  --card-foreground: #1b1731;
+  --popover: #ffffff;
+  --popover-foreground: #1b1731;
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --secondary: #ede8fd;
+  --secondary-foreground: #5b21b6;
+  --muted: #ecedf4;
+  --muted-foreground: #6b6b7d;
+  --accent: #ede8fd;
+  --accent-foreground: #5b21b6;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #e0e0ee;
+  --input: #d5d3e6;
+  --ring: #7c3aed;
+}
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -40,31 +64,35 @@
 }
 
 @theme inline {
-  --font-sans: "Geist Sans", system-ui, sans-serif;
+  /* Inter = tělo, Poppins = displejové nadpisy (třída font-serif). */
+  --font-sans: var(--font-body), system-ui, sans-serif;
   --font-mono: "Geist Mono", monospace;
-  --font-serif: var(--font-serif), "Cormorant Garamond", "Georgia", serif;
+  --font-serif: var(--font-display), var(--font-body), system-ui, sans-serif;
 
-  /* Editorial boutique — ivory & mulberry */
-  --color-background: #faf6f1;
-  --color-foreground: #1f1318;
+  /* Joober — violet & lavender */
+  --color-background: #f1f1f8;
+  --color-foreground: #1b1731;
   --color-card: #ffffff;
-  --color-card-foreground: #1f1318;
+  --color-card-foreground: #1b1731;
   --color-popover: #ffffff;
-  --color-popover-foreground: #1f1318;
-  --color-primary: #9d4a64;
-  --color-primary-foreground: #fbf6f3;
-  --color-secondary: #f3e8e7;
-  --color-secondary-foreground: #4a2a36;
-  --color-muted: #efe5e1;
-  --color-muted-foreground: #7a6168;
-  --color-accent: #f3e8e7;
-  --color-accent-foreground: #4a2a36;
-  --color-destructive: #b54257;
+  --color-popover-foreground: #1b1731;
+  --color-primary: #7c3aed;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #ede8fd;
+  --color-secondary-foreground: #5b21b6;
+  --color-muted: #ecedf4;
+  --color-muted-foreground: #6b6b7d;
+  --color-accent: #ede8fd;
+  --color-accent-foreground: #5b21b6;
+  --color-destructive: #e5484d;
   --color-destructive-foreground: #ffffff;
-  --color-border: #e7dad3;
-  --color-input: #e7dad3;
-  --color-ring: #9d4a64;
-  --radius: 0.5rem;
+  --color-border: #e6e6f0;
+  --color-input: #e0e0ec;
+  --color-ring: #7c3aed;
+  /* Oranžový akcent (eyebrow tečka, ikony) — mimo shadcn tokeny. */
+  --color-highlight: #f97316;
+  --color-highlight-foreground: #ffffff;
+  --radius: 0.9rem;
 }
 
 @theme inline {
@@ -111,7 +139,15 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: var(--background);
+    /* Jemné světelné přechody pro hloubku místo ploché barvy. */
+    background-image:
+      radial-gradient(60rem 42rem at 10% -10%, rgba(124, 58, 237, 0.1), transparent 60%),
+      radial-gradient(52rem 38rem at 100% -4%, rgba(249, 115, 22, 0.05), transparent 55%),
+      radial-gradient(48rem 40rem at 88% 108%, rgba(124, 58, 237, 0.06), transparent 60%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
   /* Ještě světlejší placeholdery pro lepší rozlišení */
   input::placeholder,

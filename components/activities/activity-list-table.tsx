@@ -13,7 +13,7 @@ export function ActivityListTable({ customerId, activities }: ActivityListTableP
   if (activities.length === 0) {
     return (
       <div className="border border-border bg-card px-6 py-20 text-center">
-        <p className="font-serif italic text-2xl text-muted-foreground mb-4">Zatím prázdno.</p>
+        <p className="font-serif text-2xl text-muted-foreground mb-4">Zatím prázdno.</p>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
           Pro tohoto zákazníka zatím není zaznamenaná žádná aktivita.
         </p>

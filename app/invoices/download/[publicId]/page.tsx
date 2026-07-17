@@ -53,7 +53,7 @@ export default function PublicInvoiceDownloadPage() {
       <div className="min-h-svh bg-background flex items-center justify-center px-4">
         <div className="text-center">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-6 text-primary" />
-          <p className="font-serif italic text-xl text-muted-foreground">Načítám fakturu…</p>
+          <p className="font-serif text-xl text-muted-foreground">Načítám fakturu…</p>
         </div>
       </div>
     )
@@ -67,7 +67,7 @@ export default function PublicInvoiceDownloadPage() {
             Chyba
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground mb-4 leading-tight">
-            Faktura <span className="italic text-primary">nenalezena</span>
+            Faktura <span className="text-primary">nenalezena</span>
           </h1>
           <p className="text-muted-foreground">
             {error || "Faktura, kterou hledáte, neexistuje."}
@@ -86,7 +86,7 @@ export default function PublicInvoiceDownloadPage() {
               Náhled faktury
             </p>
             <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight">
-              Faktura <span className="italic text-primary">{data.invoice.invoice_number}</span>
+              Faktura <span className="text-primary">{data.invoice.invoice_number}</span>
             </h1>
           </div>
           <Link href={`/api/invoices/download/${publicId}`} target="_blank">

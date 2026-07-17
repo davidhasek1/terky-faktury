@@ -8,7 +8,7 @@ export default function NewCustomerPage() {
         eyebrow="Nový záznam"
         title={
           <>
-            Nový <span className="italic text-primary">zákazník</span>
+            Nový <span className="text-primary">zákazník</span>
           </>
         }
         description="Přidejte protistranu — adresa, daňová čísla a kontakt se objeví na faktuře."
