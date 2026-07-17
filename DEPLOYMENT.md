@@ -63,7 +63,7 @@ editor or `psql`, or link the project and run `supabase db push`.
 
 ## Build & runtime
 
-- Node: 20.x (see `.nvmrc` and `engines` in `package.json`)
+- Node: 24.x (see `.nvmrc` and `engines` in `package.json`)
 - Package manager: pnpm (lockfile is `pnpm-lock.yaml`)
 - Build command: `pnpm build` (or default `next build`)
 - Install command: `pnpm install --frozen-lockfile`

@@ -8,7 +8,7 @@ Czech-language invoicing app ("Terky Faktury"): create customers, generate invoi
 
 ## Commands
 
-Package manager is **pnpm** (`packageManager` field is pinned — do not use npm/yarn). Node 20.x (see `.nvmrc`).
+Package manager is **pnpm** (`packageManager` field is pinned — do not use npm/yarn). Node 24.x (see `.nvmrc`).
 
 ```bash
 pnpm install --frozen-lockfile   # install (matches Vercel's install command)
