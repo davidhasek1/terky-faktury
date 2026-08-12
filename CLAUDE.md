@@ -15,17 +15,45 @@ pnpm install --frozen-lockfile   # install (matches Vercel's install command)
 pnpm dev                         # next dev
 pnpm build                       # next build
 pnpm start                       # next start (after build)
-pnpm lint                        # next lint
+pnpm lint                        # next lint  (NOT configured — see note below)
 pnpm typecheck                   # tsc --noEmit  (run before declaring work done)
+pnpm test                        # vitest run
+pnpm test:watch                  # vitest
 ```
 
-There is no test framework configured. Verify changes by running `pnpm typecheck` and exercising the smoke-test checklist at the bottom of `DEPLOYMENT.md`.
+Tests are Vitest (`vitest.config.ts`, specs in `tests/`). They run against an
+in-memory Supabase stand-in (`tests/helpers/fake-supabase.ts`) that also
+emulates RLS, so no database, Docker or network is needed.
+
+`pnpm lint` has never been set up in this repo: ESLint is not installed and
+`next lint` drops into an interactive setup prompt. Treat `pnpm typecheck`,
+`pnpm test` and `pnpm build` as the gate, plus the smoke-test checklist at the
+bottom of `DEPLOYMENT.md`.
 
 `next.config.mjs` does **not** silence type or lint errors — both must pass for `pnpm build` to succeed.
 
 ## Architecture
 
 Next.js 15 App Router + React 19 + TypeScript + Tailwind v4. Backend is Supabase (Postgres + Auth + RLS); email via Resend; PDF via `@react-pdf/renderer`. Path alias `@/*` maps to repo root.
+
+### Service layer — put business logic here
+
+`lib/services/*` is the single home for domain logic (invoice maths, write
+ordering, compensation, domain rules). It is called by **all three** entry
+points: client forms, API routes, and MCP tools. Never reimplement a rule in a
+component or a route — add it to the service and call it.
+
+- `lib/services/context.ts` — `ServiceContext = { supabase, userId }`. `userId`
+  must always come from a verified identity, never from input.
+- `lib/services/browser-context.ts` / `server-context.ts` — build that context
+  from the browser session / cookie session.
+- `lib/services/invoice-totals.ts` — pure calculation shared by the live form
+  preview, the MCP `prepare_invoice` summary and the actual save.
+- `lib/services/errors.ts` — `ServiceError` with a stable machine-readable
+  `code` and a Czech user-facing message. Raw driver errors never leak out.
+- `lib/money.ts` — money is parsed to integer hundredths and only converted
+  back at the DB boundary. Never `parseFloat` an amount.
+- `lib/validation/*` — zod schemas shared by forms and MCP tools.
 
 ### Auth & route gating
 
@@ -36,7 +64,16 @@ Next.js 15 App Router + React 19 + TypeScript + Tailwind v4. Backend is Supabase
 - `/api/invoices/download/[publicId]` — public PDF download endpoint
 - `/api/invoices/public/[publicId]` — public invoice JSON for the download page
 
-If you add a new public route, update the prefix checks in **both** branches of `updateSession` (the missing-env-vars fallback near the top **and** the normal flow at the bottom). Forgetting one half silently breaks the public invoice link.
+- `/mcp` — MCP endpoint, authorized by Bearer token instead of a cookie
+- `/.well-known/*`, `/api/well-known/*` — OAuth metadata
+- `/api/oauth/{token,register,revoke}` — called by the OAuth client, not a user
+
+New public routes go into the single `PUBLIC_PATH_PREFIXES` list in
+`lib/supabase/middleware.ts`; both branches of `updateSession` read from it.
+
+`/api/oauth/authorize` is deliberately **not** public — it needs a signed-in
+user, and the middleware redirect carries `redirect_to` so the user comes back
+after logging in.
 
 ### Supabase clients — pick the right one
 
@@ -44,8 +81,9 @@ There are four entry points in `lib/supabase/` and they are not interchangeable:
 
 - `server.ts` → `createClient()` — server components / route handlers. Reads cookies, respects RLS as the signed-in user.
 - `client.ts` → `createClient()` — client components. Browser-side, persists session.
-- `client-anon.ts` → `createAnonClient()` — **only** for public, unauthenticated reads (the public download page). Uses anon key with no session.
 - `middleware.ts` → `updateSession()` — only called from `middleware.ts`.
+- `user-scoped.ts` → `createUserScopedClient(userId)` — for requests with no cookies (the MCP endpoint). Signs a short-lived Supabase JWT so **RLS still applies** as that user.
+- `service-role.ts` → `createServiceRoleClient()` — **bypasses RLS**. Only for the OAuth store and the public invoice download, where no user session exists and the query is pinned to a single unguessable token.
 
 Never instantiate `createClient` from `@supabase/supabase-js` directly — always go through these wrappers so cookie/RLS behavior stays consistent.
 
@@ -57,11 +95,21 @@ Domain types are in `lib/types.ts`: `Customer`, `Invoice`, `InvoiceItem`, `Compa
 
 ### Invoice flow
 
-1. **Create/edit** — `app/invoices/new`, `app/invoices/[id]/edit` use `components/invoices/invoice-form.tsx` (react-hook-form + zod).
+1. **Create/edit** — `app/invoices/new`, `app/invoices/[id]/edit` use `components/invoices/invoice-form.tsx`, which validates with the zod schema in `lib/validation/invoices.ts` and saves through `lib/services/invoices.ts`.
 2. **View** — `app/invoices/[id]/view` renders `components/invoices/invoice-preview.tsx`.
 3. **PDF** — `lib/pdf-generator.tsx` is the single source of truth for PDF layout (`@react-pdf/renderer`). Both the authenticated route `app/api/invoices/[id]/pdf` and the public route `app/api/invoices/download/[publicId]` use it. Returns `Uint8Array` (not a Node `Buffer`) — required for Node 24 / `@react-pdf/renderer` v4 compatibility.
 4. **Email** — `app/api/invoices/[id]/send-email` renders the PDF, sends via Resend, and writes `email_sent_at`. The email links to `${NEXT_PUBLIC_SITE_URL}/invoices/download/[publicId]`, so `NEXT_PUBLIC_SITE_URL` **must** match the deployed origin in production (no localhost fallback).
-5. **Public download** — `app/invoices/download/[publicId]/page.tsx` is a public page; it fetches via `client-anon` and links to the public PDF route.
+5. **Public download** — `app/invoices/download/[publicId]/page.tsx` is a public page; it fetches `/api/invoices/public/[publicId]` and links to the public PDF route. Both routes read through `lib/services/public-invoice.ts` (service role, pinned to one `public_id`) because migration `015` removed the over-permissive public RLS policies.
+
+### MCP integration
+
+`/mcp` exposes the app to ChatGPT over Streamable HTTP, backed by a small
+OAuth 2.1 server under `/api/oauth/*`. Clients that can't do OAuth use a
+personal token (`tfm_…`) issued from the **`/connect`** page; `lib/mcp/auth.ts`
+accepts both and resolves them to the same identity. Tools live in `lib/mcp/tools/` and
+contain **no** business logic — they validate, call a service, and format the
+result. Writes require a single-use confirmation token from a `prepare_*` tool.
+Full reference, including how to add a tool: `docs/MCP.md`.
 
 Next.js 15 route handlers receive `params` as a `Promise` — every route under `app/api/**` must `await context.params`. Dynamic page components already do this; don't regress it.
 
@@ -75,6 +123,9 @@ UI copy is **Czech**. The codebase had stray Spanish strings from the v0 origin 
 
 All listed in `.env.example`; canonical reference (with required-vs-optional and notes) is the table in `DEPLOYMENT.md`. The required-in-prod set:
 
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `SENDER_EMAIL`.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `SENDER_EMAIL`, `MCP_TOKEN_SECRET`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+`NEXT_PUBLIC_SITE_URL` must match the public origin exactly — the OAuth `issuer`
+and `resource` identifiers are derived from it.
 
 The Resend client is instantiated lazily inside the send-email route handler — do not move it to module scope, or `next build` will fail collecting page data when `RESEND_API_KEY` isn't present at build time.

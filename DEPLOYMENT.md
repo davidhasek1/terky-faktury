@@ -14,11 +14,18 @@ environment (Production, Preview, Development) or the build/runtime will fail.
 | `SENDER_EMAIL` | yes | Verified sender on your Resend domain |
 | `SENDER_NAME` | no | Display name in `From`. Defaults to `Faktury` |
 | `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` | no | Override auth redirect base; otherwise uses `window.location.origin` |
+| `MCP_TOKEN_SECRET` | yes | Signs MCP access tokens. Min 32 chars (`openssl rand -base64 48`) |
+| `SUPABASE_JWT_SECRET` | yes | Supabase legacy JWT secret; lets the MCP layer act as the user under RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-only key for the OAuth store and public invoice download |
+
+`NEXT_PUBLIC_SITE_URL` must match the public origin exactly — the OAuth
+`issuer` and `resource` identifiers are derived from it, and ChatGPT will
+refuse the connector if they don't line up. See `docs/MCP.md`.
 
 ## Database
 
 The database is Supabase Postgres. Schema lives in `supabase/migrations/NNN_*.sql`
-(ordered migrations, e.g. `001_*.sql` … `013_*.sql`). New schema changes go in the
+(ordered migrations, e.g. `001_*.sql` … `016_*.sql`). New schema changes go in the
 next-numbered file. These are now managed by the **Supabase CLI** and applied by CI.
 
 ### CI
@@ -124,3 +131,7 @@ project at the same repo.
 - [ ] `/api/invoices/[id]/send-email` sends an email and stamps `email_sent_at`
 - [ ] The link in the email opens `/invoices/download/[publicId]` without auth
 - [ ] `/api/invoices/download/[publicId]` returns the PDF without auth
+- [ ] `/.well-known/oauth-protected-resource` returns JSON with the right origin
+- [ ] `POST /mcp` without a token returns 401 with a `WWW-Authenticate` header
+- [ ] The ChatGPT connector connects and `tools/list` returns 24 tools
+- [ ] `/connect` shows the production MCP URL and can issue + revoke a token
