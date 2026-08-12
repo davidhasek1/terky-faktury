@@ -10,6 +10,23 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
+/**
+ * Kam po přihlášení. Middleware sem posílá `redirect_to`, aby se uživatel
+ * vrátil na původní stránku — potřebuje to zejména `/api/oauth/authorize`,
+ * kde by ztráta parametrů rozbila připojení konektoru.
+ *
+ * Přijímáme jen cestu ve vlastní aplikaci; `//cizi.web` ani absolutní URL by
+ * z přihlašovací stránky udělaly otevřený redirector. Čte se až při odeslání
+ * formuláře, aby stránka nepotřebovala `useSearchParams` a zůstala staticky
+ * předgenerovaná.
+ */
+function safeRedirectTarget(): string {
+  if (typeof window === "undefined") return "/"
+  const target = new URLSearchParams(window.location.search).get("redirect_to")
+  if (!target || !target.startsWith("/") || target.startsWith("//")) return "/"
+  return target
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -29,7 +46,7 @@ export default function LoginPage() {
         password,
       })
       if (error) throw error
-      router.push("/")
+      router.push(safeRedirectTarget())
       router.refresh()
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Došlo k chybě")
