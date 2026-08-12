@@ -1,7 +1,7 @@
 import { formatScaled, fromDecimal, toDecimal, type Scaled } from "@/lib/money"
-import type { ActivityService, Customer, Invoice, InvoiceItem } from "@/lib/types"
+import type { ActivityService, Customer, InvoiceItem } from "@/lib/types"
 import type { ActivityWithCustomer } from "@/lib/services/activities"
-import type { InvoiceDetail, InvoiceWithCustomer } from "@/lib/services/invoices"
+import { invoiceStatus, type InvoiceDetail, type InvoiceWithCustomer } from "@/lib/services/invoices"
 
 import { maskEmail, safeText } from "./output"
 
@@ -50,11 +50,6 @@ export function presentCustomer(customer: Customer) {
     is_business: customer.is_business ?? false,
     created_at: customer.created_at,
   }
-}
-
-export function invoiceStatus(invoice: Pick<Invoice, "paid_date" | "due_date">): string {
-  if (invoice.paid_date) return "paid"
-  return invoice.due_date < new Date().toISOString().slice(0, 10) ? "overdue" : "unpaid"
 }
 
 export function presentInvoiceSummary(invoice: InvoiceWithCustomer) {
@@ -110,4 +105,4 @@ export function presentActivity(activity: ActivityWithCustomer, services: Activi
   }
 }
 
-export { amountFields }
+export { amountFields, invoiceStatus }

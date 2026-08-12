@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Plus, ArrowUpRight, FileText } from "lucide-react"
 import Link from "next/link"
 import { InvoiceActions } from "@/components/invoices/invoice-actions"
+import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge"
+import { invoiceStatus } from "@/lib/services/invoices"
 import { formatCurrency, formatDate, cn } from "@/lib/utils"
 import { InvoiceFilters } from "@/components/invoices/invoice-filters"
 import { DateTimeDisplay } from "@/components/ui/date-time-display"
@@ -170,10 +172,17 @@ export default async function InvoicesPage({
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice, idx) => (
+                {invoices.map((invoice, idx) => {
+                  const status = invoiceStatus(invoice)
+                  return (
                   <tr
                     key={invoice.id}
-                    className={idx !== invoices.length - 1 ? "border-b border-border/60" : ""}
+                    className={cn(
+                      idx !== invoices.length - 1 && "border-b border-border/60",
+                      // Pruh u levého okraje, ať je řádek po splatnosti vidět
+                      // i bez čtení sloupce se stavem.
+                      status === "overdue" && "border-l-2 border-l-rose-500",
+                    )}
                   >
                     <Td>
                       <Link
@@ -198,10 +207,7 @@ export default async function InvoicesPage({
                       </span>
                     </Td>
                     <Td>
-                      <StatusPill
-                        paid={!!invoice.paid_date}
-                        overdue={!invoice.paid_date && new Date(invoice.due_date) < new Date()}
-                      />
+                      <InvoiceStatusBadge status={status} />
                     </Td>
                     <Td align="right">
                       <InvoiceActions
@@ -211,7 +217,8 @@ export default async function InvoicesPage({
                       />
                     </Td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -259,31 +266,6 @@ function SectionLabelInline({ number, title }: { number: string; title: string }
       <span className="font-serif text-xl sm:text-2xl text-foreground">{title}</span>
       <span className="flex-1 h-px bg-border" aria-hidden="true" />
     </div>
-  )
-}
-
-function StatusPill({ paid, overdue }: { paid: boolean; overdue: boolean }) {
-  if (paid) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium text-emerald-700">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-        Zaplaceno
-      </span>
-    )
-  }
-  if (overdue) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium text-primary">
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-        Po splatnosti
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium text-muted-foreground">
-      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" aria-hidden="true" />
-      Nezaplaceno
-    </span>
   )
 }
 

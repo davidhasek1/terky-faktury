@@ -257,6 +257,20 @@ export async function deleteInvoice(ctx: ServiceContext, invoiceId: string): Pro
   if (error) throw toServiceError(error, "Nepodařilo se smazat fakturu")
 }
 
+/** Stav faktury odvozený z dat — sloupec `status` v databázi neexistuje. */
+export type InvoiceStatus = "paid" | "unpaid" | "overdue"
+
+/**
+ * Faktura je po splatnosti, když není zaplacená a datum splatnosti už minulo.
+ * Používá to seznam faktur v UI i MCP výstupy, ať se nikde nerozejdou.
+ */
+export function invoiceStatus(
+  invoice: Pick<Invoice, "paid_date" | "due_date">,
+): InvoiceStatus {
+  if (invoice.paid_date) return "paid"
+  return invoice.due_date < today() ? "overdue" : "unpaid"
+}
+
 export interface InvoiceStats {
   total: number
   paid: number
