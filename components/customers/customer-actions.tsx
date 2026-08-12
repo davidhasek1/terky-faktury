@@ -15,7 +15,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { deleteCustomer } from "@/lib/services/customers"
+import { toast } from "sonner"
 
 interface CustomerActionsProps {
   customerId: string
@@ -28,18 +30,15 @@ export function CustomerActions({ customerId }: CustomerActionsProps) {
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    const supabase = createClient()
 
     try {
-      const { error } = await supabase.from("customers").delete().eq("id", customerId)
-
-      if (error) throw error
+      await deleteCustomer(await createBrowserServiceContext(), customerId)
 
       router.refresh()
       setShowDeleteDialog(false)
     } catch (err) {
-      console.error("[v0] Error deleting customer:", err)
-      alert("Nepodařilo se smazat zákazníka")
+      console.error("[customers] Nepodařilo se smazat zákazníka:", err)
+      toast.error("Nepodařilo se smazat zákazníka")
     } finally {
       setIsDeleting(false)
     }

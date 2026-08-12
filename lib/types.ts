@@ -39,7 +39,7 @@ export interface Invoice {
   user_id?: string // Added user_id for RLS
   created_at: string
   updated_at: string
-  customer?: Customer
+  customer?: Customer | null
   items?: InvoiceItem[]
 }
 
@@ -83,6 +83,6 @@ export interface Activity {
   total_amount: number
   created_at: string
   updated_at: string
-  customer?: Customer
+  customer?: Customer | null
   services?: ActivityService[]
 }

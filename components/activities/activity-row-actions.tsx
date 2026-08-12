@@ -20,7 +20,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { deleteActivity } from "@/lib/services/activities"
 import { toast } from "sonner"
 
 interface ActivityRowActionsProps {
@@ -35,15 +36,13 @@ export function ActivityRowActions({ customerId, activityId }: ActivityRowAction
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    const supabase = createClient()
     try {
-      const { error } = await supabase.from("activities").delete().eq("id", activityId)
-      if (error) throw error
+      await deleteActivity(await createBrowserServiceContext(), activityId)
       toast.success("Aktivita smazána")
       setShowDeleteDialog(false)
       router.refresh()
     } catch (err) {
-      console.error("[v0] Error deleting activity:", err)
+      console.error("[activities] Nepodařilo se smazat aktivitu:", err)
       toast.error("Nepodařilo se smazat aktivitu")
     } finally {
       setIsDeleting(false)

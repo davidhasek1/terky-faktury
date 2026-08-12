@@ -32,7 +32,7 @@ export default async function CompanyPage() {
         description="Tyto údaje se zobrazí na všech vašich fakturách jako informace o vystavovateli."
       />
 
-      <CompanyForm companyDetails={companyDetails} userId={user.id} />
+      <CompanyForm companyDetails={companyDetails} />
     </div>
   )
 }

@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { setActivityStatus } from "@/lib/services/activities"
 import type { ActivityStatus } from "@/lib/types"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -22,17 +23,12 @@ export function ActivityStatusToggle({ activityId, status }: ActivityStatusToggl
     const next: ActivityStatus = optimisticStatus === "paid" ? "unpaid" : "paid"
     setOptimisticStatus(next)
     setIsPending(true)
-    const supabase = createClient()
     try {
-      const { error } = await supabase
-        .from("activities")
-        .update({ status: next, updated_at: new Date().toISOString() })
-        .eq("id", activityId)
-      if (error) throw error
+      await setActivityStatus(await createBrowserServiceContext(), activityId, next)
       router.refresh()
     } catch (err) {
       setOptimisticStatus(optimisticStatus)
-      console.error("[v0] Error toggling activity status:", err)
+      console.error("[activities] Nepodařilo se změnit stav aktivity:", err)
       toast.error("Nepodařilo se změnit stav aktivity")
     } finally {
       setIsPending(false)

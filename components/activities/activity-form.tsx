@@ -15,10 +15,14 @@ import {
 } from "@/components/ui/select"
 import { Plus, Trash2 } from "lucide-react"
 import { SectionLabel } from "@/components/layout/section-label"
-import { createClient } from "@/lib/supabase/client"
-import { formatCurrency } from "@/lib/utils"
+import { formatScaled, parseDecimal, type Scaled } from "@/lib/money"
+import { createActivity, updateActivity } from "@/lib/services/activities"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { activityInputSchema } from "@/lib/validation/activities"
+import { firstIssueMessage } from "@/lib/validation/common"
 import type { Activity, ActivityService, ServiceType } from "@/lib/types"
 import { SERVICE_OPTIONS } from "./service-labels"
+import { z } from "zod"
 import { toast } from "sonner"
 
 interface ActivityFormProps {
@@ -43,6 +47,15 @@ const getLocalDate = () => {
 
 const fieldLabel =
   "text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground"
+
+/** Rozepsané pole během psaní bereme jako nulu; ostrou kontrolu dělá zod při uložení. */
+const parseScaled = (value: string): Scaled => {
+  try {
+    return parseDecimal(value)
+  } catch {
+    return 0
+  }
+}
 
 export function ActivityForm({ customerId, activity, existingServices = [] }: ActivityFormProps) {
   const router = useRouter()
@@ -70,101 +83,42 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
   const updateService = (index: number, patch: Partial<ServiceRow>) =>
     setServices((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
 
-  const total = services.reduce((sum, row) => {
-    const n = Number.parseFloat(row.price)
-    return sum + (Number.isFinite(n) ? n : 0)
-  }, 0)
-
-  const validate = (): string | null => {
-    if (!activityDate) return "Datum je povinné"
-    if (services.length === 0) return "Musíte přidat alespoň jednu službu"
-    for (const row of services) {
-      if (!row.service_type) return "Vyberte typ služby u všech řádků"
-      const price = Number.parseFloat(row.price)
-      if (!Number.isFinite(price) || price < 0) return "Cena musí být nezáporné číslo"
-      if (row.note.length > 200) return "Poznámka může mít maximálně 200 znaků"
-    }
-    return null
-  }
+  const total = services.reduce<Scaled>((sum, row) => sum + parseScaled(row.price), 0)
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    const errorMessage = validate()
-    if (errorMessage) {
-      toast.error(errorMessage)
-      return
-    }
-
     setIsSaving(true)
-    const supabase = createClient()
-    const payloadServices = services.map((row) => ({
-      service_type: row.service_type as ServiceType,
-      price: Number.parseFloat(row.price),
-      note: row.note.trim() === "" ? null : row.note.trim(),
-    }))
-    const totalAmount = payloadServices.reduce((sum, s) => sum + s.price, 0)
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error("Nepřihlášený uživatel")
+      // Stejné schéma i stejné služby jako MCP nástroj prepare_activity.
+      const input = activityInputSchema.parse({
+        customer_id: customerId,
+        activity_date: activityDate,
+        services: services.map((row) => ({
+          service_type: row.service_type,
+          price: row.price,
+          note: row.note,
+        })),
+      })
 
-      let activityId: string
+      const ctx = await createBrowserServiceContext()
 
       if (isEdit && activity) {
-        const { error: updateError } = await supabase
-          .from("activities")
-          .update({
-            activity_date: activityDate,
-            total_amount: totalAmount,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", activity.id)
-        if (updateError) throw updateError
-
-        const { error: deleteError } = await supabase
-          .from("activity_services")
-          .delete()
-          .eq("activity_id", activity.id)
-        if (deleteError) throw deleteError
-
-        activityId = activity.id
+        await updateActivity(ctx, activity.id, input)
       } else {
-        const { data: inserted, error: insertError } = await supabase
-          .from("activities")
-          .insert({
-            user_id: user.id,
-            customer_id: customerId,
-            activity_date: activityDate,
-            status: "unpaid",
-            total_amount: totalAmount,
-          })
-          .select("id")
-          .single()
-        if (insertError || !inserted) throw insertError ?? new Error("Vložení selhalo")
-        activityId = inserted.id
-      }
-
-      const { error: servicesError } = await supabase
-        .from("activity_services")
-        .insert(payloadServices.map((s) => ({ ...s, activity_id: activityId })))
-
-      if (servicesError) {
-        if (!isEdit) {
-          await supabase.from("activities").delete().eq("id", activityId)
-        }
-        throw servicesError
+        await createActivity(ctx, input)
       }
 
       toast.success(isEdit ? "Aktivita upravena" : "Aktivita vytvořena")
       router.push(`/activities/${customerId}`)
       router.refresh()
     } catch (err) {
-      console.error("[v0] Error saving activity:", err)
+      console.error("[activities] Nepodařilo se uložit aktivitu:", err)
       toast.error(
-        "Nepodařilo se uložit aktivitu: " +
-          (err instanceof Error ? err.message : "Neznámá chyba"),
+        err instanceof z.ZodError
+          ? firstIssueMessage(err)
+          : "Nepodařilo se uložit aktivitu: " +
+              (err instanceof Error ? err.message : "Neznámá chyba"),
       )
     } finally {
       setIsSaving(false)
@@ -287,7 +241,7 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
             Celkem
           </span>
           <span className="font-serif font-bold text-3xl text-foreground tabular-nums">
-            {formatCurrency(total)}
+            {formatScaled(total)}
           </span>
         </div>
       </section>

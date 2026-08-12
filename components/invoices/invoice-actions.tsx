@@ -15,7 +15,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MoreHorizontal, Pencil, Trash2, FileText, Download, CheckCircle, XCircle, Mail } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { deleteInvoice, setInvoicePayment } from "@/lib/services/invoices"
 import { MarkAsPaidButton } from "./mark-as-paid-button"
 import { toast } from "sonner"
 
@@ -36,33 +37,15 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
 
   const handleDelete = async () => {
     setIsDeleting(true)
-    const supabase = createClient()
 
     try {
-      console.log("[v0] Deleting invoice items first...")
-      // Nejdřív smazat položky faktury
-      const { error: itemsError } = await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId)
+      await deleteInvoice(await createBrowserServiceContext(), invoiceId)
 
-      if (itemsError) {
-        console.error("[v0] Error deleting invoice items:", itemsError)
-        throw itemsError
-      }
-
-      console.log("[v0] Deleting invoice...")
-      // Pak smazat fakturu
-      const { error: invoiceError } = await supabase.from("invoices").delete().eq("id", invoiceId)
-
-      if (invoiceError) {
-        console.error("[v0] Error deleting invoice:", invoiceError)
-        throw invoiceError
-      }
-
-      console.log("[v0] Invoice deleted successfully")
       toast.success("Faktura byla úspěšně smazána")
       setShowDeleteDialog(false)
       router.push("/invoices")
     } catch (err) {
-      console.error("[v0] Error deleting invoice:", err)
+      console.error("[invoices] Nepodařilo se smazat fakturu:", err)
       toast.error("Nepodařilo se smazat fakturu: " + (err instanceof Error ? err.message : "Neznámá chyba"))
     } finally {
       setIsDeleting(false)
@@ -71,18 +54,15 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
 
   const handleUnmarkAsPaid = async () => {
     setIsUpdatingPayment(true)
-    const supabase = createClient()
 
     try {
-      const { error } = await supabase.from("invoices").update({ paid_date: null }).eq("id", invoiceId)
-
-      if (error) throw error
+      await setInvoicePayment(await createBrowserServiceContext(), invoiceId, null)
 
       toast.success("Platba faktury byla zrušena")
       setShowUnmarkPaidDialog(false)
       router.push("/invoices")
     } catch (err) {
-      console.error("[v0] Error unmarking invoice as paid:", err)
+      console.error("[invoices] Nepodařilo se zrušit platbu:", err)
       toast.error("Nepodařilo se zrušit platbu faktury")
     } finally {
       setIsUpdatingPayment(false)
@@ -117,12 +97,10 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
         throw new Error(errorMessage)
       }
 
-      const result = await response.json()
-      console.log("[v0] Email sent successfully:", result)
       toast.success("Email byl úspěšně odeslán!")
       router.refresh()
     } catch (err) {
-      console.error("[v0] Error sending email:", err)
+      console.error("[invoices] Nepodařilo se odeslat email:", err)
       toast.error(err instanceof Error ? err.message : "Nepodařilo se odeslat email")
     } finally {
       setIsSendingEmail(false)

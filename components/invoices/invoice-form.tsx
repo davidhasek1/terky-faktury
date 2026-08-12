@@ -26,10 +26,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Trash2 } from 'lucide-react';
+import { z } from 'zod';
 import { SectionLabel } from '@/components/layout/section-label';
-import { createClient } from '@/lib/supabase/client';
+import { INVOICE_ITEM_DESCRIPTIONS } from '@/lib/invoice-items';
+import { formatScaled, parseDecimal, toDecimal, type Scaled } from '@/lib/money';
+import { createBrowserServiceContext } from '@/lib/services/browser-context';
+import {
+  calculateInvoiceTotals,
+  defaultRetentionRate,
+} from '@/lib/services/invoice-totals';
+import { createInvoice, updateInvoice } from '@/lib/services/invoices';
+import { firstIssueMessage } from '@/lib/validation/common';
+import { invoiceInputSchema } from '@/lib/validation/invoices';
 import type { Customer, Invoice, InvoiceItem } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface InvoiceFormProps {
@@ -50,7 +59,19 @@ type FormInvoiceItem = {
   description: string;
   quantity: string;
   unit_price: string;
-  total: number;
+};
+
+/**
+ * Rozparsuje rozepsané pole. Během psaní jsou hodnoty jako "" nebo "1,"
+ * běžné — pro živý náhled je bereme jako nulu, ostrou kontrolu dělá zod
+ * až při ukládání.
+ */
+const parseScaled = (value: string): Scaled => {
+  try {
+    return parseDecimal(value);
+  } catch {
+    return 0;
+  }
 };
 
 // Klasické boxed inputy (styl řídí komponenta Input); necháváme prázdné,
@@ -94,9 +115,8 @@ export function InvoiceForm({
           description: item.description,
           quantity: item.quantity.toString(),
           unit_price: item.unit_price.toString(),
-          total: item.total,
         }))
-      : [{ description: '', quantity: '1', unit_price: '0', total: 0 }],
+      : [{ description: '', quantity: '1', unit_price: '0' }],
   );
 
   useEffect(() => {
@@ -123,7 +143,10 @@ export function InvoiceForm({
         (c) => c.id === formData.customer_id,
       );
       if (selectedCustomer) {
-        const retentionRate = selectedCustomer.is_business ? '15' : '0';
+        // Stejné pravidlo, jaké použije servisní vrstva i MCP nástroj.
+        const retentionRate = toDecimal(
+          defaultRetentionRate(selectedCustomer.is_business),
+        ).toString();
         setFormData((prev) => ({
           ...prev,
           retention_rate: retentionRate,
@@ -137,39 +160,18 @@ export function InvoiceForm({
     return /^\d*[.,]?\d*$/.test(value);
   };
 
-  const parseNumber = (value: string): number => {
-    const normalized = value.replace(',', '.');
-    const parsed = Number.parseFloat(normalized);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
-
-  const calculateItemTotal = (quantity: string, unitPrice: string) => {
-    return parseNumber(quantity) * parseNumber(unitPrice);
-  };
-
-  const calculateSubtotal = () => {
-    return items.reduce((sum, item) => sum + item.total, 0);
-  };
-
-  const calculateTax = () => {
-    const taxRate = Number.parseFloat(formData.tax_rate) || 0;
-    return (calculateSubtotal() * taxRate) / 100;
-  };
-
-  const calculateRetention = () => {
-    const retentionRate = Number.parseFloat(formData.retention_rate) || 0;
-    return (calculateSubtotal() * retentionRate) / 100;
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax() - calculateRetention();
-  };
+  // Živý náhled počítá přesně tou funkcí, která fakturu i uloží.
+  const totals = calculateInvoiceTotals({
+    items: items.map((item) => ({
+      quantity: parseScaled(item.quantity),
+      unit_price: parseScaled(item.unit_price),
+    })),
+    tax_rate: parseScaled(formData.tax_rate),
+    retention_rate: parseScaled(formData.retention_rate),
+  });
 
   const addItem = () => {
-    setItems([
-      ...items,
-      { description: '', quantity: '1', unit_price: '0', total: 0 },
-    ]);
+    setItems([...items, { description: '', quantity: '1', unit_price: '0' }]);
   };
 
   const removeItem = (index: number) => {
@@ -181,157 +183,52 @@ export function InvoiceForm({
   const updateItem = (
     index: number,
     field: keyof FormInvoiceItem,
-    value: string | number,
+    value: string,
   ) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-
-    if (field === 'quantity' || field === 'unit_price') {
-      newItems[index].total = calculateItemTotal(
-        newItems[index].quantity,
-        newItems[index].unit_price,
-      );
-    }
-
-    setItems(newItems);
+    setItems((rows) =>
+      rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    );
   };
 
   const saveInvoice = async () => {
     setIsLoading(true);
 
-    if (!formData.customer_id) {
-      toast.error('Musíte vybrat zákazníka');
-      setIsLoading(false);
-      return;
-    }
-
-    const taxRate = Number.parseFloat(formData.tax_rate);
-    const retentionRate = Number.parseFloat(formData.retention_rate);
-
-    if (Number.isNaN(taxRate) || taxRate < 0) {
-      toast.error('Sazba DPH musí být platné číslo');
-      setIsLoading(false);
-      return;
-    }
-
-    if (Number.isNaN(retentionRate) || retentionRate < 0) {
-      toast.error('Retención musí být platné číslo');
-      setIsLoading(false);
-      return;
-    }
-
-    for (const item of items) {
-      const quantity = parseNumber(item.quantity);
-      const unitPrice = parseNumber(item.unit_price);
-
-      if (Number.isNaN(quantity) || quantity <= 0) {
-        toast.error('Množství musí být platné číslo větší než 0');
-        setIsLoading(false);
-        return;
-      }
-      if (Number.isNaN(unitPrice)) {
-        toast.error('Cena/ks musí být platné číslo');
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    const supabase = createClient();
-
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error('Musíte být přihlášeni');
-      }
-
-      const subtotal = calculateSubtotal();
-      const taxAmount = calculateTax();
-      const retentionAmount = calculateRetention();
-      const total = calculateTotal();
-
-      const baseInvoiceData = {
+      // Validace i výpočty jsou stejné, jaké použije MCP nástroj — formulář
+      // si nedrží vlastní pravidla.
+      const input = invoiceInputSchema.parse({
         customer_id: formData.customer_id,
         issue_date: formData.issue_date,
         due_date: formData.due_date,
-        tax_rate: taxRate,
-        retention_rate: retentionRate,
+        tax_rate: formData.tax_rate,
+        retention_rate: formData.retention_rate,
         notes: formData.notes,
-        subtotal,
-        tax_amount: taxAmount,
-        retention_amount: retentionAmount,
-        total,
-      };
+        currency: 'EUR',
+        items,
+      });
 
-      let invoiceId = invoice?.id;
-      let createdNumber: string | null = null;
+      const ctx = await createBrowserServiceContext();
 
       if (invoice) {
-        const { error: invoiceError } = await supabase
-          .from('invoices')
-          .update(baseInvoiceData)
-          .eq('id', invoice.id);
-
-        if (invoiceError) {
-          throw invoiceError;
-        }
-
-        const { error: deleteError } = await supabase
-          .from('invoice_items')
-          .delete()
-          .eq('invoice_id', invoice.id);
-
-        if (deleteError) {
-          throw deleteError;
-        }
+        await updateInvoice(ctx, invoice.id, input);
+        toast.success('Faktura byla úspěšně aktualizována');
       } else {
-        const newInvoiceData = {
-          ...baseInvoiceData,
-          user_id: user.id,
-        };
-
-        const { data: newInvoice, error: invoiceError } = await supabase
-          .from('invoices')
-          .insert([newInvoiceData])
-          .select()
-          .single();
-
-        if (invoiceError) {
-          throw invoiceError;
-        }
-
-        invoiceId = newInvoice.id;
-        createdNumber = newInvoice.invoice_number;
+        const created = await createInvoice(ctx, input);
+        toast.success(
+          `Faktura ${created.invoice_number} byla úspěšně vytvořena`,
+        );
       }
 
-      const itemsData = items.map((item) => ({
-        invoice_id: invoiceId,
-        description: item.description,
-        quantity: parseNumber(item.quantity),
-        unit_price: parseNumber(item.unit_price),
-        total: item.total,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsData);
-
-      if (itemsError) {
-        throw itemsError;
-      }
-
-      toast.success(
-        invoice
-          ? 'Faktura byla úspěšně aktualizována'
-          : `Faktura ${createdNumber ?? ''} byla úspěšně vytvořena`.trim(),
-      );
       router.push('/invoices');
       router.refresh();
     } catch (err) {
+      console.error('[invoices] Nepodařilo se uložit fakturu:', err);
       toast.error(
-        err instanceof Error ? err.message : 'Nepodařilo se uložit fakturu',
+        err instanceof z.ZodError
+          ? firstIssueMessage(err)
+          : err instanceof Error
+            ? err.message
+            : 'Nepodařilo se uložit fakturu',
       );
     } finally {
       setIsLoading(false);
@@ -555,8 +452,9 @@ export function InvoiceForm({
                     className={inputBoxed}
                   />
                   <datalist id={`description-options-${index}`}>
-                    <option value='Limpieza de apartamentos' />
-                    <option value='Lavado de ropa' />
+                    {INVOICE_ITEM_DESCRIPTIONS.map((description) => (
+                      <option key={description} value={description} />
+                    ))}
                   </datalist>
                 </div>
                 <div className='md:col-span-2 space-y-2'>
@@ -596,7 +494,7 @@ export function InvoiceForm({
                 <div className='md:col-span-2 space-y-2'>
                   <Label className={fieldLabel}>Celkem</Label>
                   <div className='h-10 flex items-center font-serif text-lg text-foreground tabular-nums'>
-                    {formatCurrency(item.total)}
+                    {formatScaled(totals.lineTotals[index])}
                   </div>
                 </div>
                 <div className='md:col-span-1 flex justify-end'>
@@ -622,16 +520,16 @@ export function InvoiceForm({
             <div className='space-y-3 max-w-md ml-auto'>
               <SummaryRow
                 label='Mezisoučet'
-                value={formatCurrency(calculateSubtotal())}
+                value={formatScaled(totals.subtotal)}
               />
               <SummaryRow
                 label={`DPH (${formData.tax_rate} %)`}
-                value={formatCurrency(calculateTax())}
+                value={formatScaled(totals.taxAmount)}
               />
               {Number.parseFloat(formData.retention_rate) > 0 && (
                 <SummaryRow
                   label={`Retención (−${formData.retention_rate} %)`}
-                  value={`−${formatCurrency(calculateRetention())}`}
+                  value={`−${formatScaled(totals.retentionAmount)}`}
                   destructive
                 />
               )}
@@ -640,7 +538,7 @@ export function InvoiceForm({
                   Celkem
                 </span>
                 <span className='font-serif text-3xl text-foreground tabular-nums'>
-                  {formatCurrency(calculateTotal())}
+                  {formatScaled(totals.total)}
                 </span>
               </div>
             </div>

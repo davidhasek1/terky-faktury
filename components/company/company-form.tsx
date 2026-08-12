@@ -4,7 +4,8 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { upsertCompanyDetails } from "@/lib/services/company"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,10 +15,9 @@ import type { CompanyDetails } from "@/lib/types"
 
 interface CompanyFormProps {
   companyDetails: CompanyDetails | null
-  userId: string
 }
 
-export function CompanyForm({ companyDetails, userId }: CompanyFormProps) {
+export function CompanyForm({ companyDetails }: CompanyFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -41,34 +41,20 @@ export function CompanyForm({ companyDetails, userId }: CompanyFormProps) {
     setLoading(true)
 
     try {
-      const supabase = createClient()
-
       if (!formData.company_name.trim()) {
         toast.error("Název firmy je povinný")
         setLoading(false)
         return
       }
 
-      const dataToSave = {
-        ...formData,
-        user_id: userId,
-      }
+      await upsertCompanyDetails(await createBrowserServiceContext(), formData)
 
-      if (companyDetails) {
-        const { error } = await supabase.from("company_details").update(dataToSave).eq("id", companyDetails.id)
-
-        if (error) throw error
-        toast.success("Údaje byly úspěšně aktualizovány")
-      } else {
-        const { error } = await supabase.from("company_details").insert(dataToSave)
-
-        if (error) throw error
-        toast.success("Údaje byly úspěšně uloženy")
-      }
-
+      toast.success(
+        companyDetails ? "Údaje byly úspěšně aktualizovány" : "Údaje byly úspěšně uloženy",
+      )
       router.refresh()
     } catch (error) {
-      console.error("Error saving company details:", error)
+      console.error("[company] Nepodařilo se uložit firemní údaje:", error)
       toast.error("Nepodařilo se uložit údaje")
     } finally {
       setLoading(false)

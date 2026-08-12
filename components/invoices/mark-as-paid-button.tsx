@@ -15,7 +15,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { CheckCircle } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { setInvoicePayment } from "@/lib/services/invoices"
 import { toast } from "sonner"
 
 interface MarkAsPaidButtonProps {
@@ -35,12 +36,9 @@ export function MarkAsPaidButton({ invoiceId, open, onOpenChange, onSuccess }: M
 
   const handleMarkAsPaid = async () => {
     setIsLoading(true)
-    const supabase = createClient()
 
     try {
-      const { error } = await supabase.from("invoices").update({ paid_date: paidDate }).eq("id", invoiceId)
-
-      if (error) throw error
+      await setInvoicePayment(await createBrowserServiceContext(), invoiceId, paidDate)
 
       toast.success("Faktura byla označena jako zaplacená")
       setIsDialogOpen(false)
@@ -50,7 +48,7 @@ export function MarkAsPaidButton({ invoiceId, open, onOpenChange, onSuccess }: M
         router.refresh()
       }
     } catch (err) {
-      console.error("[v0] Error marking invoice as paid:", err)
+      console.error("[invoices] Nepodařilo se označit fakturu jako zaplacenou:", err)
       toast.error("Nepodařilo se označit fakturu jako zaplacenou")
     } finally {
       setIsLoading(false)

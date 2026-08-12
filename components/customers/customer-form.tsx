@@ -10,8 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SectionLabel } from "@/components/layout/section-label"
-import { createClient } from "@/lib/supabase/client"
+import { createBrowserServiceContext } from "@/lib/services/browser-context"
+import { createCustomer, updateCustomer } from "@/lib/services/customers"
+import { customerInputSchema } from "@/lib/validation/customers"
+import { firstIssueMessage } from "@/lib/validation/common"
 import type { Customer } from "@/lib/types"
+import { z } from "zod"
 import { toast } from "sonner"
 
 interface CustomerFormProps {
@@ -36,31 +40,28 @@ export function CustomerForm({ customer }: CustomerFormProps) {
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        throw new Error("Musíte být přihlášeni")
-      }
+      const input = customerInputSchema.parse(formData)
+      const ctx = await createBrowserServiceContext()
 
       if (customer) {
-        const { error } = await supabase.from("customers").update(formData).eq("id", customer.id)
-        if (error) throw error
+        await updateCustomer(ctx, customer.id, input)
       } else {
-        const { error } = await supabase.from("customers").insert([{ ...formData, user_id: user.id }])
-        if (error) throw error
+        await createCustomer(ctx, input)
       }
 
       toast.success(customer ? "Zákazník byl úspěšně aktualizován" : "Zákazník byl úspěšně vytvořen")
       router.push("/customers")
       router.refresh()
     } catch (err) {
-      console.error("[v0] Error saving customer:", err)
-      toast.error(err instanceof Error ? err.message : "Nepodařilo se uložit zákazníka")
+      console.error("[customers] Nepodařilo se uložit zákazníka:", err)
+      toast.error(
+        err instanceof z.ZodError
+          ? firstIssueMessage(err)
+          : err instanceof Error
+            ? err.message
+            : "Nepodařilo se uložit zákazníka",
+      )
     } finally {
       setIsLoading(false)
     }
