@@ -6,10 +6,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
 import { upsertCompanyDetails } from "@/lib/services/company"
+import { Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { SectionLabel } from "@/components/patterns/section-label"
+import { FormActions, FormField, FormRow } from "@/components/patterns/form-field"
 import { toast } from "sonner"
 import type { CompanyDetails } from "@/lib/types"
 
@@ -61,170 +62,98 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
     }
   }
 
+  const field = (key: keyof typeof formData) => ({
+    id: key,
+    value: formData[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+      setFormData({ ...formData, [key]: e.target.value }),
+  })
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-12 sm:space-y-16">
+    <form onSubmit={handleSubmit} className="space-y-10">
       <section>
         <SectionLabel title="Základní údaje" />
-        <div className="grid gap-6 sm:gap-8">
-          <Field
-            id="company_name"
-            label="Název firmy"
-            required
-            value={formData.company_name}
-            onChange={(v) => setFormData({ ...formData, company_name: v })}
-          />
-          <div className="grid md:grid-cols-2 gap-6">
-            <Field
-              id="nie"
-              label="NIE"
-              value={formData.nie}
-              onChange={(v) => setFormData({ ...formData, nie: v })}
-            />
-            <Field
-              id="nif"
-              label="NIF"
-              value={formData.nif}
-              onChange={(v) => setFormData({ ...formData, nif: v })}
-            />
-          </div>
+        <div className="grid gap-5">
+          <FormField id="company_name" label="Název firmy" required>
+            <Input {...field("company_name")} required />
+          </FormField>
+          <FormRow>
+            <FormField id="nie" label="IČO">
+              <Input {...field("nie")} inputMode="numeric" />
+            </FormField>
+            <FormField id="nif" label="DIČ">
+              <Input {...field("nif")} />
+            </FormField>
+          </FormRow>
         </div>
       </section>
 
       <section>
         <SectionLabel title="Adresa" />
-        <div className="grid gap-6 sm:gap-8">
-          <Field
-            id="street"
-            label="Ulice a číslo"
-            value={formData.street}
-            onChange={(v) => setFormData({ ...formData, street: v })}
-          />
-          <div className="grid md:grid-cols-3 gap-6">
-            <Field
-              id="city"
-              label="Město"
-              value={formData.city}
-              onChange={(v) => setFormData({ ...formData, city: v })}
-            />
-            <Field
-              id="postal_code"
-              label="PSČ"
-              value={formData.postal_code}
-              onChange={(v) => setFormData({ ...formData, postal_code: v })}
-            />
-            <Field
-              id="country"
-              label="Země"
-              value={formData.country}
-              onChange={(v) => setFormData({ ...formData, country: v })}
-            />
+        <div className="grid gap-5">
+          <FormField id="street" label="Ulice a číslo">
+            <Input {...field("street")} />
+          </FormField>
+          <div className="grid gap-5 md:grid-cols-3">
+            <FormField id="city" label="Město">
+              <Input {...field("city")} />
+            </FormField>
+            <FormField id="postal_code" label="PSČ">
+              <Input {...field("postal_code")} inputMode="numeric" />
+            </FormField>
+            <FormField id="country" label="Země">
+              <Input {...field("country")} />
+            </FormField>
           </div>
         </div>
       </section>
 
       <section>
         <SectionLabel title="Kontakt" />
-        <div className="grid md:grid-cols-2 gap-6">
-          <Field
-            id="email"
-            label="Email"
-            type="email"
-            value={formData.email}
-            onChange={(v) => setFormData({ ...formData, email: v })}
-          />
-          <Field
-            id="phone"
-            label="Telefon"
-            value={formData.phone}
-            onChange={(v) => setFormData({ ...formData, phone: v })}
-          />
-        </div>
+        <FormRow>
+          <FormField id="email" label="Email">
+            <Input {...field("email")} type="email" />
+          </FormField>
+          <FormField id="phone" label="Telefon">
+            <Input {...field("phone")} type="tel" />
+          </FormField>
+        </FormRow>
       </section>
 
       <section>
         <SectionLabel title="Platební údaje" />
-        <div className="grid gap-6 sm:gap-8">
-          <Field
-            id="bank_name"
-            label="Název banky"
-            value={formData.bank_name}
-            onChange={(v) => setFormData({ ...formData, bank_name: v })}
-          />
-          <Field
+        <div className="grid gap-5">
+          <FormField id="bank_name" label="Název banky">
+            <Input {...field("bank_name")} />
+          </FormField>
+          <FormField
             id="bank_account"
             label="Číslo účtu"
-            value={formData.bank_account}
-            onChange={(v) => setFormData({ ...formData, bank_account: v })}
-          />
-          <div className="grid md:grid-cols-2 gap-6">
-            <Field
-              id="iban"
-              label="IBAN"
-              value={formData.iban}
-              onChange={(v) => setFormData({ ...formData, iban: v })}
-            />
-            <Field
-              id="swift_bic"
-              label="SWIFT/BIC"
-              value={formData.swift_bic}
-              onChange={(v) => setFormData({ ...formData, swift_bic: v })}
-            />
-          </div>
+            hint="Objeví se na faktuře jako účet pro platbu."
+          >
+            <Input {...field("bank_account")} />
+          </FormField>
+          <FormRow>
+            <FormField id="iban" label="IBAN">
+              <Input {...field("iban")} className="font-ident" />
+            </FormField>
+            <FormField id="swift_bic" label="SWIFT/BIC">
+              <Input {...field("swift_bic")} className="font-ident" />
+            </FormField>
+          </FormRow>
         </div>
       </section>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-border">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.back()}
-          disabled={loading}
-          className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
-        >
+      <FormActions>
+        <Button type="button" variant="ghost" onClick={() => router.back()} disabled={loading}>
+          <X />
           Zrušit
         </Button>
-        <Button
-          type="submit"
-          disabled={loading}
-          className="text-[11px] uppercase tracking-[0.22em] shadow-none"
-        >
-          {loading ? "Ukládám…" : "Uložit údaje"}
+        <Button type="submit" loading={loading}>
+          <Save />
+          Uložit údaje
         </Button>
-      </div>
+      </FormActions>
     </form>
-  )
-}
-
-function Field({
-  id,
-  label,
-  required,
-  value,
-  onChange,
-  type = "text",
-}: {
-  id: string
-  label: string
-  required?: boolean
-  value: string
-  onChange: (v: string) => void
-  type?: string
-}) {
-  return (
-    <div className="space-y-2">
-      <Label
-        htmlFor={id}
-        className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
-      >
-        {label} {required && <span className="text-primary">*</span>}
-      </Label>
-      <Input
-        id={id}
-        type={type}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
   )
 }
