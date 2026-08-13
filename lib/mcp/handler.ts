@@ -67,11 +67,21 @@ export async function handleMcpRequest(
     )
   }
 
-  const server = createMcpServer(ctx)
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
-  })
+  // Sestavení serveru registruje všechny nástroje a převádí jejich zod schémata
+  // na JSON Schema. Když to na jednom z nich selže, spadne celý endpoint a klient
+  // hlásí, že funkce nejsou dostupné — proto je i tohle uvnitř ošetření.
+  let server
+  let transport
+  try {
+    server = createMcpServer(ctx)
+    transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    })
+  } catch (error) {
+    console.error("[mcp] Nepodařilo se sestavit server:", error)
+    return jsonRpcError(requestId(body), "Server nemohl sestavit seznam nástrojů.")
+  }
 
   // Log na úrovni transportu: audit se zapisuje až uvnitř obalu nástroje, takže
   // volání odmítnuté dřív (třeba validací vstupu v SDK) po sobě nenechá stopu.
