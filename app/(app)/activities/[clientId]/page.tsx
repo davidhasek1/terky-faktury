@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus, Pencil } from "lucide-react"
 import { notFound } from "next/navigation"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 import { ActivityListTable } from "@/components/activities/activity-list-table"
 import { ActivityStatusFilter } from "@/components/activities/activity-status-filter"
 import type { Activity } from "@/lib/types"
@@ -53,54 +55,48 @@ export default async function ClientDiaryPage(context: PageProps) {
 
   const { data: activitiesData, error: activitiesError } = await query
   if (activitiesError) {
-    console.error("[v0] Error fetching activities:", activitiesError)
+    console.error("[activities] Nepodařilo se načíst aktivity:", activitiesError)
   }
 
   const activities = (activitiesData ?? []) as Activity[]
 
   return (
-    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-6xl">
-      <PageHeader
-        eyebrow="Deník klienta"
-        title={
-          <>
-            {customer.name}
-          </>
+    <>
+      <Topbar
+        title={customer.name}
+        action={
+          <Button asChild size="sm">
+            <Link href={`/activities/${clientId}/new`}>
+              <Plus className="size-4" />
+              Nová aktivita
+            </Link>
+          </Button>
         }
-        description={
-          [customer.email, customer.phone, customer.address].filter(Boolean).join(" · ") ||
-          undefined
-        }
-        actions={
-          <div className="flex items-center gap-3">
-            <Button
-              asChild
-              variant="outline"
-              className="text-[11px] uppercase tracking-[0.22em] shadow-none"
-            >
+      />
+      <PageShell>
+        <PageHeader
+          eyebrow="Deník klienta"
+          title={customer.name}
+          description={
+            [customer.email, customer.phone, customer.address].filter(Boolean).join(" · ") ||
+            undefined
+          }
+          actions={
+            <Button asChild variant="outline">
               <Link href={`/customers/${clientId}/edit`}>
-                <Pencil className="mr-2 h-3.5 w-3.5" />
+                <Pencil className="size-4" />
                 Upravit klienta
               </Link>
             </Button>
-            <Button
-              asChild
-              className="text-[11px] uppercase tracking-[0.22em] shadow-none"
-            >
-              <Link href={`/activities/${clientId}/new`}>
-                <Plus className="mr-2 h-3.5 w-3.5" />
-                Nová aktivita
-              </Link>
-            </Button>
-          </div>
-        }
-      />
+          }
+        />
 
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <ActivityStatusFilter customerId={clientId} current={statusFilter} />
-      </div>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <ActivityStatusFilter customerId={clientId} current={statusFilter} />
+        </div>
 
-      <ActivityListTable customerId={clientId} activities={activities} />
-    </div>
+        <ActivityListTable customerId={clientId} activities={activities} />
+      </PageShell>
+    </>
   )
 }
