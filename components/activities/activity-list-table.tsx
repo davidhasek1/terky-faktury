@@ -1,3 +1,7 @@
+import { ClipboardList } from "lucide-react"
+
+import { DataTable, Dash, TableCell, TableHead } from "@/components/patterns/data-table"
+import { EmptyState } from "@/components/patterns/empty-state"
 import type { Activity } from "@/lib/types"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { SERVICE_LABELS } from "./service-labels"
@@ -12,61 +16,53 @@ interface ActivityListTableProps {
 export function ActivityListTable({ customerId, activities }: ActivityListTableProps) {
   if (activities.length === 0) {
     return (
-      <div className="border border-border bg-card px-6 py-20 text-center">
-        <p className="font-serif text-2xl text-muted-foreground mb-4">Zatím prázdno.</p>
-        <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-          Pro tohoto zákazníka zatím není zaznamenaná žádná aktivita.
-        </p>
-      </div>
+      <EmptyState
+        icon={<ClipboardList className="size-8" />}
+        title="Zatím prázdno."
+        description="Pro tohoto zákazníka zatím není zaznamenaná žádná aktivita."
+      />
     )
   }
 
   return (
-    <div className="border border-border bg-card overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border">
-            <Th>Datum</Th>
-            <Th>Popis</Th>
-            <Th align="right">Celkem</Th>
-            <Th>Stav</Th>
-            <Th align="right">Akce</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {activities.map((activity, idx) => (
-            <tr
-              key={activity.id}
-              className={idx !== activities.length - 1 ? "border-b border-border/60" : ""}
-            >
-              <Td>
-                <span className="font-serif text-base text-foreground tabular-nums">
-                  {formatDate(activity.activity_date)}
-                </span>
-              </Td>
-              <Td>
-                <ServiceBreakdown services={activity.services ?? []} />
-              </Td>
-              <Td align="right" className="font-serif text-lg tabular-nums">
-                {formatCurrency(activity.total_amount)}
-              </Td>
-              <Td>
-                <ActivityStatusToggle activityId={activity.id} status={activity.status} />
-              </Td>
-              <Td align="right">
-                <ActivityRowActions customerId={customerId} activityId={activity.id} />
-              </Td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      head={
+        <>
+          <TableHead>Datum</TableHead>
+          <TableHead>Popis</TableHead>
+          <TableHead align="right">Celkem</TableHead>
+          <TableHead>Stav</TableHead>
+          <TableHead align="right">Akce</TableHead>
+        </>
+      }
+    >
+      {activities.map((activity, idx) => (
+        <tr
+          key={activity.id}
+          className={idx !== activities.length - 1 ? "border-b border-border/60" : ""}
+        >
+          <TableCell className="tabular-nums">{formatDate(activity.activity_date)}</TableCell>
+          <TableCell>
+            <ServiceBreakdown services={activity.services ?? []} />
+          </TableCell>
+          <TableCell align="right" className="font-display font-semibold tabular-nums">
+            {formatCurrency(activity.total_amount)}
+          </TableCell>
+          <TableCell>
+            <ActivityStatusToggle activityId={activity.id} status={activity.status} />
+          </TableCell>
+          <TableCell align="right">
+            <ActivityRowActions customerId={customerId} activityId={activity.id} />
+          </TableCell>
+        </tr>
+      ))}
+    </DataTable>
   )
 }
 
 function ServiceBreakdown({ services }: { services: NonNullable<Activity["services"]> }) {
   if (services.length === 0) {
-    return <span className="text-muted-foreground/60">—</span>
+    return <Dash />
   }
   return (
     <div className="flex flex-col gap-1">
@@ -84,40 +80,5 @@ function ServiceBreakdown({ services }: { services: NonNullable<Activity["servic
         </div>
       ))}
     </div>
-  )
-}
-
-function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
-  return (
-    <th
-      className={
-        "text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground py-4 px-5 " +
-        (align === "right" ? "text-right" : "text-left")
-      }
-    >
-      {children}
-    </th>
-  )
-}
-
-function Td({
-  children,
-  align,
-  className = "",
-}: {
-  children: React.ReactNode
-  align?: "right"
-  className?: string
-}) {
-  return (
-    <td
-      className={
-        "py-5 px-5 text-sm text-foreground " +
-        (align === "right" ? "text-right " : "") +
-        className
-      }
-    >
-      {children}
-    </td>
   )
 }
