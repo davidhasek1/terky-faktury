@@ -18,13 +18,24 @@ import { presentCustomer, presentCustomerCandidate } from "@/lib/mcp/present"
 
 /** Nástroje pro práci se zákazníky. */
 
+/**
+ * Volitelná pole jsou `nullish`, ne jen `optional`: `prepare_customer` vrací
+ * nevyplněné hodnoty jako `null` a model je má do zapisujícího nástroje předat
+ * beze změny. Se samotným `optional()` by takový průchod skončil na validaci.
+ */
 const customerFields = {
   name: z.string().trim().min(1).max(200).describe("Název zákazníka nebo jméno osoby."),
-  email: z.string().trim().email().max(254).optional().describe("E-mail pro odesílání faktur."),
-  phone: z.string().trim().max(40).optional().describe("Telefonní číslo."),
-  address: z.string().trim().max(500).optional().describe("Fakturační adresa."),
-  nie: z.string().trim().max(40).optional().describe("Identifikační číslo NIE."),
-  nif: z.string().trim().max(40).optional().describe("Daňové číslo NIF."),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(254)
+    .nullish()
+    .describe("E-mail pro odesílání faktur. Když žádný není, pošli null."),
+  phone: z.string().trim().max(40).nullish().describe("Telefonní číslo, jinak null."),
+  address: z.string().trim().max(500).nullish().describe("Fakturační adresa, jinak null."),
+  nie: z.string().trim().max(40).nullish().describe("Identifikační číslo NIE, jinak null."),
+  nif: z.string().trim().max(40).nullish().describe("Daňové číslo NIF, jinak null."),
   is_business: z
     .boolean()
     .optional()
