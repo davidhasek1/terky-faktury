@@ -44,7 +44,7 @@ export function CopyField({
   return (
     <div className={cn("space-y-2", className)}>
       {label && (
-        <p className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">
           {label}
         </p>
       )}
@@ -63,7 +63,7 @@ export function CopyField({
           variant="outline"
           size="sm"
           onClick={handleCopy}
-          className="shrink-0 text-[10px] uppercase tracking-[0.2em]"
+          className="shrink-0 text-xs"
         >
           {copied ? (
             <>

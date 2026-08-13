@@ -148,7 +148,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
             variant="ghost"
             size="sm"
             onClick={() => setFreshToken(null)}
-            className="mt-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
+            className="mt-4 text-xs text-muted-foreground hover:text-foreground"
           >
             Mám ho uložený, skrýt
           </Button>
@@ -159,7 +159,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
         onSubmit={handleCreate}
         className="rounded-2xl border border-border/70 bg-card px-5 py-6 sm:px-7"
       >
-        <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-5">
+        <p className="text-xs text-muted-foreground mb-5">
           Nový token
         </p>
 
@@ -224,7 +224,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
           <Button
             type="submit"
             disabled={isCreating || name.trim() === ""}
-            className="text-[11px] uppercase tracking-[0.22em] shadow-none"
+            className="text-sm shadow-none"
           >
             {isCreating ? (
               <>
@@ -242,7 +242,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
       </form>
 
       <div>
-        <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-4">
+        <p className="text-xs text-muted-foreground mb-4">
           Vydané tokeny
         </p>
 
@@ -293,7 +293,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
                       <Td>
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium",
+                            "inline-flex items-center gap-1.5 text-xs font-medium",
                             state.tone,
                           )}
                         >
@@ -328,7 +328,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
       </div>
 
       <div className="rounded-2xl border border-border/70 bg-card px-5 py-6 sm:px-7 space-y-5">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Jak token použít
         </p>
 
@@ -385,7 +385,7 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
 }
 
 const fieldLabel =
-  "text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground"
+  "text-sm font-semibold text-muted-foreground"
 
 function tokenState(token: PersonalTokenSummary) {
   if (token.revoked_at) {
@@ -430,7 +430,7 @@ function Th({ children, align }: { children: React.ReactNode; align?: "right" })
   return (
     <th
       className={cn(
-        "text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground py-4 px-5",
+        "text-xs font-medium text-muted-foreground py-4 px-5",
         align === "right" ? "text-right" : "text-left",
       )}
     >

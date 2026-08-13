@@ -79,7 +79,7 @@ const parseScaled = (value: string): Scaled => {
 const inputBare = '';
 const inputBoxed = '';
 const fieldLabel =
-  'text-[11px] uppercase tracking-[0.18em] font-semibold text-muted-foreground';
+  'text-sm font-semibold text-muted-foreground';
 
 export function InvoiceForm({
   customers,
@@ -413,7 +413,7 @@ export function InvoiceForm({
                 variant='ghost'
                 size='sm'
                 onClick={addItem}
-                className='text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground'
+                className='text-sm text-muted-foreground hover:text-foreground'
               >
                 <Plus className='mr-2 h-3.5 w-3.5' />
                 Přidat položku
@@ -528,7 +528,7 @@ export function InvoiceForm({
                 />
               )}
               <div className='flex items-baseline justify-between pt-4 border-t border-border'>
-                <span className='text-[10px] uppercase tracking-[0.25em] text-muted-foreground'>
+                <span className='text-xs text-muted-foreground'>
                   Celkem
                 </span>
                 <span className='font-serif text-3xl text-foreground tabular-nums'>
@@ -559,14 +559,14 @@ export function InvoiceForm({
             variant='ghost'
             onClick={() => router.back()}
             disabled={isLoading}
-            className='text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground'
+            className='text-sm text-muted-foreground hover:text-foreground'
           >
             Zrušit
           </Button>
           <Button
             type='submit'
             disabled={isLoading}
-            className='text-[11px] uppercase tracking-[0.22em] shadow-none'
+            className='text-sm shadow-none'
           >
             {isLoading
               ? 'Ukládám…'
@@ -591,7 +591,7 @@ function SummaryRow({
 }) {
   return (
     <div className='flex items-baseline justify-between'>
-      <span className='text-[10px] uppercase tracking-[0.22em] text-muted-foreground'>
+      <span className='text-xs text-muted-foreground'>
         {label}
       </span>
       <span

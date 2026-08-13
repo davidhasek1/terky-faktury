@@ -1,11 +1,13 @@
 "use client"
 
 import type React from "react"
+import { LogIn } from 'lucide-react'
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { FormField } from "@/components/patterns/form-field"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -60,7 +62,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
           <p className="font-serif text-2xl text-primary mb-3">Terky</p>
-          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
+          <p className="text-xs text-muted-foreground mb-8">
             fakturační udělátko
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
@@ -85,13 +87,13 @@ export default function LoginPage() {
             <div className="flex items-center justify-between mb-2">
               <Label
                 htmlFor="password"
-                className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
+                className="text-sm font-medium text-foreground"
               >
                 Heslo
               </Label>
               <Link
                 href="/auth/forgot-password"
-                className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-primary transition-colors"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
               >
                 Zapomněla jsi?
               </Link>
@@ -111,10 +113,11 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
-            disabled={isLoading}
+            className="w-full text-sm shadow-none"
+            loading={isLoading}
           >
-            {isLoading ? "Přihlašuji…" : "Přihlásit se"}
+            <LogIn />
+            Přihlásit se
           </Button>
 
           <p className="text-center text-sm text-muted-foreground pt-2">
@@ -150,13 +153,7 @@ function Field({
   placeholder?: string
 }) {
   return (
-    <div className="space-y-2">
-      <Label
-        htmlFor={id}
-        className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
-      >
-        {label}
-      </Label>
+    <FormField id={id} label={label} required={required}>
       <Input
         id={id}
         type={type}
@@ -165,6 +162,6 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-    </div>
+    </FormField>
   )
 }

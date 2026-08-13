@@ -1,11 +1,13 @@
 "use client"
 
 import type React from "react"
+import { Mail } from 'lucide-react'
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { FormField } from "@/components/patterns/form-field"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -40,7 +42,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
           <p className="font-serif text-2xl text-primary mb-3">Terky</p>
-          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-8">
+          <p className="text-xs text-muted-foreground mb-8">
             fakturační udělátko
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05]">
@@ -62,7 +64,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Button
               asChild
-              className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
+              className="w-full text-sm shadow-none"
             >
               <Link href="/auth/login">Zpět na přihlášení</Link>
             </Button>
@@ -72,7 +74,7 @@ export default function ForgotPasswordPage() {
             <div className="space-y-2">
               <Label
                 htmlFor="email"
-                className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
+                className="text-sm font-medium text-foreground"
               >
                 Email
               </Label>
@@ -91,10 +93,11 @@ export default function ForgotPasswordPage() {
 
             <Button
               type="submit"
-              className="w-full text-[11px] uppercase tracking-[0.22em] shadow-none"
-              disabled={isLoading}
+              className="w-full text-sm shadow-none"
+              loading={isLoading}
             >
-              {isLoading ? "Odesílám…" : "Odeslat odkaz"}
+              <Mail />
+              Odeslat odkaz
             </Button>
 
             <p className="text-center text-sm text-muted-foreground pt-2">

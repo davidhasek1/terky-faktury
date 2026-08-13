@@ -6,7 +6,7 @@ export default function SignUpSuccessPage() {
     <div className="flex min-h-svh w-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm text-center">
         <p className="font-serif text-2xl text-primary mb-3">Terky</p>
-        <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-12">
+        <p className="text-xs text-muted-foreground mb-12">
           fakturační udělátko
         </p>
 
@@ -23,7 +23,7 @@ export default function SignUpSuccessPage() {
 
         <Link
           href="/auth/login"
-          className="inline-flex text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Zpět na přihlášení
         </Link>

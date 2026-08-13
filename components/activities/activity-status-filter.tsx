@@ -26,7 +26,7 @@ export function ActivityStatusFilter({ customerId, current }: ActivityStatusFilt
             key={opt.value}
             href={href}
             className={cn(
-              "px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] font-medium border border-border transition-colors",
+              "px-3 py-1.5 text-xs font-medium border border-border transition-colors",
               isActive
                 ? "bg-foreground text-background border-foreground"
                 : "text-muted-foreground hover:text-foreground hover:border-foreground/40",

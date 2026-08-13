@@ -63,7 +63,7 @@ export default function PublicInvoiceDownloadPage() {
     return (
       <div className="min-h-svh bg-background flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             Chyba
           </p>
           <h1 className="font-serif text-4xl sm:text-5xl text-foreground mb-4 leading-tight">
@@ -82,7 +82,7 @@ export default function PublicInvoiceDownloadPage() {
       <div className="container max-w-5xl mx-auto px-4 sm:px-8">
         <header className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Náhled faktury
             </p>
             <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight">
@@ -90,7 +90,7 @@ export default function PublicInvoiceDownloadPage() {
             </h1>
           </div>
           <Link href={`/api/invoices/download/${publicId}`} target="_blank">
-            <Button size="lg" className="text-[11px] uppercase tracking-[0.22em] shadow-none">
+            <Button size="lg" className="text-sm shadow-none">
               <Download className="mr-2 h-4 w-4" />
               Stáhnout PDF
             </Button>

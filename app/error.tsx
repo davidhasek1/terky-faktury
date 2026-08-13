@@ -17,7 +17,7 @@ export default function GlobalError({
   return (
     <div className="min-h-svh flex items-center justify-center bg-background px-6 py-12">
       <div className="max-w-md w-full text-center">
-        <p className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-4">
+        <p className="text-xs text-muted-foreground mb-4">
           Něco se nepovedlo
         </p>
         <h1 className="font-serif text-4xl sm:text-5xl text-foreground tracking-tight leading-[1.05] mb-4">
@@ -27,13 +27,13 @@ export default function GlobalError({
           Došlo k neočekávané chybě. Zkus prosím obnovit stránku.
         </p>
         {error.digest && (
-          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 font-mono mb-8">
+          <p className="text-xs text-muted-foreground/70 font-mono mb-8">
             ID chyby: {error.digest}
           </p>
         )}
         <Button
           onClick={reset}
-          className="text-[11px] uppercase tracking-[0.22em] shadow-none"
+          className="text-sm shadow-none"
         >
           Zkusit znovu
         </Button>
