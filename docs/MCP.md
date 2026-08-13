@@ -10,6 +10,11 @@ a teprve pak fakturu vystaví.
 
 ---
 
+> **Proč je to postavené takhle:** rozhodnutí jsou zaznamenaná v `docs/adr/`.
+> **Co má integrace umět a proč:** `docs/prd/mcp-integration.md`.
+> **Pravidlo:** nová funkcionalita v aplikaci se přidává i do MCP ve stejné
+> změně — viz `CLAUDE.md`.
+
 ## Obsah
 
 - [Architektura](#architektura)

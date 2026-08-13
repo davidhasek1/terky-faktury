@@ -110,7 +110,30 @@ contain **no** business logic — they validate, call a service, and format the
 result. Writes are two-phase through a **single** tool: called without
 `confirmation_token` it returns a draft plus a single-use token, called again
 with the same arguments and that token it performs the write (`lib/mcp/two-phase.ts`).
-Full reference, including how to add a tool: `docs/MCP.md`.
+Full reference, including how to add a tool: `docs/MCP.md`. Why it is built this
+way: `docs/adr/`. What it is for: `docs/prd/mcp-integration.md`.
+
+### New functionality ships to MCP in the same change
+
+MCP is a second door to the same rooms, not a subset. When you add or change a
+user-facing capability, extend the MCP surface in the same commit — a feature
+that exists only in the UI is a gap the operator will hit while talking to
+ChatGPT, and nothing will point them at the reason.
+
+Concretely, for anything a user can do in the app:
+
+1. Put the rule in `lib/services/*` (ADR 0004). Never in a component or a route.
+2. Add or extend a tool in `lib/mcp/tools/*` and register it in `lib/mcp/server.ts`.
+   Reads are plain; writes wrap their body in `twoPhase()` (ADR 0003) and keep
+   `confirmation_token` optional in the schema.
+3. Cover both phases in `tests/mcp/two-phase.test.ts` and add the tool name to
+   the list in `tests/mcp/protocol.test.ts`.
+4. Add a row to the tool table in `docs/MCP.md`.
+
+If a capability should **not** be reachable from a model — anything touching
+credentials, billing identity, or a cascading delete — say so explicitly in the
+"not exposed" table in `docs/MCP.md` and in the PRD, with the reason. Silence
+reads as an oversight; a recorded refusal reads as a decision.
 
 Next.js 15 route handlers receive `params` as a `Promise` — every route under `app/api/**` must `await context.params`. Dynamic page components already do this; don't regress it.
 
