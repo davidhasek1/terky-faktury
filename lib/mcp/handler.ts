@@ -51,9 +51,21 @@ export async function handleMcpRequest(
     return errorResponse(400, "INVALID_JSON", "Tělo požadavku není platný JSON.")
   }
 
-  const supabase = await deps.createClient(auth.identity.userId)
-  const accountEmail = await deps.resolveEmail(auth.identity.userId)
-  const ctx = createMcpContext({ ...auth.identity, accountEmail, supabase })
+  // Vydání Supabase session sahá po síti (Auth Admin API), takže selhat může.
+  // Bez ošetření by z toho byla holá 500: klient by hlásil nedostupný konektor
+  // a do auditu by se nezapsalo nic, protože sem obal nástrojů ještě nesahá.
+  let ctx
+  try {
+    const supabase = await deps.createClient(auth.identity.userId)
+    const accountEmail = await deps.resolveEmail(auth.identity.userId)
+    ctx = createMcpContext({ ...auth.identity, accountEmail, supabase })
+  } catch (error) {
+    console.error("[mcp] Nepodařilo se vydat Supabase session:", error)
+    return jsonRpcError(
+      requestId(body),
+      "Nepodařilo se ověřit identitu u databáze. Zkus to prosím za chvíli znovu.",
+    )
+  }
 
   const server = createMcpServer(ctx)
   const transport = new WebStandardStreamableHTTPServerTransport({
@@ -92,6 +104,26 @@ function headersToObject(headers: Headers): Record<string, string> {
     result[key] = value
   })
   return result
+}
+
+/** Id požadavku pro chybovou odpověď; u dávky nebo nečitelného těla `null`. */
+function requestId(body: unknown): string | number | null {
+  if (body && typeof body === "object" && "id" in body) {
+    const id = (body as { id: unknown }).id
+    if (typeof id === "string" || typeof id === "number") return id
+  }
+  return null
+}
+
+/**
+ * Chyba ve tvaru JSON-RPC. Klient ji umí zobrazit jako selhání konkrétního
+ * volání místo toho, aby celý konektor prohlásil za nedostupný.
+ */
+function jsonRpcError(id: string | number | null, message: string): Response {
+  return new Response(
+    JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message } }),
+    { status: 200, headers: { ...corsHeaders(), "Content-Type": "application/json" } },
+  )
 }
 
 function errorResponse(status: number, code: string, message: string): Response {

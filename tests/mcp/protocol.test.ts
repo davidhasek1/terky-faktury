@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { SignJWT } from "jose"
 
@@ -149,6 +149,29 @@ describe("MCP endpoint /mcp", () => {
 
     const { status } = await rpc(db, foreignToken, "tools/list")
     expect(status).toBe(401)
+  })
+
+  it("selhání Supabase session vrátí JSON-RPC chybu, ne holou 500", async () => {
+    // Regrese: vydání session sahá po síti a bylo mimo try/catch, takže
+    // z výpadku byla neošetřená 500 — klient hlásil nedostupný konektor
+    // a do auditu se nezapsalo nic.
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const response = await handleMcpRequest(
+      mcpRequest({ jsonrpc: "2.0", id: 7, method: "tools/list" }, await tokenFor("user-1")),
+      {
+        createClient: async () => {
+          throw new Error("supabase auth nedostupné")
+        },
+        resolveEmail: async () => null,
+      },
+    )
+    const body = (await response.json()) as { id: number; error?: { message: string } }
+    spy.mockRestore()
+
+    expect(response.status).toBe(200)
+    expect(body.id).toBe(7)
+    expect(body.error?.message).toContain("ověřit identitu")
+    expect(JSON.stringify(body)).not.toContain("supabase auth nedostupné")
   })
 
   it("odmítne tělo, které není platný JSON", async () => {
