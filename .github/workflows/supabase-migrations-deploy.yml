@@ -8,9 +8,12 @@ name: Deploy DB migrations
 #   SUPABASE_ACCESS_TOKEN  -- Account -> Access Tokens v Supabase dashboardu
 #   SUPABASE_DB_PASSWORD   -- Project Settings -> Database -> heslo
 #
-# JEDNORÁZOVĚ před prvním během (protože 001–011 už na produkci běží, ale
-# nejsou zapsané v migrační historii) je potřeba baseline, jinak by push
-# zkusil aplikovat i je znovu. Viz DEPLOYMENT.md, sekce "Databázové migrace".
+# Baseline pro současný projekt (jgoiiqvugfyjoqzegwjp) je hotový: migrace
+# 001–013 jsou označené jako aplikované, takže push řeší jen to, co přibude.
+# Kdyby se projekt někdy znovu zakládal z dumpu, remote historie bude prázdná
+# a baseline je potřeba udělat znovu — jinak push zkusí aplikovat i migrace,
+# které ve schématu už jsou, a spadne. Postup: DEPLOYMENT.md, sekce
+# "One-time baseline".
 
 on:
   push:
