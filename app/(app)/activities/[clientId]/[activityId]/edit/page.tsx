@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { Topbar } from "@/components/app-shell/topbar"
-import { PageHeader } from "@/components/patterns/page-header"
 import { PageShell } from "@/components/patterns/page-shell"
 import { ActivityForm } from "@/components/activities/activity-form"
 import type { Activity, ActivityService } from "@/lib/types"
@@ -49,13 +48,8 @@ export default async function EditActivityPage(context: PageProps) {
 
   return (
     <>
-      <Topbar title={customer.name} />
-      <PageShell width="narrow">
-        <PageHeader
-          eyebrow="Upravit aktivitu"
-          title={customer.name}
-          description="Uprav zaznamenané služby a datum aktivity."
-        />
+      <Topbar asHeading title={customer.name} />
+      <PageShell width="form">
         <ActivityForm
           customerId={clientId}
           activity={activity}

@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { CompanyForm } from "@/components/company/company-form"
 import { Topbar } from "@/components/app-shell/topbar"
-import { PageHeader } from "@/components/patterns/page-header"
 import { PageShell } from "@/components/patterns/page-shell"
 
 export default async function CompanyPage() {
@@ -24,14 +23,8 @@ export default async function CompanyPage() {
 
   return (
     <>
-      <Topbar title="Moje údaje" />
-      <PageShell width="narrow">
-        <PageHeader
-          eyebrow="Vystavovatel"
-          title="Moje údaje"
-          description="Tyto údaje se zobrazí na všech tvých fakturách jako informace o vystavovateli."
-        />
-
+      <Topbar asHeading title="Moje údaje" />
+      <PageShell width="form">
         <CompanyForm companyDetails={companyDetails} />
       </PageShell>
     </>

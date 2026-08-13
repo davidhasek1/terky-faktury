@@ -13,8 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Plus, Save, Trash2, X } from "lucide-react"
-import { SectionLabel } from "@/components/patterns/section-label"
-import { FormActions, FormField } from "@/components/patterns/form-field"
+import {
+  FormActions,
+  FormField,
+  FormSection,
+  FormShell,
+} from "@/components/patterns/form-field"
 import { formatScaled, parseDecimal, type Scaled } from "@/lib/money"
 import { createActivity, updateActivity } from "@/lib/services/activities"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
@@ -124,10 +128,10 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10">
-      <section>
-        <SectionLabel title="Detaily" />
-        <FormField id="activity_date" label="Datum" required className="max-w-xs">
+    <form onSubmit={handleSubmit}>
+      <FormShell>
+        <FormSection title="Detaily" hint="Kdy byla práce odvedená.">
+          <FormField id="activity_date" label="Datum" required className="max-w-xs">
           <Input
             id="activity_date"
             type="date"
@@ -135,14 +139,13 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
             onChange={(e) => setActivityDate(e.target.value)}
             required
           />
-        </FormField>
-      </section>
+          </FormField>
+        </FormSection>
 
-      <section>
-        <SectionLabel title="Služby" />
+        <FormSection title="Služby" hint="Co všechno se ten den udělalo a za kolik.">
         <div className="space-y-4">
           {services.map((row, index) => (
-            <div key={index} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div key={index} className="rounded-lg border border-border bg-background p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 {/* Číslo řádku není pořadí, jen orientace při editaci —
                     proto je tiché a ne zvýrazněná placka. */}
@@ -223,29 +226,30 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
           </Button>
         </div>
 
-        <div className="mt-8 flex items-baseline justify-end gap-4 border-t border-border pt-6">
-          <span className="text-sm text-muted-foreground">Celkem</span>
-          <span className="font-display text-3xl font-semibold text-foreground tabular-nums">
-            {formatScaled(total)}
-          </span>
-        </div>
-      </section>
+          <div className="flex items-baseline justify-end gap-4 border-t border-border pt-5">
+            <span className="text-sm text-muted-foreground">Celkem</span>
+            <span className="font-display text-3xl font-semibold text-foreground tabular-nums">
+              {formatScaled(total)}
+            </span>
+          </div>
+        </FormSection>
 
-      <FormActions>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.push(`/activities/${customerId}`)}
-          disabled={isSaving}
-        >
-          <X />
-          Zrušit
-        </Button>
-        <Button type="submit" loading={isSaving}>
-          {isEdit ? <Save /> : <Plus />}
-          {isEdit ? "Uložit změny" : "Vytvořit aktivitu"}
-        </Button>
-      </FormActions>
+        <FormActions>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.push(`/activities/${customerId}`)}
+            disabled={isSaving}
+          >
+            <X />
+            Zrušit
+          </Button>
+          <Button type="submit" loading={isSaving}>
+            {isEdit ? <Save /> : <Plus />}
+            {isEdit ? "Uložit změny" : "Vytvořit aktivitu"}
+          </Button>
+        </FormActions>
+      </FormShell>
     </form>
   )
 }

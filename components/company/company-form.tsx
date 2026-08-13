@@ -9,8 +9,13 @@ import { upsertCompanyDetails } from "@/lib/services/company"
 import { Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SectionLabel } from "@/components/patterns/section-label"
-import { FormActions, FormField, FormRow } from "@/components/patterns/form-field"
+import {
+  FormActions,
+  FormField,
+  FormRow,
+  FormSection,
+  FormShell,
+} from "@/components/patterns/form-field"
 import { toast } from "sonner"
 import type { CompanyDetails } from "@/lib/types"
 
@@ -70,10 +75,9 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
   })
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10">
-      <section>
-        <SectionLabel title="Základní údaje" />
-        <div className="grid gap-5">
+    <form onSubmit={handleSubmit}>
+      <FormShell>
+      <FormSection title="Základní údaje" hint="Jméno firmy a daňová čísla v hlavičce faktury.">
           <FormField id="company_name" label="Název firmy" required>
             <Input {...field("company_name")} required />
           </FormField>
@@ -85,12 +89,9 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
               <Input {...field("nif")} />
             </FormField>
           </FormRow>
-        </div>
-      </section>
+      </FormSection>
 
-      <section>
-        <SectionLabel title="Adresa" />
-        <div className="grid gap-5">
+      <FormSection title="Adresa" hint="Sídlo vystavovatele, jak se objeví na faktuře.">
           <FormField id="street" label="Ulice a číslo">
             <Input {...field("street")} />
           </FormField>
@@ -105,11 +106,9 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
               <Input {...field("country")} />
             </FormField>
           </div>
-        </div>
-      </section>
+      </FormSection>
 
-      <section>
-        <SectionLabel title="Kontakt" />
+      <FormSection title="Kontakt" hint="Kde tě zákazníci zastihnou, když se něco zvrtne.">
         <FormRow>
           <FormField id="email" label="Email">
             <Input {...field("email")} type="email" />
@@ -118,11 +117,9 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
             <Input {...field("phone")} type="tel" />
           </FormField>
         </FormRow>
-      </section>
+      </FormSection>
 
-      <section>
-        <SectionLabel title="Platební údaje" />
-        <div className="grid gap-5">
+      <FormSection title="Platební údaje" hint="Účet, na který ti mají zákazníci posílat peníze.">
           <FormField id="bank_name" label="Název banky">
             <Input {...field("bank_name")} />
           </FormField>
@@ -141,8 +138,7 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
               <Input {...field("swift_bic")} className="font-ident" />
             </FormField>
           </FormRow>
-        </div>
-      </section>
+      </FormSection>
 
       <FormActions>
         <Button type="button" variant="ghost" onClick={() => router.back()} disabled={loading}>
@@ -154,6 +150,7 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
           Uložit údaje
         </Button>
       </FormActions>
+      </FormShell>
     </form>
   )
 }

@@ -9,8 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { SectionLabel } from "@/components/patterns/section-label"
-import { FormActions, FormField, FormRow } from "@/components/patterns/form-field"
+import {
+  FormActions,
+  FormField,
+  FormRow,
+  FormSection,
+  FormShell,
+} from "@/components/patterns/form-field"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
 import { createCustomer, updateCustomer } from "@/lib/services/customers"
 import { customerInputSchema } from "@/lib/validation/customers"
@@ -69,10 +74,12 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10">
-      <section>
-        <SectionLabel title="Identifikace" />
-        <div className="grid gap-5">
+    <form onSubmit={handleSubmit}>
+      <FormShell>
+        <FormSection
+          title="Identifikace"
+          hint="Jméno a daňová čísla, jak se mají objevit na faktuře."
+        >
           <FormField id="name" label="Název" required>
             <Input
               id="name"
@@ -121,12 +128,9 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               </span>
             </span>
           </label>
-        </div>
-      </section>
+        </FormSection>
 
-      <section>
-        <SectionLabel title="Kontakt" />
-        <div className="grid gap-5">
+        <FormSection title="Kontakt" hint="Kam posílat fakturu a kde zákazníka zastihnout.">
           <FormRow>
             <FormField id="email" label="Email">
               <Input
@@ -159,19 +163,19 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               className="resize-none"
             />
           </FormField>
-        </div>
-      </section>
+        </FormSection>
 
-      <FormActions>
-        <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isLoading}>
-          <X />
-          Zrušit
-        </Button>
-        <Button type="submit" loading={isLoading}>
-          {customer ? <Save /> : <Plus />}
-          {customer ? "Uložit změny" : "Vytvořit zákazníka"}
-        </Button>
-      </FormActions>
+        <FormActions>
+          <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isLoading}>
+            <X />
+            Zrušit
+          </Button>
+          <Button type="submit" loading={isLoading}>
+            {customer ? <Save /> : <Plus />}
+            {customer ? "Uložit změny" : "Vytvořit zákazníka"}
+          </Button>
+        </FormActions>
+      </FormShell>
     </form>
   )
 }

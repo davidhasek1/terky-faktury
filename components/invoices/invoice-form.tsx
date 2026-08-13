@@ -27,8 +27,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { z } from 'zod';
-import { SectionLabel } from '@/components/patterns/section-label';
-import { FormActions } from '@/components/patterns/form-field';
+import {
+  FormActions,
+  FormSection,
+  FormShell,
+} from '@/components/patterns/form-field';
 import { INVOICE_ITEM_DESCRIPTIONS } from '@/lib/invoice-items';
 import { formatScaled, parseDecimal, toDecimal, type Scaled } from '@/lib/money';
 import { createBrowserServiceContext } from '@/lib/services/browser-context';
@@ -76,6 +79,10 @@ const parseScaled = (value: string): Scaled => {
 };
 
 const fieldLabel = 'text-sm font-medium text-foreground';
+
+// Popisek pole uvnitř řádku položky. Na širokých obrazovkách ho nahradí
+// hlavička sloupců, ale zůstává v DOM kvůli čtečkám i mobilu.
+const itemLabel = 'mb-2 block text-sm font-medium text-foreground md:sr-only';
 
 export function InvoiceForm({
   customers,
@@ -277,9 +284,9 @@ export function InvoiceForm({
         </AlertDialogContent>
       </AlertDialog>
 
-      <form onSubmit={handleSubmit} className='space-y-12 sm:space-y-16'>
-        <section>
-          <SectionLabel title='Detaily' />
+      <form onSubmit={handleSubmit}>
+        <FormShell>
+        <FormSection title='Detaily' hint='Číslo, zákazník a data vystavení a splatnosti.'>
           <div className='grid gap-6 sm:gap-8 md:grid-cols-2'>
             <div className='space-y-2'>
               <Label htmlFor='invoice_number' className={fieldLabel}>
@@ -393,35 +400,29 @@ export function InvoiceForm({
               </p>
             </div>
           </div>
-        </section>
+        </FormSection>
 
-        <section>
-          <SectionLabel
-            title='Položky'
-            action={
-              <Button
-                type='button'
-                variant='ghost'
-                size='sm'
-                onClick={addItem}
-                className='text-sm text-muted-foreground hover:text-foreground'
-              >
-                <Plus className='mr-2 h-3.5 w-3.5' />
-                Přidat položku
-              </Button>
-            }
-          />
-
-          <div className='rounded-lg border border-border bg-card divide-y divide-border shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)] overflow-hidden'>
+        <FormSection title='Položky' hint='Co se fakturuje. Součet se přepočítává průběžně.'>
+          <div className='overflow-hidden rounded-lg border border-border bg-background divide-y divide-border'>
+            {/* Hlavička sloupců jednou nahoře, ne u každé položky. Na mobilu
+                sloupce nejsou, takže se skryje a popisky si nese každé pole
+                samo — proto jsou v řádcích pořád, jen na širokých neviditelné. */}
+            <div className='hidden gap-4 px-5 py-3 text-sm font-medium text-muted-foreground md:grid md:grid-cols-12'>
+              <span className='md:col-span-5'>Popis</span>
+              <span className='md:col-span-2'>Množství</span>
+              <span className='md:col-span-2'>Cena/ks</span>
+              <span className='md:col-span-2'>Celkem</span>
+              <span className='md:col-span-1' aria-hidden='true' />
+            </div>
             {items.map((item, index) => (
               <div
                 key={index}
-                className='grid gap-4 md:grid-cols-12 items-end px-5 py-6'
+                className='grid gap-4 px-5 py-4 md:grid-cols-12 md:items-center'
               >
-                <div className='md:col-span-5 space-y-2'>
+                <div className='md:col-span-5'>
                   <Label
                     htmlFor={`description-${index}`}
-                    className={fieldLabel}
+                    className={itemLabel}
                   >
                     Popis
                   </Label>
@@ -433,7 +434,7 @@ export function InvoiceForm({
                       updateItem(index, 'description', e.target.value)
                     }
                     list={`description-options-${index}`}
-                    placeholder='Vyberte nebo napište popis'
+                    placeholder='Vyber nebo napiš popis'
                   />
                   <datalist id={`description-options-${index}`}>
                     {INVOICE_ITEM_DESCRIPTIONS.map((description) => (
@@ -441,8 +442,8 @@ export function InvoiceForm({
                     ))}
                   </datalist>
                 </div>
-                <div className='md:col-span-2 space-y-2'>
-                  <Label htmlFor={`quantity-${index}`} className={fieldLabel}>
+                <div className='md:col-span-2'>
+                  <Label htmlFor={`quantity-${index}`} className={itemLabel}>
                     Množství
                   </Label>
                   <Input
@@ -455,10 +456,11 @@ export function InvoiceForm({
                     onChange={(e) =>
                       updateItem(index, 'quantity', e.target.value)
                     }
+                    className='tabular-nums'
                   />
                 </div>
-                <div className='md:col-span-2 space-y-2'>
-                  <Label htmlFor={`unit_price-${index}`} className={fieldLabel}>
+                <div className='md:col-span-2'>
+                  <Label htmlFor={`unit_price-${index}`} className={itemLabel}>
                     Cena/ks
                   </Label>
                   <Input
@@ -471,13 +473,14 @@ export function InvoiceForm({
                     onChange={(e) =>
                       updateItem(index, 'unit_price', e.target.value)
                     }
+                    className='tabular-nums'
                   />
                 </div>
-                <div className='md:col-span-2 space-y-2'>
-                  <Label className={fieldLabel}>Celkem</Label>
-                  <div className='h-10 flex items-center font-serif text-lg text-foreground tabular-nums'>
+                <div className='md:col-span-2'>
+                  <span className={itemLabel}>Celkem</span>
+                  <p className='flex h-11 items-center font-display font-semibold text-foreground tabular-nums md:h-auto'>
                     {formatScaled(totals.lineTotals[index])}
-                  </div>
+                  </p>
                 </div>
                 <div className='md:col-span-1 flex justify-end'>
                   <Button
@@ -494,12 +497,21 @@ export function InvoiceForm({
               </div>
             ))}
           </div>
-        </section>
 
-        <section>
-          <SectionLabel title='Souhrn' />
-          <div className='rounded-lg border border-border bg-card px-6 py-8 sm:px-10 sm:py-10 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]'>
-            <div className='space-y-3 max-w-md ml-auto'>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={addItem}
+            className='w-full border-dashed'
+          >
+            <Plus />
+            Přidat položku
+          </Button>
+        </FormSection>
+
+        <FormSection title='Souhrn' hint='Sazby a výsledná částka k úhradě.'>
+          <div className='rounded-lg border border-border bg-background px-5 py-6'>
+            <div className='space-y-3'>
               <SummaryRow
                 label='Mezisoučet'
                 value={formatScaled(totals.subtotal)}
@@ -525,10 +537,9 @@ export function InvoiceForm({
               </div>
             </div>
           </div>
-        </section>
+        </FormSection>
 
-        <section>
-          <SectionLabel title='Poznámky' />
+        <FormSection title='Poznámky' hint='Volitelný text pod položkami na faktuře.'>
           <Textarea
             id='notes'
             value={formData.notes}
@@ -539,7 +550,7 @@ export function InvoiceForm({
             placeholder='Volitelná poznámka, která se objeví na faktuře…'
             className='resize-none'
           />
-        </section>
+        </FormSection>
 
         <FormActions>
           <Button
@@ -556,6 +567,7 @@ export function InvoiceForm({
             {invoice ? 'Uložit změny' : 'Vytvořit fakturu'}
           </Button>
         </FormActions>
+        </FormShell>
       </form>
     </>
   );

@@ -81,12 +81,58 @@ export function FormRow({ children }: { children: ReactNode }) {
 }
 
 /**
+ * Tělo formuláře — jedna karta na ploše stránky.
+ *
+ * Dřív pole ležela přímo na pozadí a sekce byly jen text s vlasovou linkou,
+ * takže se to nečetlo jako formulář, ale jako volný seznam políček. Karta
+ * z nich dělá jeden předmět: doklad, který se vyplňuje.
+ */
+export function FormShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-card shadow-sm">{children}</div>
+  )
+}
+
+/**
+ * Sekce formuláře: název a vysvětlení ve sloupci vlevo, pole vpravo.
+ *
+ * Levý sloupec se při scrollování drží, takže i u dvanáctipoložkových
+ * firemních údajů je pořád vidět, ve které části formuláře jsi. Na mobilu
+ * se rozvržení překlopí pod sebe.
+ *
+ * Vysvětlení patří sem, ne pod titulek stránky — týká se těchhle polí,
+ * ne celé obrazovky.
+ */
+export function FormSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <section className="grid gap-6 border-b border-border px-5 py-6 sm:px-6 sm:py-7 md:grid-cols-[220px_1fr] md:gap-10">
+      <div className="md:sticky md:top-20 md:self-start">
+        <h2 className="font-display text-base font-semibold text-foreground">{title}</h2>
+        {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+      </div>
+      <div className="grid gap-5">{children}</div>
+    </section>
+  )
+}
+
+/**
  * Spodní lišta formuláře. Primární akce vpravo, zrušení vedle ní —
  * pořadí odpovídá tomu, jak čte oko, a je stejné ve všech formulářích.
+ *
+ * Drží se u spodního okraje, dokud formulář nedoscrolluješ na konec. U
+ * dlouhých formulářů to ušetří cestu dolů a zpátky nahoru.
  */
 export function FormActions({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-6">
+    <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 rounded-b-lg border-t border-border bg-card/95 px-5 py-4 backdrop-blur sm:px-6">
       {children}
     </div>
   )

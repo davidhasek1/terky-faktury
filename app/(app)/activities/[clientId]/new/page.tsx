@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { Topbar } from "@/components/app-shell/topbar"
-import { PageHeader } from "@/components/patterns/page-header"
 import { PageShell } from "@/components/patterns/page-shell"
 import { ActivityForm } from "@/components/activities/activity-form"
 
@@ -33,13 +32,8 @@ export default async function NewActivityPage(context: PageProps) {
 
   return (
     <>
-      <Topbar title={customer.name} />
-      <PageShell width="narrow">
-        <PageHeader
-          eyebrow="Nová aktivita"
-          title={customer.name}
-          description="Zaznamenej odvedené služby pro tohoto klienta."
-        />
+      <Topbar asHeading title={customer.name} />
+      <PageShell width="form">
         <ActivityForm customerId={clientId} />
       </PageShell>
     </>
