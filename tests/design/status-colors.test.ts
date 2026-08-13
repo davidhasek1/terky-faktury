@@ -18,7 +18,7 @@ describe("stavové barvy", () => {
       }
     }
     walk("components")
-    // walk("app") — zapnout v Tasku 10, až zmizí toneClass()
+    walk("app")
     expect(offenders).toEqual([])
   })
 })

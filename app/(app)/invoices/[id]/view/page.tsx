@@ -58,10 +58,10 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
       {(invoice.paid_date || invoice.email_sent_at) && (
         <div className="grid sm:grid-cols-2 gap-3 mb-8">
           {invoice.paid_date && (
-            <div className="flex items-center gap-3 border border-emerald-200 bg-emerald-50/60 px-5 py-4">
-              <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
-              <p className="text-sm text-emerald-800">
-                <span className="text-[10px] uppercase tracking-[0.22em] text-emerald-700/70 mr-2">
+            <div className="flex items-center gap-3 border border-status-settled-line/30 bg-status-settled-bg px-5 py-4">
+              <CheckCircle className="h-4 w-4 text-status-settled-fg shrink-0" />
+              <p className="text-sm text-status-settled-fg">
+                <span className="text-[10px] uppercase tracking-[0.22em] text-status-settled-fg/70 mr-2">
                   Zaplaceno
                 </span>
                 {new Date(invoice.paid_date).toLocaleDateString("cs-CZ")}
