@@ -34,7 +34,7 @@ next-numbered file. These are now managed by the **Supabase CLI** and applied by
   migrations from scratch (`supabase start` + `supabase db reset`). Fails on bad SQL.
 - **Deploy (`.github/workflows/supabase-migrations-deploy.yml`)** — on push to
   `master` touching `supabase/migrations/**`, runs `supabase db push` against the
-  production project (`kkcbmqqbpsjtojzswmsx`).
+  production project (`jgoiiqvugfyjoqzegwjp`).
 
 Required GitHub secrets (Settings → Secrets and variables → Actions):
 
@@ -45,22 +45,33 @@ Required GitHub secrets (Settings → Secrets and variables → Actions):
 
 ### ⚠️ One-time baseline (do this before the first CI deploy)
 
-Migrations `001`–`011` were applied to production **manually** (via SQL editor),
-so they are **not** recorded in Supabase's migration history. Without a baseline,
-`supabase db push` would try to re-apply them and fail. Mark them as already
-applied once, locally, against production:
+The production project was recreated (`jgoiiqvugfyjoqzegwjp`); the previous one
+no longer exists. Its schema came from a dump rather than from `supabase db push`,
+so Supabase has no record of which migrations ran. Without a baseline,
+`supabase db push` tries to re-apply them and fails.
+
+Check what the project thinks it has, then mark the ones already in the schema
+as applied:
 
 ```bash
 supabase login                      # paste an access token
-supabase link --project-ref kkcbmqqbpsjtojzswmsx
+supabase link --project-ref jgoiiqvugfyjoqzegwjp
+supabase migration list             # what is recorded remotely
+
+# Mark every migration already present in the schema. Adjust the list to match
+# what `migration list` showed - do not guess.
 supabase migration repair --status applied \
-  001 002 003 004 005 006 007 008 009 010 011
-# If you already ran 012 / 013 by hand, add them to the list above too.
-supabase migration list             # verify: local vs remote line up
+  001 002 003 004 005 006 007 008 009 010 011 012 013
+
+supabase migration list             # verify: local and remote line up
 ```
 
-After that, `supabase db push` (locally or via CI) applies only the pending
-migrations — the first run will apply `012` and `013`.
+After that, `supabase db push` (locally or via CI) applies only what is pending —
+`014`, `015` and `016`.
+
+Also confirm the GitHub secrets point at this project: `SUPABASE_DB_PASSWORD`
+must be the new project's database password, and `SUPABASE_ACCESS_TOKEN` must
+belong to an account with access to it. Stale values fail the deploy.
 
 ### Manual apply (fresh project or without CI)
 
