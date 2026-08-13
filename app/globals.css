@@ -8,6 +8,11 @@
   --font-display: var(--font-display-face), var(--font-body), system-ui, sans-serif;
   --font-ident: var(--font-ident-face), ui-monospace, monospace;
 
+  /* Komponenty sahají po třídách `font-serif` a `font-mono`. Bez těchto dvou
+     tokenů by spadly na výchozí patkový a monospace font prohlížeče. */
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-ident);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

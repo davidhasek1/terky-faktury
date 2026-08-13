@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Bricolage_Grotesque, IBM_Plex_Mono, Inter } from "next/font/google"
+import { IBM_Plex_Mono, Inter, Poppins } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
@@ -10,7 +10,7 @@ const inter = Inter({
   display: "swap",
 })
 
-const bricolage = Bricolage_Grotesque({
+const poppins = Poppins({
   subsets: ["latin", "latin-ext"],
   weight: ["500", "600", "700"],
   variable: "--font-display-face",
@@ -61,7 +61,7 @@ export default async function RootLayout({
 
   return (
     <html lang="cs">
-      <body className={`font-sans ${inter.variable} ${bricolage.variable} ${plexMono.variable} flex flex-col min-h-screen`}>
+      <body className={`font-sans ${inter.variable} ${poppins.variable} ${plexMono.variable} flex flex-col min-h-screen`}>
         <Suspense>{user && <Header />}</Suspense>
         <main className="flex-1">{children}</main>
         <Suspense>{user && <Footer />}</Suspense>
