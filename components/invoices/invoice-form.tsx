@@ -75,8 +75,6 @@ const parseScaled = (value: string): Scaled => {
   }
 };
 
-// Klasické boxed inputy (styl řídí komponenta Input); necháváme prázdné,
-// ať se nepřepisuje nový výchozí vzhled.
 const fieldLabel = 'text-sm font-medium text-foreground';
 
 export function InvoiceForm({

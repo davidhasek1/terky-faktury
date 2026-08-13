@@ -223,20 +223,11 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
         <div className="mt-6 flex justify-end">
           <Button
             type="submit"
-            disabled={isCreating || name.trim() === ""}
-            className="text-sm shadow-none"
+            disabled={name.trim() === ""}
+            loading={isCreating}
           >
-            {isCreating ? (
-              <>
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                Generuji…
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-3.5 w-3.5" />
-                Vygenerovat token
-              </>
-            )}
+            <Plus />
+            Vygenerovat token
           </Button>
         </div>
       </form>
@@ -371,11 +362,19 @@ export function McpTokenManager({ mcpUrl }: { mcpUrl: string }) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRevoking}>Zrušit</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleRevoke}
-              disabled={isRevoking}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              asChild
             >
-              {isRevoking ? "Odvolávám…" : "Odvolat token"}
+              <Button
+                variant="destructive"
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleRevoke()
+                }}
+                loading={isRevoking}
+              >
+                <ShieldAlert />
+                Odvolat token
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

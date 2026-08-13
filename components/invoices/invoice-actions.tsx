@@ -14,7 +14,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Pencil, Trash2, FileText, Download, CheckCircle, XCircle, Mail } from "lucide-react"
+import {
+  CheckCircle,
+  Download,
+  FileText,
+  Loader2,
+  Mail,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  XCircle,
+} from "lucide-react"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
 import { deleteInvoice, setInvoicePayment } from "@/lib/services/invoices"
 import { MarkAsPaidButton } from "./mark-as-paid-button"
@@ -126,8 +136,12 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
             Stáhnout PDF
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSendEmail} disabled={!customerEmail || isSendingEmail}>
-            <Mail className="mr-2 h-4 w-4" />
-            {isSendingEmail ? "Odesílám..." : "Odeslat email"}
+            {isSendingEmail ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="mr-2 h-4 w-4" />
+            )}
+            Odeslat email
           </DropdownMenuItem>
           {!isPaid ? (
             <DropdownMenuItem onClick={() => setShowMarkPaidDialog(true)}>
@@ -168,12 +182,18 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isUpdatingPayment}>Zrušit</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleUnmarkAsPaid}
-              disabled={isUpdatingPayment}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isUpdatingPayment ? "Ukládám..." : "Zrušit platbu"}
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleUnmarkAsPaid()
+                }}
+                loading={isUpdatingPayment}
+              >
+                <XCircle />
+                Zrušit platbu
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
