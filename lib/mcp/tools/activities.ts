@@ -15,7 +15,7 @@ import { getCustomer } from "@/lib/services/customers"
 import { activityInputSchema, MAX_ACTIVITY_SERVICES } from "@/lib/validation/activities"
 import { idempotencyKeySchema } from "@/lib/validation/common"
 
-import { consumeConfirmation, createConfirmation } from "@/lib/mcp/confirmations"
+import { consumeConfirmation, createConfirmation, preparePayload } from "@/lib/mcp/confirmations"
 import { defineTool } from "@/lib/mcp/define-tool"
 import { withIdempotency } from "@/lib/mcp/idempotency"
 import { safeText } from "@/lib/mcp/output"
@@ -142,9 +142,10 @@ export const getActivityTool = defineTool({
 
 export const prepareActivityTool = defineTool({
   name: "prepare_activity",
-  title: "Připravit aktivitu",
+  title: "Připravit aktivitu (neukládá)",
   description:
-    "Připraví záznam do deníku služeb a vrátí souhrn s potvrzovacím tokenem. Nic neukládá. " +
+    "NIC NEUKLÁDÁ. Jen připraví záznam do deníku služeb a vrátí návrh s potvrzovacím tokenem; " +
+    "aktivita vznikne až voláním create_activity. " +
     "Souhrn ukaž uživateli, vyžádej si souhlas a pak zavolej create_activity nebo update_activity " +
     "s argumenty z execute_arguments.",
   inputSchema: {
@@ -176,15 +177,15 @@ export const prepareActivityTool = defineTool({
     const confirmation = await createConfirmation(ctx, "prepare_activity", payload, summary)
 
     return {
-      payload: {
+      payload: preparePayload({
+        status: args.activity_id
+          ? "NÁVRH — aktivita zatím NEBYLA upravena"
+          : "NÁVRH — aktivita zatím NEBYLA zapsána",
+        executeTool: args.activity_id ? "update_activity" : "create_activity",
         summary,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        execute_arguments: payload,
-        next_step: `Po souhlasu uživatele zavolej ${
-          args.activity_id ? "update_activity" : "create_activity"
-        } s hodnotami z execute_arguments a s confirmation_token.`,
-      },
+        confirmation,
+        executeArguments: payload,
+      }),
       resourceType: "activity",
       resourceId: args.activity_id ?? null,
     }
@@ -276,9 +277,10 @@ function statusPayload(args: { activity_id: string; status: "paid" | "unpaid" })
 
 export const prepareActivityStatusTool = defineTool({
   name: "prepare_activity_status",
-  title: "Připravit změnu stavu aktivity",
+  title: "Připravit změnu stavu aktivity (neprovádí ji)",
   description:
-    "Připraví změnu stavu úhrady aktivity a vrátí souhrn s potvrzovacím tokenem. Nic nemění.",
+    "NIC NEMĚNÍ. Jen připraví změnu stavu úhrady aktivity a vrátí návrh s potvrzovacím tokenem; " +
+    "stav se změní až voláním set_activity_status.",
   inputSchema: {
     activity_id: z.string().uuid().describe("Identifikátor aktivity."),
     status: z.enum(["paid", "unpaid"]).describe("Cílový stav úhrady."),
@@ -295,7 +297,15 @@ export const prepareActivityStatusTool = defineTool({
     })
 
     return {
-      payload: {
+      payload: preparePayload({
+        status: "NÁVRH — stav aktivity zatím NEBYL změněn",
+        executeTool: "set_activity_status",
+        confirmation,
+        executeArguments: payload,
+        warnings:
+          activity.status === args.status
+            ? ["Aktivita už v tomto stavu je, operace nic nezmění."]
+            : [],
         summary: {
           activity_date: activity.activity_date,
           customer_name: safeText(activity.customer?.name, 200),
@@ -303,15 +313,7 @@ export const prepareActivityStatusTool = defineTool({
           current_status: activity.status,
           new_status: args.status,
         },
-        warnings:
-          activity.status === args.status ? ["Aktivita už v tomto stavu je, operace nic nezmění."] : [],
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        execute_arguments: payload,
-        next_step:
-          "Po souhlasu uživatele zavolej set_activity_status s hodnotami z execute_arguments " +
-          "a s confirmation_token.",
-      },
+      }),
       resourceType: "activity",
       resourceId: activity.id,
     }

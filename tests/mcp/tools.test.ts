@@ -178,6 +178,31 @@ describe("potvrzování zápisů", () => {
     return prepared
   }
 
+  it("prepare_invoice dá jasně najevo, že nic neuložil, a jmenuje další krok", async () => {
+    // Regrese: v provozu model prepare_invoice pokládal za hotovou fakturu
+    // a create_invoice nikdy nezavolal. Souhrn totiž vypadá jako doklad.
+    const customerId = seedCustomer(db, OWNER)
+    const prepared = await prepareInvoice(customerId)
+
+    expect(prepared.data?.saved).toBe(false)
+    expect(String(prepared.data?.status)).toContain("NEBYLA vystavena")
+    expect(prepared.data?.required_action).toMatchObject({ tool: "create_invoice" })
+    expect(db.invoices).toHaveLength(0)
+  })
+
+  it("u úpravy jmenuje update_invoice, ne create_invoice", async () => {
+    const customerId = seedCustomer(db, OWNER)
+    const invoiceId = seedInvoice(db, OWNER, customerId)
+
+    const prepared = await callTool(db, token, "prepare_invoice", {
+      invoice_id: invoiceId,
+      customer_id: customerId,
+      items: [{ description: "Úklid", quantity: "1", unit_price: "100" }],
+    })
+
+    expect(prepared.data?.required_action).toMatchObject({ tool: "update_invoice" })
+  })
+
   it("prepare_invoice nic neuloží a vrátí úplný souhrn", async () => {
     const customerId = seedCustomer(db, OWNER)
     const prepared = await prepareInvoice(customerId)
@@ -382,6 +407,8 @@ describe("destruktivní operace", () => {
     expect(prepared.data?.warnings).toContain(
       "Smazání je nevratné. Aplikace nemá archivaci ani koš.",
     )
+    expect(prepared.data?.saved).toBe(false)
+    expect(prepared.data?.required_action).toMatchObject({ tool: "delete_invoice" })
 
     const deleted = await callTool(db, token, "delete_invoice", {
       ...(prepared.data?.execute_arguments as Record<string, unknown>),

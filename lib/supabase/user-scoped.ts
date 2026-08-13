@@ -27,10 +27,12 @@ import { createServiceRoleClient } from "./service-role"
  * nástroje.
  */
 
-interface CachedToken {
+interface CachedSession {
   accessToken: string
   /** Epocha v sekundách, kdy token vyprší. */
   expiresAt: number
+  /** E-mail účtu. Drží se s tokenem, protože ho stejně čteme při jeho vydání. */
+  email: string
 }
 
 /**
@@ -38,36 +40,51 @@ interface CachedToken {
  * údaje nemá smysl ukládat na disk. Na serverless běhu to znamená, že si každá
  * studená instance vyžádá vlastní token; při hodinové platnosti je to zanedbatelné.
  */
-const tokenCache = new Map<string, CachedToken>()
+const sessionCache = new Map<string, CachedSession>()
 
 /** Obnovujeme s rezervou, ať token nevyprší uprostřed probíhajícího volání. */
 const EXPIRY_MARGIN_SECONDS = 60
 
 export async function createUserScopedClient(userId: string): Promise<SupabaseClient> {
-  const accessToken = await accessTokenFor(userId)
+  const { accessToken } = await sessionFor(userId)
 
   return createAnonClient({ Authorization: `Bearer ${accessToken}` })
 }
 
-/** Vyprázdní cache. Určeno pro testy. */
-export function resetUserTokenCache(): void {
-  tokenCache.clear()
+/**
+ * E-mail účtu, pod kterým MCP jede. Bere se ze stejné cache jako token, takže
+ * navíc nic nestojí. Nástroje ho vracejí ve výsledku, aby bylo z konverzace
+ * poznat, čí data se zrovna čtou — bez toho vypadá „nemáš žádné faktury"
+ * u špatně připojeného konektoru úplně stejně jako prázdný účet.
+ */
+export async function getAccountEmail(userId: string): Promise<string | null> {
+  try {
+    return (await sessionFor(userId)).email
+  } catch (error) {
+    console.error("[user-scoped] Nepodařilo se zjistit e-mail účtu:", error)
+    return null
+  }
 }
 
-async function accessTokenFor(userId: string): Promise<string> {
+/** Vyprázdní cache. Určeno pro testy. */
+export function resetUserTokenCache(): void {
+  sessionCache.clear()
+}
+
+async function sessionFor(userId: string): Promise<CachedSession> {
   const now = Math.floor(Date.now() / 1000)
-  const cached = tokenCache.get(userId)
+  const cached = sessionCache.get(userId)
 
   if (cached && cached.expiresAt - EXPIRY_MARGIN_SECONDS > now) {
-    return cached.accessToken
+    return cached
   }
 
   const minted = await mintAccessToken(userId)
-  tokenCache.set(userId, minted)
-  return minted.accessToken
+  sessionCache.set(userId, minted)
+  return minted
 }
 
-async function mintAccessToken(userId: string): Promise<CachedToken> {
+async function mintAccessToken(userId: string): Promise<CachedSession> {
   const admin = createServiceRoleClient()
 
   const { data: userData, error: userError } = await admin.auth.admin.getUserById(userId)
@@ -110,6 +127,7 @@ async function mintAccessToken(userId: string): Promise<CachedToken> {
   return {
     accessToken: session.access_token,
     expiresAt: session.expires_at ?? Math.floor(Date.now() / 1000) + session.expires_in,
+    email,
   }
 }
 

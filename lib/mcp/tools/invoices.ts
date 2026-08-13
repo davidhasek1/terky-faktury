@@ -20,7 +20,7 @@ import {
 import { idempotencyKeySchema } from "@/lib/validation/common"
 import { MAX_INVOICE_ITEMS, invoiceInputSchema } from "@/lib/validation/invoices"
 
-import { consumeConfirmation, createConfirmation } from "@/lib/mcp/confirmations"
+import { consumeConfirmation, createConfirmation, preparePayload } from "@/lib/mcp/confirmations"
 import { defineTool } from "@/lib/mcp/define-tool"
 import { withIdempotency } from "@/lib/mcp/idempotency"
 import { safeText } from "@/lib/mcp/output"
@@ -35,6 +35,14 @@ import {
 /** Nástroje pro faktury: čtení, příprava, zápis a nevratné operace. */
 
 const DEFAULT_DUE_DAYS = 14
+
+/** Co se ještě NESTALO — používá se ve výstupu prepare_invoice_action. */
+const ACTION_STATUS: Record<InvoiceAction, string> = {
+  mark_paid: "NÁVRH — faktura zatím NEBYLA označena jako zaplacená",
+  unmark_paid: "NÁVRH — platba zatím NEBYLA zrušena",
+  send_email: "NÁVRH — e-mail zatím NEBYL odeslán",
+  delete: "NÁVRH — faktura zatím NEBYLA smazána",
+}
 
 const decimalString = z
   .union([z.string(), z.number()])
@@ -245,10 +253,10 @@ export const getInvoiceDownloadLinkTool = defineTool({
 
 export const prepareInvoiceTool = defineTool({
   name: "prepare_invoice",
-  title: "Připravit fakturu",
+  title: "Připravit fakturu (neukládá)",
   description:
-    "Spočítá fakturu (mezisoučet, DPH, retención, celkem) a vrátí souhrn s potvrzovacím tokenem. " +
-    "Nic neukládá. Chybějící datum vystavení doplní na dnešek, splatnost na 14 dní, sazbu DPH na " +
+    "NIC NEUKLÁDÁ. Jen spočítá fakturu (mezisoučet, DPH, retención, celkem) a vrátí návrh " +
+    "s potvrzovacím tokenem; faktura vznikne až voláním create_invoice. Chybějící datum vystavení doplní na dnešek, splatnost na 14 dní, sazbu DPH na " +
     "21 % a retención podle typu zákazníka. Souhrn ukaž uživateli, vyžádej si výslovný souhlas " +
     "a pak zavolej create_invoice (nebo update_invoice) s argumenty z pole execute_arguments.",
   inputSchema: {
@@ -319,17 +327,16 @@ export const prepareInvoiceTool = defineTool({
     const confirmation = await createConfirmation(ctx, "prepare_invoice", payload, summary)
 
     return {
-      payload: {
+      payload: preparePayload({
+        status: args.invoice_id
+          ? "NÁVRH — faktura zatím NEBYLA upravena"
+          : "NÁVRH — faktura zatím NEBYLA vystavena",
+        executeTool: args.invoice_id ? "update_invoice" : "create_invoice",
         summary,
         warnings,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        execute_arguments: payload,
-        next_step:
-          "Ukaž uživateli celý souhrn (zákazník, částka, měna, položky, sazby, data) a vyžádej si " +
-          `souhlas. Po potvrzení zavolej ${args.invoice_id ? "update_invoice" : "create_invoice"} ` +
-          "s hodnotami z execute_arguments a s confirmation_token.",
-      },
+        confirmation: confirmation,
+        executeArguments: payload,
+      }),
       resourceType: "invoice",
       resourceId: args.invoice_id ?? null,
     }
@@ -431,10 +438,10 @@ function actionPayload(args: { invoice_id: string; action: InvoiceAction; paid_d
 
 export const prepareInvoiceActionTool = defineTool({
   name: "prepare_invoice_action",
-  title: "Připravit operaci s fakturou",
+  title: "Připravit operaci s fakturou (neprovádí ji)",
   description:
-    "Připraví operaci nad existující fakturou (označení jako zaplacené, zrušení platby, odeslání " +
-    "e-mailem, smazání) a vrátí souhrn, upozornění a potvrzovací token. Nic nemění. " +
+    "NIC NEMĚNÍ. Jen připraví operaci nad existující fakturou (označení jako zaplacené, zrušení " +
+    "platby, odeslání e-mailem, smazání) a vrátí souhrn, upozornění a potvrzovací token. " +
     "Souhrn ukaž uživateli, vyžádej si výslovný souhlas a teprve pak zavolej příslušný " +
     "zapisující nástroj se stejnými parametry a tímto tokenem.",
   inputSchema: {
@@ -489,9 +496,20 @@ export const prepareInvoiceActionTool = defineTool({
       invoice_number: invoice.invoice_number,
     })
 
+    const actionTool =
+      args.action === "delete"
+        ? "delete_invoice"
+        : args.action === "send_email"
+          ? "send_invoice_email"
+          : "set_invoice_payment"
+
     return {
-      payload: {
-        action: args.action,
+      payload: preparePayload({
+        status: ACTION_STATUS[args.action],
+        executeTool: actionTool,
+        confirmation,
+        executeArguments: payload,
+        warnings,
         summary: {
           invoice_number: invoice.invoice_number,
           customer_name: safeText(invoice.customer?.name, 200),
@@ -501,18 +519,7 @@ export const prepareInvoiceActionTool = defineTool({
           recipient: args.action === "send_email" ? invoice.customer?.email : undefined,
           paid_date: payload.paid_date,
         },
-        warnings,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        execute_arguments: payload,
-        next_step: `Ukaž souhrn a upozornění uživateli. Po jeho výslovném souhlasu zavolej ${
-          args.action === "delete"
-            ? "delete_invoice"
-            : args.action === "send_email"
-              ? "send_invoice_email"
-              : "set_invoice_payment"
-        } s hodnotami z execute_arguments a s confirmation_token.`,
-      },
+      }),
       resourceType: "invoice",
       resourceId: invoice.id,
     }

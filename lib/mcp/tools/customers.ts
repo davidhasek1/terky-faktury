@@ -10,7 +10,7 @@ import {
 import { customerInputSchema } from "@/lib/validation/customers"
 import { idempotencyKeySchema } from "@/lib/validation/common"
 
-import { consumeConfirmation, createConfirmation } from "@/lib/mcp/confirmations"
+import { consumeConfirmation, createConfirmation, preparePayload } from "@/lib/mcp/confirmations"
 import { defineTool } from "@/lib/mcp/define-tool"
 import { withIdempotency } from "@/lib/mcp/idempotency"
 import { safeText } from "@/lib/mcp/output"
@@ -133,10 +133,10 @@ export const getCustomerTool = defineTool({
 
 export const prepareCustomerTool = defineTool({
   name: "prepare_customer",
-  title: "Připravit zákazníka",
+  title: "Připravit zákazníka (neukládá)",
   description:
-    "Připraví vytvoření nebo úpravu zákazníka a vrátí souhrn s potvrzovacím tokenem. " +
-    "Nic neukládá. Souhrn ukaž uživateli, vyžádej si výslovný souhlas a teprve pak zavolej " +
+    "NIC NEUKLÁDÁ. Jen připraví vytvoření nebo úpravu zákazníka a vrátí návrh s potvrzovacím " +
+    "tokenem; zákazník vznikne až voláním create_customer. Souhrn ukaž uživateli, vyžádej si výslovný souhlas a teprve pak zavolej " +
     "create_customer nebo update_customer se stejnými parametry a tímto tokenem.",
   inputSchema: {
     ...customerFields,
@@ -160,9 +160,16 @@ export const prepareCustomerTool = defineTool({
     })
 
     return {
-      payload: {
-        mode,
+      payload: preparePayload({
+        status:
+          mode === "create"
+            ? "NÁVRH — zákazník zatím NEBYL vytvořen"
+            : "NÁVRH — zákazník zatím NEBYL upraven",
+        executeTool: mode === "create" ? "create_customer" : "update_customer",
+        confirmation,
+        executeArguments: payload,
         summary: {
+          mode,
           name: safeText(args.name, 200),
           email: args.email ?? null,
           phone: args.phone ?? null,
@@ -170,14 +177,9 @@ export const prepareCustomerTool = defineTool({
           nie: args.nie ?? null,
           nif: args.nif ?? null,
           is_business: args.is_business ?? false,
+          current: current ? presentCustomer(current) : null,
         },
-        current: current ? presentCustomer(current) : null,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        next_step:
-          "Ukaž uživateli souhrn a zeptej se na souhlas. Po potvrzení zavolej " +
-          `${mode === "create" ? "create_customer" : "update_customer"} se stejnými parametry a tímto tokenem.`,
-      },
+      }),
       resourceType: "customer",
       resourceId: args.customer_id ?? null,
     }
