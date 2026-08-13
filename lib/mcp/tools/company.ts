@@ -24,6 +24,7 @@ export const getCompanyProfileTool = defineTool({
     if (!company) {
       return {
         payload: {
+          account: { email: ctx.accountEmail },
           configured: false,
           hint: "Firemní údaje zatím nejsou vyplněné. Faktury je proto nebudou obsahovat.",
         },
@@ -33,6 +34,7 @@ export const getCompanyProfileTool = defineTool({
 
     return {
       payload: {
+        account: { email: ctx.accountEmail },
         configured: true,
         company: {
           company_name: safeText(company.company_name, 200),

@@ -48,10 +48,13 @@ export function mcpRequest(body: unknown, token?: string): Request {
   })
 }
 
+export const TEST_ACCOUNT_EMAIL = "terka@example.test"
+
 export function fakeDeps(db: FakeDatabase) {
   return {
     createClient: async (userId: string): Promise<SupabaseClient> =>
       createFakeSupabaseClient(db, userId),
+    resolveEmail: async (): Promise<string | null> => TEST_ACCOUNT_EMAIL,
   }
 }
 

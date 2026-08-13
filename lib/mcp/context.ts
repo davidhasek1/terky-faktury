@@ -11,6 +11,8 @@ export interface McpContext {
   userId: string
   clientId: string
   scope: string
+  /** E-mail účtu, pod kterým se pracuje. `null`, když ho nejde zjistit. */
+  accountEmail: string | null
   service: ServiceContext
 }
 
@@ -18,12 +20,14 @@ export function createMcpContext(params: {
   userId: string
   clientId: string
   scope: string
+  accountEmail: string | null
   supabase: SupabaseClient
 }): McpContext {
   return {
     userId: params.userId,
     clientId: params.clientId,
     scope: params.scope,
+    accountEmail: params.accountEmail,
     service: { supabase: params.supabase, userId: params.userId },
   }
 }

@@ -1,7 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"
 
 import { corsHeaders } from "@/lib/oauth/http"
-import { createUserScopedClient } from "@/lib/supabase/user-scoped"
+import { createUserScopedClient, getAccountEmail } from "@/lib/supabase/user-scoped"
 
 import { authenticateRequest } from "./auth"
 import { createMcpContext } from "./context"
@@ -23,9 +23,14 @@ export const MAX_REQUEST_BYTES = 256 * 1024
 export interface McpHandlerDeps {
   /** Vytvoří Supabase klienta jménem ověřeného uživatele. V testech se nahrazuje. */
   createClient: typeof createUserScopedClient
+  /** E-mail účtu pro výstup nástrojů. Bere se ze stejné cache jako token. */
+  resolveEmail: typeof getAccountEmail
 }
 
-const defaultDeps: McpHandlerDeps = { createClient: createUserScopedClient }
+const defaultDeps: McpHandlerDeps = {
+  createClient: createUserScopedClient,
+  resolveEmail: getAccountEmail,
+}
 
 export async function handleMcpRequest(
   request: Request,
@@ -47,7 +52,8 @@ export async function handleMcpRequest(
   }
 
   const supabase = await deps.createClient(auth.identity.userId)
-  const ctx = createMcpContext({ ...auth.identity, supabase })
+  const accountEmail = await deps.resolveEmail(auth.identity.userId)
+  const ctx = createMcpContext({ ...auth.identity, accountEmail, supabase })
 
   const server = createMcpServer(ctx)
   const transport = new WebStandardStreamableHTTPServerTransport({

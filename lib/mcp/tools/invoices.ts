@@ -147,7 +147,8 @@ export const listInvoicesTool = defineTool({
   description:
     "Vrátí faktury přihlášeného uživatele s možností filtrovat podle stavu, zákazníka a období. " +
     "Použij na dotazy typu „nezaplacené faktury po splatnosti“ nebo „faktury klienta X“. " +
-    "Vrací nejvýše 50 záznamů, na další použij offset.",
+    "Vrací nejvýše 50 záznamů, na další použij offset. Ve výsledku je i e-mail účtu — když je " +
+    "seznam prázdný, uveď ho, ať uživatel pozná, že je konektor připojený k jinému účtu.",
   inputSchema: {
     status: z
       .enum(["all", "paid", "unpaid", "overdue"])
@@ -166,6 +167,7 @@ export const listInvoicesTool = defineTool({
     const invoices = await listInvoices(ctx.service, args)
     return {
       payload: {
+        account: { email: ctx.accountEmail },
         invoices: invoices.map(presentInvoiceSummary),
         count: invoices.length,
         has_more: invoices.length === args.limit,
@@ -199,7 +201,8 @@ export const getInvoiceSummaryTool = defineTool({
   title: "Souhrn fakturace",
   description:
     "Vrátí agregovaný přehled: počty a částky celkem, zaplacené, nezaplacené a po splatnosti. " +
-    "Použij na dotazy typu „kolik mi dluží“ nebo „jak jsem na tom letos“.",
+    "Použij na dotazy typu „kolik mi dluží“ nebo „jak jsem na tom letos“. Ve výsledku je i e-mail " +
+    "účtu — když jsou počty nulové, uveď ho, ať uživatel pozná, že je konektor připojený jinam.",
   inputSchema: {},
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   scope: "invoices:read",
@@ -208,6 +211,7 @@ export const getInvoiceSummaryTool = defineTool({
     const stats = await getInvoiceStats(ctx.service)
     return {
       payload: {
+        account: { email: ctx.accountEmail },
         counts: {
           total: stats.total,
           paid: stats.paid,

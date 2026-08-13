@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { RATE_LIMITS } from "@/lib/mcp/rate-limit"
 
 import { createFakeDatabase, type FakeDatabase } from "../helpers/fake-supabase"
-import { callTool, rpc, tokenFor } from "../helpers/mcp-client"
+import { callTool, rpc, tokenFor, TEST_ACCOUNT_EMAIL } from "../helpers/mcp-client"
 import { seedActivity, seedCustomer, seedInvoice } from "../helpers/seed"
 
 const OWNER = "11111111-1111-4111-8111-111111111111"
@@ -72,6 +72,29 @@ describe("čtecí nástroje", () => {
       total: { amount: "221.00", currency: "EUR" },
       overdue: { amount: "100.00", currency: "EUR" },
     })
+  })
+})
+
+describe("identita účtu ve výstupu", () => {
+  // Když se konektor připojí k jinému účtu, vypadá prázdná odpověď stejně
+  // jako prázdný účet. E-mail ve výstupu ten rozdíl zviditelní.
+  it("prázdný seznam faktur nese e-mail účtu", async () => {
+    const result = await callTool(db, token, "list_invoices", {})
+
+    expect(result.data?.count).toBe(0)
+    expect(result.data?.account).toMatchObject({ email: TEST_ACCOUNT_EMAIL })
+  })
+
+  it("souhrn fakturace nese e-mail účtu", async () => {
+    const result = await callTool(db, token, "get_invoice_summary", {})
+    expect(result.data?.account).toMatchObject({ email: TEST_ACCOUNT_EMAIL })
+  })
+
+  it("nevyplněný firemní profil nese e-mail účtu", async () => {
+    const result = await callTool(db, token, "get_company_profile", {})
+
+    expect(result.data?.configured).toBe(false)
+    expect(result.data?.account).toMatchObject({ email: TEST_ACCOUNT_EMAIL })
   })
 })
 

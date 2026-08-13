@@ -240,6 +240,7 @@ musí token mít.
 | Nástroj | Typ | Oprávnění | Účel |
 | --- | --- | --- | --- |
 | `search_customers` | čtení | `invoices:read` | Najde kandidáty podle jména, e-mailu, NIE nebo NIF. Vrací seznam, nikdy nevybírá sám. |
+| — | — | — | *`list_invoices`, `get_invoice_summary` a `get_company_profile` vracejí navíc `account.email` — u prázdné odpovědi je z ní pak poznat, že je konektor připojený k jinému účtu.* |
 | `get_customer` | čtení | `invoices:read` | Úplné údaje jednoho zákazníka. |
 | `prepare_customer` | příprava | `invoices:write` | Návrh vytvoření či úpravy + potvrzovací token. |
 | `create_customer` | zápis | `invoices:write` | Založí zákazníka. Vyžaduje potvrzení. |
@@ -337,10 +338,16 @@ vyrobit sám — prostý parametr `confirmed: true` by nestačil.
 
 1. **`prepare_*`** spočítá výsledek, uloží do databáze otisk parametrů
    (SHA-256 kanonizovaného JSONu) a vrátí:
+   - `saved: false` a `status` — slovy, co se ještě **nestalo**,
+   - `required_action` — jméno nástroje, který musí ještě proběhnout,
    - `summary` — přesně to, co se stane,
    - `warnings` — např. „faktura už byla odeslána",
    - `confirmation_token` — jednorázový, platný 5 minut,
    - `execute_arguments` — hotové argumenty pro zapisující nástroj.
+
+   První dvě pole jsou tam z tvrdé zkušenosti: souhrn vypadá jako hotový
+   doklad, takže model jednou `prepare_invoice` ohlásil jako vystavenou
+   fakturu a zapisující nástroj vůbec nezavolal.
 2. **ChatGPT ukáže souhrn** a vyžádá si tvůj výslovný souhlas.
 3. **Zapisující nástroj** dostane token a stejné parametry.
 4. **Databáze ověří** (`mcp_consume_confirmation`), že token patří témuž
