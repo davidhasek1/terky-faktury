@@ -116,11 +116,14 @@ export function DueTimeline({
 
             // Víc faktur se stejnou splatností nemá jeden jednoznačný cíl, kam
             // odkaz vést — místo výmyslu na cíl je značka jen nositelka
-            // detailu v tooltipu.
+            // detailu v tooltipu. Není to tlačítko: nic se po kliknutí ani
+            // Enteru nestane, takže nemá smysl tvářit se, že je aktivní.
+            // tabIndex ji přesto nechává dosažitelnou klávesnicí, aby šel
+            // tooltip zobrazit i bez myši.
             return (
-              <button
+              <span
                 key={group.daysFromToday}
-                type="button"
+                tabIndex={0}
                 style={{ left }}
                 aria-label={`${group.items.length} ${invoiceCountLabel(group.items.length)}, celkem ${formatCurrency(group.total)}, splatnost ${formatDate(group.items[0].due_date)}`}
                 className="group absolute top-12 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -143,7 +146,7 @@ export function DueTimeline({
                     {formatCurrency(group.total)} · {formatDate(group.items[0].due_date)}
                   </span>
                 </span>
-              </button>
+              </span>
             )
           })}
         </div>
