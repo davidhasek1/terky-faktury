@@ -17,6 +17,7 @@ import {
   listInvoices,
   setInvoicePayment,
   updateInvoice,
+  type InvoiceDetail,
 } from "@/lib/services/invoices"
 import { idempotencyKeySchema } from "@/lib/validation/common"
 import { MAX_INVOICE_ITEMS, invoiceInputSchema } from "@/lib/validation/invoices"
@@ -112,6 +113,24 @@ function addDays(date: string, days: number): string {
   const result = new Date(`${date}T00:00:00Z`)
   result.setUTCDate(result.getUTCDate() + days)
   return result.toISOString().slice(0, 10)
+}
+
+/** Existující faktura jako výchozí hodnoty pro částečnou úpravu. */
+function existingAsArgs(invoice: InvoiceDetail): Required<Omit<InvoiceArgs, "invoice_id">> {
+  return {
+    customer_id: invoice.customer_id,
+    items: invoice.items.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+    })),
+    issue_date: invoice.issue_date,
+    due_date: invoice.due_date,
+    tax_rate: invoice.tax_rate,
+    retention_rate: invoice.retention_rate,
+    notes: invoice.notes ?? null,
+    currency: "EUR",
+  }
 }
 
 async function resolveInvoice(
@@ -330,19 +349,52 @@ export const updateInvoiceTool = defineTool({
   name: "update_invoice",
   title: "Upravit fakturu",
   description:
-    "Přepíše existující fakturu včetně všech položek. Dvoufázové: nejdřív bez confirmation_token " +
-    "pro návrh, po souhlasu uživatele znovu se stejnými argumenty a s tokenem. Pokud už byla " +
-    "faktura odeslána zákazníkovi, upozorni, že ji bude potřeba odeslat znovu.",
+    "Upraví existující fakturu. Posílej JEN pole, která se mají změnit — co neuvedeš, zůstane " +
+    "jak bylo. Pozor: když pošleš items, nahradí VŠECHNY stávající položky, takže na doplnění " +
+    "jedné položky si nejdřív načti fakturu přes get_invoice a pošli i ty původní. Dvoufázové: " +
+    "nejdřív bez confirmation_token pro návrh, po souhlasu uživatele znovu se stejnými argumenty " +
+    "a s tokenem. Pokud už byla faktura odeslána zákazníkovi, upozorni, že ji bude potřeba " +
+    "odeslat znovu.",
   inputSchema: {
-    ...invoiceFields,
     invoice_id: z.string().uuid().describe("Identifikátor upravované faktury."),
+    customer_id: z
+      .string()
+      .uuid()
+      .optional()
+      .describe("Jen když se má faktura přepsat na jiného zákazníka."),
+    items: z
+      .array(invoiceItemShape)
+      .min(1)
+      .max(MAX_INVOICE_ITEMS)
+      .optional()
+      .describe("Jen když se mají položky změnit. Nahradí VŠECHNY stávající položky."),
+    issue_date: invoiceFields.issue_date,
+    due_date: invoiceFields.due_date,
+    tax_rate: invoiceFields.tax_rate,
+    retention_rate: invoiceFields.retention_rate,
+    notes: invoiceFields.notes,
+    currency: invoiceFields.currency,
+    confirmation_token: invoiceFields.confirmation_token,
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
     const existing = await getInvoice(ctx.service, args.invoice_id)
-    const { resolved, customerName } = await resolveInvoice(ctx, args)
+    const current = existingAsArgs(existing)
+
+    // Co uživatel neuvedl, zůstává jak bylo — jinak by „posuň splatnost"
+    // znamenalo poslat znovu i všechny položky a riskovat jejich přepsání.
+    const { resolved, customerName } = await resolveInvoice(ctx, {
+      customer_id: args.customer_id ?? current.customer_id,
+      items: args.items ?? current.items,
+      issue_date: args.issue_date ?? current.issue_date,
+      due_date: args.due_date ?? current.due_date,
+      tax_rate: args.tax_rate ?? current.tax_rate,
+      retention_rate: args.retention_rate ?? current.retention_rate,
+      notes: args.notes === undefined ? current.notes : args.notes,
+      currency: "EUR",
+    })
     const draft = await buildInvoiceDraft(ctx.service, toServiceInput(resolved))
 
     return twoPhase(ctx, {

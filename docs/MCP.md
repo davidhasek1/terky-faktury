@@ -259,7 +259,7 @@ musí token mít.
 | `get_invoice_summary` | čtení | `invoices:read` | Agregace: počty a částky celkem / zaplaceno / nezaplaceno / po splatnosti. |
 | `get_invoice_download_link` | čtení | `invoices:read` | Veřejný odkaz na PDF (ten samý, co dostane zákazník). |
 | `create_invoice` | zápis | `invoices:write` | Vystaví fakturu. Číslo přiděluje databáze. Dvoufázový. |
-| `update_invoice` | zápis | `invoices:write` | Přepíše fakturu včetně položek. Dvoufázový. |
+| `update_invoice` | zápis | `invoices:write` | Upraví fakturu. Neuvedená pole zůstávají; `items` nahrazuje všechny položky. Dvoufázový. |
 | `set_invoice_payment` | zápis | `invoices:write` | Označí zaplaceno / zruší platbu. Dvoufázový. |
 | `send_invoice_email` | **riziková** | `invoices:write` | Odešle fakturu zákazníkovi. Nevratné. |
 | `delete_invoice` | **destruktivní** | `invoices:write` | Trvale smaže fakturu i položky. |

@@ -98,6 +98,7 @@ describe("MCP endpoint /mcp", () => {
     expect(required("set_invoice_payment")).toEqual(["invoice_id"])
     expect(required("create_invoice")).toEqual(["customer_id", "items"])
     expect(required("create_customer")).toEqual(["name"])
+    expect(required("update_invoice")).toEqual(["invoice_id"])
 
     // confirmation_token je vždy volitelný — první fáze ho nemá čím vyplnit.
     for (const name of ["create_invoice", "create_customer", "delete_invoice"]) {

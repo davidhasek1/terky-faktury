@@ -122,6 +122,27 @@ describe("faktura", () => {
     const updated = await confirm("update_invoice", args, await draft("update_invoice", args))
     expect(updated.success).toBe(true)
   })
+
+  it("úprava jednoho pole nechá zbytek faktury být", async () => {
+    // „Posuň splatnost o týden" nesmí znamenat, že model musí znovu poslat
+    // zákazníka i všechny položky — a riskovat, že je zrekonstruuje špatně.
+    const customerId = seedCustomer(db, OWNER)
+    const invoiceId = seedInvoice(db, OWNER, customerId)
+    const args = { invoice_id: invoiceId, due_date: "2026-09-30" }
+
+    const prepared = await draft("update_invoice", args)
+    const summary = prepared.data?.summary as Record<string, unknown>
+    expect(summary.due_date).toBe("2026-09-30")
+    expect(summary.total).toMatchObject({ amount: "121.00" })
+
+    const updated = await confirm("update_invoice", args, prepared)
+
+    expect(updated.success).toBe(true)
+    expect(db.invoices[0].due_date).toBe("2026-09-30")
+    expect(db.invoices[0].total).toBe(121)
+    expect(db.invoice_items).toHaveLength(1)
+    expect(db.invoice_items[0].description).toBe("Úklid apartmánu")
+  })
 })
 
 describe("operace nad fakturou mají přirozené argumenty", () => {
