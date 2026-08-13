@@ -43,3 +43,29 @@ export function oauthError(
     { status, headers: extraHeaders },
   )
 }
+
+/**
+ * Obal pro OAuth routy.
+ *
+ * Bez něj se neočekávaná chyba (chybějící tabulka, nenastavená proměnná
+ * prostředí, výpadek databáze) změní v holou 500 bez těla. Klient — třeba
+ * ChatGPT při zakládání konektoru — pak hlásí jen „registration endpoint
+ * returned 500" a nikdo nepozná proč.
+ *
+ * Ven jde tvar předepsaný RFC 6749 §5.2; skutečná příčina zůstává v logu.
+ */
+export async function withOAuthErrors(
+  route: string,
+  handler: () => Promise<NextResponse>,
+): Promise<NextResponse> {
+  try {
+    return await handler()
+  } catch (error) {
+    console.error(`[oauth] ${route} selhalo:`, error)
+    return oauthError(
+      "server_error",
+      "Server nemohl požadavek zpracovat. Zkuste to prosím znovu později.",
+      500,
+    )
+  }
+}

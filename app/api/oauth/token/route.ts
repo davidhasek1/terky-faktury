@@ -1,6 +1,6 @@
 import { resourceIdentifier } from "@/lib/oauth/config"
 import { sha256Base64Url, timingSafeEqual, verifyPkce } from "@/lib/oauth/crypto"
-import { jsonResponse, oauthError, preflightResponse } from "@/lib/oauth/http"
+import { jsonResponse, oauthError, preflightResponse, withOAuthErrors } from "@/lib/oauth/http"
 import {
   consumeAuthorizationCode,
   findRefreshToken,
@@ -22,6 +22,10 @@ import { issueAccessToken } from "@/lib/oauth/tokens"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
+  return withOAuthErrors("token", () => exchange(request))
+}
+
+async function exchange(request: Request) {
   const form = await readForm(request)
   if (!form) return oauthError("invalid_request", "Očekáván formulářový formát těla")
 

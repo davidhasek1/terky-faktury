@@ -1,4 +1,4 @@
-import { jsonResponse, preflightResponse } from "@/lib/oauth/http"
+import { jsonResponse, preflightResponse, withOAuthErrors } from "@/lib/oauth/http"
 import { findRefreshToken, revokeRefreshTokenFamily } from "@/lib/oauth/store"
 
 /**
@@ -14,6 +14,10 @@ import { findRefreshToken, revokeRefreshTokenFamily } from "@/lib/oauth/store"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
+  return withOAuthErrors("revoke", () => revoke(request))
+}
+
+async function revoke(request: Request) {
   let token: FormDataEntryValue | null = null
 
   try {

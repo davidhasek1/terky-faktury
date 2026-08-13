@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { baseUrl, normalizeScope, resourceIdentifier } from "@/lib/oauth/config"
-import { oauthError } from "@/lib/oauth/http"
+import { oauthError, withOAuthErrors } from "@/lib/oauth/http"
 import { getClient, storeAuthorizationCode } from "@/lib/oauth/store"
 import { signAuthorizationRequest, verifyAuthorizationRequest } from "@/lib/oauth/tokens"
 import { createClient } from "@/lib/supabase/server"
@@ -19,6 +19,10 @@ import { createClient } from "@/lib/supabase/server"
 export const dynamic = "force-dynamic"
 
 export async function GET(request: Request) {
+  return withOAuthErrors("authorize", () => startAuthorization(request))
+}
+
+async function startAuthorization(request: Request) {
   const params = new URL(request.url).searchParams
 
   const clientId = params.get("client_id")
@@ -89,6 +93,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  return withOAuthErrors("authorize", () => completeAuthorization(request))
+}
+
+async function completeAuthorization(request: Request) {
   const form = await request.formData()
   const requestToken = form.get("request")
   const decision = form.get("decision")

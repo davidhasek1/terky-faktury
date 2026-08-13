@@ -297,6 +297,56 @@ describe("refresh token", () => {
   })
 })
 
+describe("nedostupné úložiště", () => {
+  /**
+   * Přesně tenhle stav nastal v produkci: migrace se neaplikovaly, tabulka
+   * oauth_clients neexistovala a routa padala na holou 500 bez těla, takže
+   * z hlášky ChatGPT nešlo poznat, co se děje.
+   */
+  function breakStorage() {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    shared.db = null
+    return spy
+  }
+
+  it("registrace vrátí OAuth chybu, ne prázdnou 500", async () => {
+    const spy = breakStorage()
+    const { status, body } = await registerClient()
+    spy.mockRestore()
+
+    expect(status).toBe(500)
+    expect(body.error).toBe("server_error")
+    expect(body.error_description).toBeTruthy()
+  })
+
+  it("token endpoint vrátí OAuth chybu, ne prázdnou 500", async () => {
+    const spy = breakStorage()
+    const response = await tokenRequest({
+      grant_type: "authorization_code",
+      client_id: "cokoli",
+      code: "cokoli",
+      code_verifier: VERIFIER,
+      redirect_uri: "https://chatgpt.com/connector_platform_oauth_redirect",
+    })
+    const body = (await response.json()) as Record<string, string>
+    spy.mockRestore()
+
+    expect(response.status).toBe(500)
+    expect(body.error).toBe("server_error")
+  })
+
+  it("chybová hláška neprozradí interní detail", async () => {
+    const spy = breakStorage()
+    const { body } = await registerClient()
+    spy.mockRestore()
+
+    const serialized = JSON.stringify(body)
+    expect(serialized).not.toContain("oauth_clients")
+    expect(serialized).not.toContain("supabase")
+    expect(serialized).not.toContain("TypeError")
+  })
+})
+
 describe("PKCE", () => {
   it("přijme jen metodu S256", async () => {
     const challenge = await sha256Base64Url(VERIFIER)
