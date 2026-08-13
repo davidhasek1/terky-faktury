@@ -44,7 +44,7 @@ export function ActivityStatusToggle({ activityId, status }: ActivityStatusToggl
       disabled={isPending}
       className={cn(
         "inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-medium transition-opacity",
-        isPaid ? "text-emerald-700" : "text-muted-foreground",
+        isPaid ? "text-status-settled-fg" : "text-muted-foreground",
         isPending && "opacity-60",
       )}
       aria-label={isPaid ? "Označit jako nezaplacené" : "Označit jako zaplacené"}
@@ -52,7 +52,7 @@ export function ActivityStatusToggle({ activityId, status }: ActivityStatusToggl
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full",
-          isPaid ? "bg-emerald-500" : "bg-muted-foreground/60",
+          isPaid ? "bg-status-settled-line" : "bg-muted-foreground/60",
         )}
         aria-hidden="true"
       />

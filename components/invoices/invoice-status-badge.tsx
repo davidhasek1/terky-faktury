@@ -4,27 +4,26 @@ import { cn } from "@/lib/utils"
 /**
  * Stav faktury v seznamu.
  *
- * Dřív to byl jen barevný text s tečkou, který v tabulce plné stejně drobného
- * písma zanikal — a „po splatnosti" mělo brand fialovou, tedy stejnou barvu
- * jako odkazy a tlačítka, takže se to nečetlo jako výstraha. Teď má štítek
- * podbarvení a rámeček a barvy sedí na souhrnné karty nad tabulkou.
+ * Barvy jdou z teplotní škály v token systému, ne z Tailwind palety — stejná
+ * škála pohání i časovou osu splatnosti, takže „po splatnosti" má všude
+ * v aplikaci jeden odstín.
  */
 
 const STYLES: Record<InvoiceStatus, { label: string; badge: string; dot: string }> = {
   paid: {
     label: "Zaplaceno",
-    badge: "bg-emerald-50 text-emerald-800 ring-emerald-600/25",
-    dot: "bg-emerald-500",
+    badge: "bg-status-settled-bg text-status-settled-fg ring-status-settled-line/30",
+    dot: "bg-status-settled-line",
   },
   unpaid: {
     label: "Nezaplaceno",
-    badge: "bg-amber-50 text-amber-800 ring-amber-600/25",
-    dot: "bg-amber-500",
+    badge: "bg-status-due-bg text-status-due-fg ring-status-due-line/30",
+    dot: "bg-status-due-line",
   },
   overdue: {
     label: "Po splatnosti",
-    badge: "bg-rose-100 text-rose-900 ring-rose-600/35",
-    dot: "bg-rose-600",
+    badge: "bg-status-overdue-bg text-status-overdue-fg ring-status-overdue-line/40",
+    dot: "bg-status-overdue-line",
   },
 }
 
@@ -35,7 +34,7 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
     <span
       className={cn(
         "inline-flex items-center gap-2 whitespace-nowrap rounded-full px-2.5 py-1 ring-1 ring-inset",
-        "text-[10px] uppercase tracking-[0.14em] font-semibold",
+        "text-[11px] font-medium",
         style.badge,
       )}
     >

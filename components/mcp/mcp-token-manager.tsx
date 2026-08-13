@@ -401,7 +401,7 @@ function tokenState(token: PersonalTokenSummary) {
     return { label: "Vypršel", tone: "text-primary", dot: "bg-primary", active: false }
   }
 
-  return { label: "Platný", tone: "text-emerald-700", dot: "bg-emerald-500", active: true }
+  return { label: "Platný", tone: "text-status-settled-fg", dot: "bg-status-settled-line", active: true }
 }
 
 function claudeConfig(mcpUrl: string): string {
