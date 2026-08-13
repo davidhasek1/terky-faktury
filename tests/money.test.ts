@@ -92,3 +92,15 @@ describe("převody na hranici databáze", () => {
     expect(formatScaled(12_100)).toContain("€")
   })
 })
+
+describe("české formátování", () => {
+  it("odděluje tisíce nedělitelnou mezerou a měnu dává dozadu", () => {
+    // cs-CZ: U+00A0 jako oddělovač tisíců i před symbolem měny.
+    expect(formatScaled(123_456)).toBe("1 234,56 €")
+  })
+
+  it("nepoužívá španělské formátování", () => {
+    // es-ES vracelo "1234,56 €" — bez oddělovače tisíců.
+    expect(formatScaled(123_456)).not.toBe("1234,56 €")
+  })
+})

@@ -85,9 +85,9 @@ function roundHalfUp(value: number): number {
   return value < 0 ? -Math.round(-value) : Math.round(value)
 }
 
-/** Formátování pro souhrny určené člověku i modelu (EUR, es-ES jako ve zbytku appky). */
+/** Formátování pro souhrny určené člověku i modelu (EUR, cs-CZ jako ve zbytku appky). */
 export function formatScaled(scaled: Scaled): string {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat("cs-CZ", {
     style: "currency",
     currency: "EUR",
   }).format(toDecimal(scaled))

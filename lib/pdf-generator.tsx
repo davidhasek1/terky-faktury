@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
 
 // Helper funkce pro formátování měny
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat("cs-CZ", {
     style: "currency",
     currency: "EUR",
   }).format(amount)
@@ -149,7 +149,7 @@ const formatCurrency = (amount: number) => {
 
 // Helper funkce pro formátování data
 const formatDate = (date: string) => {
-  return new Intl.DateTimeFormat("es-ES").format(new Date(date))
+  return new Intl.DateTimeFormat("cs-CZ").format(new Date(date))
 }
 
 // PDF komponenta
