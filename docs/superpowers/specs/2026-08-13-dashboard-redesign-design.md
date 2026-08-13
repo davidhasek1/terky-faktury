@@ -106,15 +106,32 @@ a `!important` záplaty mizí.
 Tři role. Tvrdé omezení, které rozhoduje o výběru: **latin-ext** — bez něj se
 rozsype `ě š č ř ž ů`. Všechny tři vybrané řezy ho mají.
 
-- **Display — Bricolage Grotesque.** Variabilní, s vlastním charakterem.
-  Nahrazuje Poppins (geometrický default). Používá se střídmě: titulky
-  stránek a velké částky, vždy s `tabular-nums`.
+- **Display — Poppins.** Zůstává z původního návrhu. Používá se střídmě:
+  titulky stránek a velké částky, vždy s `tabular-nums`.
 - **Body — Inter.** Zůstává. Pro české UI je to správný nástroj.
 - **Identifikátory — IBM Plex Mono.** Čísla faktur, variabilní symbol, IČO,
-  popisky časové osy.
+  popisky časové osy. Nahrazuje GeistMono.
 
 Rozdíl je významový, ne dekorativní: **hodnoty** (částky) jdou display řezem,
 **identifikátory** (čísla dokladů) monem. Peníze čte člověk, doklady úřad.
+
+### Poznámka k revizi
+
+Původní návrh měnil displejový řez z Poppins na Bricolage Grotesque
+s odůvodněním, že Poppins je geometrický default. Rozhodnutím uživatele
+**Poppins zůstává** — změna řezu se ruší, mění se jen mono řez.
+
+Z toho plyne druhá odchylka: `app/globals.css` si ponechává aliasy
+
+```css
+--font-serif: var(--font-display);
+--font-mono:  var(--font-ident);
+```
+
+takže stávající třídy `font-serif` a `font-mono` dál fungují a plošné
+přejmenování tříd napříč repem odpadá. Je to vědomý ústupek proti pravidlu
+„jedna role, jedno jméno" — aliasy jsou tenká vrstva nad tokeny, ne druhý
+zdroj hodnot, takže tokenová vrstva zůstává jediným zdrojem pravdy.
 
 ## Layout
 
