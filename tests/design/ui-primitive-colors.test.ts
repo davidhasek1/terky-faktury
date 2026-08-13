@@ -11,12 +11,12 @@ import { describe, expect, it } from "vitest"
 // let the mobile sidebar drawer render white instead of the dark "ink spine"
 // sidebar background, because the inline hex/`!important` beat the
 // `bg-sidebar` className passed in from the caller.
-//
-// Scoped to sheet.tsx only for now. dropdown-menu.tsx, alert-dialog.tsx and
-// select.tsx still carry the same patches (verified: they also contain
-// `!bg-`/`!text-`/`!border-` and hardcoded hex/rgba in inline styles) — a
-// later task is expected to clean those up and can widen FILES below.
-const FILES = ["components/ui/sheet.tsx"]
+const FILES = [
+  "components/ui/sheet.tsx",
+  "components/ui/dropdown-menu.tsx",
+  "components/ui/alert-dialog.tsx",
+  "components/ui/select.tsx",
+]
 
 const IMPORTANT_COLOR_UTILITY = /!(?:bg|text|border)-[\w-]+/
 const HARDCODED_STYLE_COLOR = /style=\{\{[^}]*(#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\))[^}]*\}\}/

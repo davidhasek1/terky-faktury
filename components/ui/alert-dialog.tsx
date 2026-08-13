@@ -23,13 +23,10 @@ function AlertDialogOverlay({ className, ...props }: React.ComponentProps<typeof
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       style={{
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        backdropFilter: "blur(2px)",
-        zIndex: 400,
-        pointerEvents: "none", // Allow pointer events to pass through to elements with higher z-index (like Popover)
+        zIndex: "var(--layer-overlay)",
       }}
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 bg-foreground/50",
         className,
       )}
       {...props}
@@ -44,17 +41,14 @@ function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         style={{
-          backgroundColor: "#ffffff",
-          opacity: 1,
-          zIndex: 401,
-          pointerEvents: "auto", // Re-enable pointer events for the dialog content
+          zIndex: "var(--layer-dialog)",
         }}
         className={cn(
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           "fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]",
           "grid w-full max-w-[calc(100%-2rem)] gap-4",
-          "!bg-white dark:!bg-gray-950",
-          "rounded-lg border-2 !border-gray-300 dark:!border-gray-700",
+          "bg-popover text-popover-foreground",
+          "rounded-lg border-2 border-gray-300 dark:border-gray-700",
           "p-6 shadow-2xl duration-200 sm:max-w-lg",
           className,
         )}
