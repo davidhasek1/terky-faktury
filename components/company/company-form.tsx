@@ -82,10 +82,10 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
             <Input {...field("company_name")} required />
           </FormField>
           <FormRow>
-            <FormField id="nie" label="IČO">
+            <FormField id="nie" label="NIE">
               <Input {...field("nie")} inputMode="numeric" />
             </FormField>
-            <FormField id="nif" label="DIČ">
+            <FormField id="nif" label="NIF">
               <Input {...field("nif")} />
             </FormField>
           </FormRow>

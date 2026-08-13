@@ -77,8 +77,8 @@ export default async function CustomersPage() {
                 <TableHead>Název</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefon</TableHead>
-                <TableHead>IČO</TableHead>
-                <TableHead>DIČ</TableHead>
+                <TableHead>NIE</TableHead>
+                <TableHead>NIF</TableHead>
                 <TableHead>Typ</TableHead>
                 <TableHead align="right">Akce</TableHead>
               </>

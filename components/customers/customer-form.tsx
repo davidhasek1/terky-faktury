@@ -90,7 +90,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           </FormField>
 
           <FormRow>
-            <FormField id="ico" label="IČO">
+            <FormField id="ico" label="NIE">
               <Input
                 id="ico"
                 inputMode="numeric"
@@ -98,7 +98,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                 onChange={(e) => setFormData({ ...formData, ico: e.target.value })}
               />
             </FormField>
-            <FormField id="dic" label="DIČ">
+            <FormField id="dic" label="NIF">
               <Input
                 id="dic"
                 value={formData.dic}
