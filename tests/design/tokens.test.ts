@@ -45,9 +45,11 @@ describe("vrstva tokenů", () => {
 
 describe("hranice tokenů", () => {
   it("nedovolí komponentám sáhnout na primitivní token", () => {
+    const skipDirs = new Set(["node_modules", ".next"])
     const offenders: string[] = []
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir)) {
+        if (skipDirs.has(entry)) continue
         const path = join(dir, entry)
         if (statSync(path).isDirectory()) walk(path)
         else if (/\.tsx?$/.test(path) && readFileSync(path, "utf8").includes("--tf-")) {
@@ -56,6 +58,8 @@ describe("hranice tokenů", () => {
       }
     }
     walk("components")
+    walk("app")
+    walk("lib")
     expect(offenders).toEqual([])
   })
 })

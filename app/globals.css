@@ -51,6 +51,7 @@
   --radius-sm: var(--tf-radius-sm);
   --radius-md: var(--tf-radius-md);
   --radius-lg: var(--tf-radius-lg);
+  --radius-xl: var(--tf-radius-xl);
 }
 
 @layer base {
