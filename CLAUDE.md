@@ -114,7 +114,21 @@ Next.js 15 route handlers receive `params` as a `Promise` — every route under 
 
 ### UI
 
-shadcn/ui (style: `new-york`, base color: `neutral`) under `components/ui/`. Primitives are Radix-based. Feature components are grouped by domain: `components/{company,customers,invoices,layout}/`. Tailwind v4 — config is in `app/globals.css` via `@theme`; there is **no** `tailwind.config.*` file.
+Three component layers, each built only on the one below it:
+
+- `components/ui/` — shadcn/ui primitives (style: `new-york`, base color: `neutral`), Radix-based. No domain knowledge.
+- `components/patterns/` — domain-free composites built from primitives: `page-shell.tsx`, `page-header.tsx`, `data-table.tsx`, `stat-tile.tsx`, `empty-state.tsx`, `section-label.tsx`, `step-label.tsx`. They know layout and visual rhythm, not invoices or customers.
+- `components/app-shell/` — the navigation chrome: `sidebar.tsx`, `topbar.tsx`, `user-menu.tsx`, `nav-items.ts`.
+
+Feature components stay grouped by domain on top of those two layers: `components/{activities,company,customers,invoices,mcp}/`.
+
+Two-tier design tokens, both under `styles/`. `styles/tokens.css` is the primitive layer — raw `--tf-*` values (ink/canvas colors, the due-date temperature scale, spacing, radius, shadow, the z-index layer scale). Components never read `--tf-*` directly; `tests/design/tokens.test.ts` walks `components/`, `app/` and `lib/` and fails if any file does. `styles/semantic.css` is the layer components actually read — shadcn-named variables (`--background`, `--border`, `--sidebar`, `--status-overdue-fg`, …) that resolve to the primitives; it's the single source of truth for what a component is allowed to style with. `app/globals.css` imports both and maps them into Tailwind's `@theme`. Status colors (overdue/due/upcoming/settled) must come from this token layer, never raw Tailwind palette classes — `tests/design/status-colors.test.ts` guards the full Tailwind palette, not just a few color names.
+
+There is **no dark mode**. It was removed; there is no `.dark` class and nothing adds one, so a `dark:` variant anywhere is dead code that can never apply — don't reintroduce it.
+
+`app/(app)/` is a route group holding every page that needs a signed-in user; its `layout.tsx` renders `Sidebar` around them. Pages outside that group — `app/auth/*`, `app/invoices/download/[publicId]`, `app/mcp`, the OAuth routes — render with no sidebar and must stay reachable without auth (see `PUBLIC_PATH_PREFIXES` in `lib/supabase/middleware.ts`, which both route gating and layout rely on).
+
+Tailwind v4 — config is in `app/globals.css` via `@theme`; there is **no** `tailwind.config.*` file.
 
 UI copy is **Czech**. The codebase had stray Spanish strings from the v0 origin which were cleaned up — don't reintroduce them.
 
