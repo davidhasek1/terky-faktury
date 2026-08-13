@@ -15,8 +15,7 @@ environment (Production, Preview, Development) or the build/runtime will fail.
 | `SENDER_NAME` | no | Display name in `From`. Defaults to `Faktury` |
 | `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` | no | Override auth redirect base; otherwise uses `window.location.origin` |
 | `MCP_TOKEN_SECRET` | yes | Signs MCP access tokens. Min 32 chars (`openssl rand -base64 48`) |
-| `SUPABASE_JWT_SECRET` | yes | Supabase legacy JWT secret; lets the MCP layer act as the user under RLS |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-only key for the OAuth store and public invoice download |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-only key for the OAuth store, the public invoice download, and minting user sessions for MCP |
 
 `NEXT_PUBLIC_SITE_URL` must match the public origin exactly — the OAuth
 `issuer` and `resource` identifiers are derived from it, and ChatGPT will

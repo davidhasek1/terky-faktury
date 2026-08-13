@@ -68,14 +68,23 @@ na obou místech naráz, protože je jen jeden: `lib/services/invoice-totals.ts`
 ### Jak MCP vystupuje vůči databázi
 
 MCP nemá cookie session, ale autorizaci nechceme přesouvat do aplikačního kódu.
-`lib/supabase/user-scoped.ts` proto podepíše krátkodobý Supabase JWT
-(`sub` = id uživatele, `role` = `authenticated`) klíčem `SUPABASE_JWT_SECRET`
-a pošle ho v hlavičce. Databáze vidí přesně stejnou identitu jako při práci
-v prohlížeči a **platí úplně stejná RLS pravidla**.
+`lib/supabase/user-scoped.ts` si proto od Supabase vyžádá **skutečný access
+token** daného uživatele: přes Auth Admin API vyrobí `generateLink` jednorázový
+`hashed_token` (e-mail se neodesílá, endpoint jen generuje) a `verifyOtp` ho
+vymění za session. Token se drží v paměti procesu do konce své platnosti,
+takže na jedno volání auth API připadá zhruba hodina provozu.
 
-Service-role klíč se v MCP cestě nepoužívá vůbec. Sahají na něj jen dvě místa,
-kde žádný přihlášený uživatel neexistuje: úložiště OAuth klientů a veřejné
-stažení faktury podle `public_id`.
+Databáze díky tomu vidí přesně stejnou identitu jako při práci v prohlížeči
+a **platí úplně stejná RLS pravidla**.
+
+Vlastní podepisování tokenu tu záměrně není: projekt běží na asymetrických
+podpisových klíčích a jejich privátní půlku Supabase ven nevydává. Legacy HS256
+secret by fungoval, ale je ve stavu „previously used" a Supabase sám doporučuje
+ho revokovat — integrace by jednou tiše odešla.
+
+Service-role klíč slouží jen tam, kde žádný přihlášený uživatel neexistuje:
+úložiště OAuth klientů, veřejné stažení faktury podle `public_id` a právě
+vydání uživatelského tokenu výše. Data nástrojů se přes něj nikdy nečtou.
 
 ---
 
@@ -406,8 +415,7 @@ a v tabulce v `DEPLOYMENT.md`):
 | Proměnná | Povinná | Popis |
 | --- | --- | --- |
 | `MCP_TOKEN_SECRET` | ano | Tajemství pro podpis access tokenů a autorizačních požadavků. Alespoň 32 znaků. Vygeneruj `openssl rand -base64 48`. |
-| `SUPABASE_JWT_SECRET` | ano | *Legacy JWT secret* projektu (Supabase → Project Settings → API → JWT Settings). MCP jím podepisuje uživatelský token, aby platila RLS. |
-| `SUPABASE_SERVICE_ROLE_KEY` | ano | Servisní klíč pro úložiště OAuth a veřejné stažení faktury. **Nikdy nesmí do prohlížeče.** |
+| `SUPABASE_SERVICE_ROLE_KEY` | ano | Servisní klíč pro úložiště OAuth, veřejné stažení faktury a vydávání uživatelských session pro MCP. **Nikdy nesmí do prohlížeče.** |
 
 `NEXT_PUBLIC_SITE_URL` musí přesně odpovídat veřejné doméně — skládá se z ní
 `issuer` i `resource` v OAuth metadatech. Když nesedí, ChatGPT konektor
@@ -480,6 +488,7 @@ Co je pokryté:
 | Audit | `tests/mcp/tools.test.ts` |
 | OAuth: registrace, PKCE, rotace, reuse detection, revokace | `tests/oauth/flow.test.ts` |
 | Osobní tokeny: generování, oprávnění, odvolání, expirace, izolace | `tests/mcp/personal-tokens.test.ts` |
+| Vydávání uživatelského Supabase tokenu, cache a chyby | `tests/mcp/user-scoped.test.ts` |
 | Peníze a výpočty faktury | `tests/money.test.ts` |
 | Servisní vrstva | `tests/services/invoices.test.ts` |
 
@@ -537,9 +546,8 @@ v `lib/mcp/define-tool.ts`.
 1. **Migrace.** Push na `master` spustí `supabase db push`
    (viz `DEPLOYMENT.md`). Migrace `014` zakládá tabulky pro OAuth a MCP,
    `015` ruší děravé veřejné RLS politiky a `016` přidává osobní tokeny.
-2. **Proměnné prostředí.** Do Vercelu doplň `MCP_TOKEN_SECRET`,
-   `SUPABASE_JWT_SECRET` a `SUPABASE_SERVICE_ROLE_KEY` do všech prostředí,
-   ve kterých má MCP fungovat.
+2. **Proměnné prostředí.** Do Vercelu doplň `MCP_TOKEN_SECRET`
+   a `SUPABASE_SERVICE_ROLE_KEY` do všech prostředí, ve kterých má MCP fungovat.
 3. **Doména.** Zkontroluj, že `NEXT_PUBLIC_SITE_URL` odpovídá produkční
    doméně (ne `*.vercel.app`, pokud používáš vlastní doménu).
 4. **Ověření po nasazení:**

@@ -81,7 +81,7 @@ There are four entry points in `lib/supabase/` and they are not interchangeable:
 - `server.ts` → `createClient()` — server components / route handlers. Reads cookies, respects RLS as the signed-in user.
 - `client.ts` → `createClient()` — client components. Browser-side, persists session.
 - `proxy.ts` → `updateSession()` — only called from the root `proxy.ts`.
-- `user-scoped.ts` → `createUserScopedClient(userId)` — for requests with no cookies (the MCP endpoint). Signs a short-lived Supabase JWT so **RLS still applies** as that user.
+- `user-scoped.ts` → `createUserScopedClient(userId)` — for requests with no cookies (the MCP endpoint). Asks Supabase Auth for a real short-lived access token for that user, so **RLS still applies** as that user. Tokens are cached in process memory until they expire.
 - `service-role.ts` → `createServiceRoleClient()` — **bypasses RLS**. Only for the OAuth store and the public invoice download, where no user session exists and the query is pinned to a single unguessable token.
 
 Never instantiate `createClient` from `@supabase/supabase-js` directly — always go through these wrappers so cookie/RLS behavior stays consistent.
@@ -122,7 +122,7 @@ UI copy is **Czech**. The codebase had stray Spanish strings from the v0 origin 
 
 All listed in `.env.example`; canonical reference (with required-vs-optional and notes) is the table in `DEPLOYMENT.md`. The required-in-prod set:
 
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `SENDER_EMAIL`, `MCP_TOKEN_SECRET`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `SENDER_EMAIL`, `MCP_TOKEN_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 `NEXT_PUBLIC_SITE_URL` must match the public origin exactly — the OAuth `issuer`
 and `resource` identifiers are derived from it.
