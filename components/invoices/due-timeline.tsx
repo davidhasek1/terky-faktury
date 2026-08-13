@@ -100,10 +100,14 @@ export function DueTimeline({
                   key={group.daysFromToday}
                   href={`/invoices/${item.id}/view`}
                   style={{ left }}
+                  aria-label={`Faktura ${item.invoice_number}, ${formatCurrency(item.total)}, splatnost ${formatDate(item.due_date)}`}
                   className="group absolute top-12 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className={cn("block size-3 rounded-full ring-2 ring-card", MARK[group.bucket])} />
-                  <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:block group-focus-visible:block">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:block group-focus-visible:block"
+                  >
                     {item.invoice_number} · {formatCurrency(item.total)} · {formatDate(item.due_date)}
                   </span>
                 </Link>
@@ -118,6 +122,7 @@ export function DueTimeline({
                 key={group.daysFromToday}
                 type="button"
                 style={{ left }}
+                aria-label={`${group.items.length} ${invoiceCountLabel(group.items.length)}, celkem ${formatCurrency(group.total)}, splatnost ${formatDate(group.items[0].due_date)}`}
                 className="group absolute top-12 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span
@@ -128,7 +133,10 @@ export function DueTimeline({
                 >
                   {group.items.length}
                 </span>
-                <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:flex group-focus-visible:flex">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:flex group-focus-visible:flex"
+                >
                   <span>{group.items.map((item) => item.invoice_number).join(", ")}</span>
                   <span className="text-background/70">
                     {group.items.length} {invoiceCountLabel(group.items.length)} ·{" "}
