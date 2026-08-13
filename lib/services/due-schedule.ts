@@ -68,9 +68,12 @@ export function buildDueSchedule<
     overdue: scheduled.filter((e) => e.bucket === "overdue"),
     due: scheduled.filter((e) => e.bucket === "due"),
     upcoming: scheduled.filter((e) => e.bucket === "upcoming"),
+    // Rozpětí musí vždy obsahovat i dnešek (0), jinak DNES značka vyjde
+    // mimo kartu — třeba když jsou všechny faktury v budoucnu (min: 3)
+    // nebo všechny po splatnosti (max: -5).
     span: {
-      min: days.length ? Math.min(...days) : 0,
-      max: days.length ? Math.max(...days) : 0,
+      min: Math.min(0, ...days),
+      max: Math.max(0, ...days),
     },
   }
 }

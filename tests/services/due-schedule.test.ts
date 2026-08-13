@@ -55,6 +55,32 @@ describe("buildDueSchedule", () => {
     expect(buildDueSchedule([], today).span).toEqual({ min: 0, max: 0 })
   })
 
+  it("rozpětí vždy obsahuje dnešek, i když jsou všechny faktury v budoucnu", () => {
+    // Zdravý stav — nic po splatnosti — je nejběžnější, a přesto by bez
+    // ukotvení na nule vyšla DNES značka mimo kartu (left: -11.1 %).
+    const s = buildDueSchedule([inv("2026-08-16"), inv("2026-09-12")], today)
+    expect(s.span).toEqual({ min: 0, max: 30 })
+    const pos = axisPosition(0, s.span)
+    expect(pos).toBeGreaterThanOrEqual(0)
+    expect(pos).toBeLessThanOrEqual(1)
+  })
+
+  it("rozpětí vždy obsahuje dnešek, i když jsou všechny faktury po splatnosti", () => {
+    const s = buildDueSchedule([inv("2026-08-08"), inv("2026-07-14")], today)
+    expect(s.span).toEqual({ min: -30, max: 0 })
+    const pos = axisPosition(0, s.span)
+    expect(pos).toBeGreaterThanOrEqual(0)
+    expect(pos).toBeLessThanOrEqual(1)
+  })
+
+  it("při jediné nezaplacené faktuře se DNES značka nekryje se značkou faktury", () => {
+    const s = buildDueSchedule([inv("2026-08-23")], today)
+    expect(s.span).toEqual({ min: 0, max: 10 })
+    const todayPos = axisPosition(0, s.span)
+    const invoicePos = axisPosition(s.upcoming[0].daysFromToday, s.span)
+    expect(todayPos).not.toBe(invoicePos)
+  })
+
   it("je agnostické k místnímu času — faktura splatná dnes je vždy due, nikdy overdue", () => {
     // new Date(2026, 7, 14, 0, 30) = 14 August 00:30 local time
     // V Prague = 2026-08-13T22:30:00Z, ale kalendář místního uživatele říká "dnes je 14. srpna"
