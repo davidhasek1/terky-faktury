@@ -182,7 +182,7 @@ export function InvoiceActions({ invoiceId, isPaid = false, customerEmail }: Inv
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Opravdu chcete smazat fakturu?</AlertDialogTitle>
+            <AlertDialogTitle>Opravdu chceš smazat fakturu?</AlertDialogTitle>
             <AlertDialogDescription>
               Tato akce je nevratná. Faktura a všechny její položky budou trvale smazány.
             </AlertDialogDescription>

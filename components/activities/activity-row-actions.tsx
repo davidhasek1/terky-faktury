@@ -78,7 +78,7 @@ export function ActivityRowActions({ customerId, activityId }: ActivityRowAction
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Opravdu chcete smazat aktivitu?</AlertDialogTitle>
+            <AlertDialogTitle>Opravdu chceš smazat aktivitu?</AlertDialogTitle>
             <AlertDialogDescription>
               Tato akce je nevratná. Aktivita a všechny její služby budou trvale smazány.
             </AlertDialogDescription>

@@ -69,7 +69,7 @@ export function MarkAsPaidButton({ invoiceId, open, onOpenChange, onSuccess }: M
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Označit fakturu jako zaplacenou?</AlertDialogTitle>
-          <AlertDialogDescription>Vyberte datum proplacení faktury:</AlertDialogDescription>
+          <AlertDialogDescription>Vyber datum proplacení faktury:</AlertDialogDescription>
         </AlertDialogHeader>
         <div className="flex justify-center py-4">
           <Input

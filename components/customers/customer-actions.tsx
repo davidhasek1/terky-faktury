@@ -68,7 +68,7 @@ export function CustomerActions({ customerId }: CustomerActionsProps) {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Opravdu chcete smazat zákazníka?</AlertDialogTitle>
+            <AlertDialogTitle>Opravdu chceš smazat zákazníka?</AlertDialogTitle>
             <AlertDialogDescription>
               Tato akce je nevratná. Zákazník a všechny jeho faktury budou trvale smazány.
             </AlertDialogDescription>
