@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { InvoiceForm } from "@/components/invoices/invoice-form"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 
 export default async function NewInvoicePage() {
   const supabase = await createClient()
@@ -22,17 +24,16 @@ export default async function NewInvoicePage() {
   const resetKey = Math.random()
 
   return (
-    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-5xl">
-      <PageHeader
-        eyebrow="Nový dokument"
-        title={
-          <>
-            Nová <span className="text-primary">faktura</span>
-          </>
-        }
-        description="Vystavte fakturu pro zákazníka. Po uložení ji můžete stáhnout jako PDF nebo poslat e-mailem."
-      />
-      <InvoiceForm key={resetKey} customers={customers || []} />
-    </div>
+    <>
+      <Topbar title="Nová faktura" />
+      <PageShell width="narrow">
+        <PageHeader
+          eyebrow="Nový dokument"
+          title="Nová faktura"
+          description="Vystav fakturu pro zákazníka. Po uložení ji můžeš stáhnout jako PDF nebo poslat e-mailem."
+        />
+        <InvoiceForm key={resetKey} customers={customers || []} />
+      </PageShell>
+    </>
   )
 }

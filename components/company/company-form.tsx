@@ -9,7 +9,7 @@ import { upsertCompanyDetails } from "@/lib/services/company"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SectionLabel } from "@/components/layout/section-label"
+import { SectionLabel } from "@/components/patterns/section-label"
 import { toast } from "sonner"
 import type { CompanyDetails } from "@/lib/types"
 
@@ -64,7 +64,7 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-12 sm:space-y-16">
       <section>
-        <SectionLabel number="01" title="Základní údaje" />
+        <SectionLabel title="Základní údaje" />
         <div className="grid gap-6 sm:gap-8">
           <Field
             id="company_name"
@@ -91,7 +91,7 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
       </section>
 
       <section>
-        <SectionLabel number="02" title="Adresa" />
+        <SectionLabel title="Adresa" />
         <div className="grid gap-6 sm:gap-8">
           <Field
             id="street"
@@ -123,7 +123,7 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
       </section>
 
       <section>
-        <SectionLabel number="03" title="Kontakt" />
+        <SectionLabel title="Kontakt" />
         <div className="grid md:grid-cols-2 gap-6">
           <Field
             id="email"
@@ -142,7 +142,7 @@ export function CompanyForm({ companyDetails }: CompanyFormProps) {
       </section>
 
       <section>
-        <SectionLabel number="04" title="Platební údaje" />
+        <SectionLabel title="Platební údaje" />
         <div className="grid gap-6 sm:gap-8">
           <Field
             id="bank_name"

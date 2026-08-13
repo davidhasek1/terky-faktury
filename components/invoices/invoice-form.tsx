@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Trash2 } from 'lucide-react';
 import { z } from 'zod';
-import { SectionLabel } from '@/components/layout/section-label';
+import { SectionLabel } from '@/components/patterns/section-label';
 import { INVOICE_ITEM_DESCRIPTIONS } from '@/lib/invoice-items';
 import { formatScaled, parseDecimal, toDecimal, type Scaled } from '@/lib/money';
 import { createBrowserServiceContext } from '@/lib/services/browser-context';
@@ -283,7 +283,7 @@ export function InvoiceForm({
 
       <form onSubmit={handleSubmit} className='space-y-12 sm:space-y-16'>
         <section>
-          <SectionLabel number='01' title='Detaily' />
+          <SectionLabel title='Detaily' />
           <div className='grid gap-6 sm:gap-8 md:grid-cols-2'>
             <div className='space-y-2'>
               <Label htmlFor='invoice_number' className={fieldLabel}>
@@ -407,10 +407,7 @@ export function InvoiceForm({
         <section>
           <div className='flex items-center justify-between gap-4 mb-6 sm:mb-8'>
             <div className='flex items-center gap-3 min-w-0 flex-1'>
-              <span className='flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-semibold tabular-nums'>
-                02
-              </span>
-              <span className='font-serif font-semibold text-lg sm:text-xl text-foreground'>
+              <span className='font-display font-semibold text-lg sm:text-xl text-foreground'>
                 Položky
               </span>
               <span className='flex-1 h-px bg-border' aria-hidden='true' />
@@ -515,7 +512,7 @@ export function InvoiceForm({
         </section>
 
         <section>
-          <SectionLabel number='03' title='Souhrn' />
+          <SectionLabel title='Souhrn' />
           <div className='rounded-2xl border border-border/70 bg-card px-6 py-8 sm:px-10 sm:py-10 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]'>
             <div className='space-y-3 max-w-md ml-auto'>
               <SummaryRow
@@ -546,7 +543,7 @@ export function InvoiceForm({
         </section>
 
         <section>
-          <SectionLabel number='04' title='Poznámky' />
+          <SectionLabel title='Poznámky' />
           <Textarea
             id='notes'
             value={formData.notes}

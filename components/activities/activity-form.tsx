@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Plus, Trash2 } from "lucide-react"
-import { SectionLabel } from "@/components/layout/section-label"
+import { SectionLabel } from "@/components/patterns/section-label"
 import { formatScaled, parseDecimal, type Scaled } from "@/lib/money"
 import { createActivity, updateActivity } from "@/lib/services/activities"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
@@ -128,7 +128,7 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
   return (
     <form onSubmit={handleSubmit} className="space-y-12">
       <section>
-        <SectionLabel number="01" title="Detaily" />
+        <SectionLabel title="Detaily" />
         <div className="max-w-xs space-y-2">
           <Label htmlFor="activity_date" className={fieldLabel}>
             Datum
@@ -144,7 +144,7 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
       </section>
 
       <section>
-        <SectionLabel number="02" title="Služby" />
+        <SectionLabel title="Služby" />
         <div className="space-y-4">
           {services.map((row, index) => (
             <div

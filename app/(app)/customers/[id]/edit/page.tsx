@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { CustomerForm } from "@/components/customers/customer-form"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 import { notFound } from "next/navigation"
 
 export default async function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,17 +16,16 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-3xl">
-      <PageHeader
-        eyebrow="Úprava záznamu"
-        title={
-          <>
-            <span className="text-primary">{customer.name}</span>
-          </>
-        }
-        description="Upravte údaje zákazníka. Změny se promítnou do nově vystavovaných faktur."
-      />
-      <CustomerForm customer={customer} />
-    </div>
+    <>
+      <Topbar title={customer.name} />
+      <PageShell width="narrow">
+        <PageHeader
+          eyebrow="Úprava záznamu"
+          title={customer.name}
+          description="Uprav údaje zákazníka. Změny se promítnou do nově vystavovaných faktur."
+        />
+        <CustomerForm customer={customer} />
+      </PageShell>
+    </>
   )
 }

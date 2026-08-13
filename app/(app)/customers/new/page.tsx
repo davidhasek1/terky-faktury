@@ -1,19 +1,20 @@
 import { CustomerForm } from "@/components/customers/customer-form"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 
 export default function NewCustomerPage() {
   return (
-    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-3xl">
-      <PageHeader
-        eyebrow="Nový záznam"
-        title={
-          <>
-            Nový <span className="text-primary">zákazník</span>
-          </>
-        }
-        description="Přidejte protistranu — adresa, daňová čísla a kontakt se objeví na faktuře."
-      />
-      <CustomerForm />
-    </div>
+    <>
+      <Topbar title="Nový zákazník" />
+      <PageShell width="narrow">
+        <PageHeader
+          eyebrow="Nový záznam"
+          title="Nový zákazník"
+          description="Přidej protistranu — adresa, daňová čísla a kontakt se objeví na faktuře."
+        />
+        <CustomerForm />
+      </PageShell>
+    </>
   )
 }

@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { CompanyForm } from "@/components/company/company-form"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 
 export default async function CompanyPage() {
   const supabase = await createClient()
@@ -21,18 +23,17 @@ export default async function CompanyPage() {
     .maybeSingle()
 
   return (
-    <div className="container mx-auto px-4 sm:px-8 py-10 sm:py-16 max-w-4xl">
-      <PageHeader
-        eyebrow="Vystavovatel"
-        title={
-          <>
-            Moje <span className="text-primary">údaje</span>
-          </>
-        }
-        description="Tyto údaje se zobrazí na všech vašich fakturách jako informace o vystavovateli."
-      />
+    <>
+      <Topbar title="Moje údaje" />
+      <PageShell width="narrow">
+        <PageHeader
+          eyebrow="Vystavovatel"
+          title="Moje údaje"
+          description="Tyto údaje se zobrazí na všech tvých fakturách jako informace o vystavovateli."
+        />
 
-      <CompanyForm companyDetails={companyDetails} />
-    </div>
+        <CompanyForm companyDetails={companyDetails} />
+      </PageShell>
+    </>
   )
 }

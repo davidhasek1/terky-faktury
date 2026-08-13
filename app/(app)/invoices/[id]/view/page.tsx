@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Download, ArrowLeft, CheckCircle, Mail } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageShell } from "@/components/patterns/page-shell"
 import { InvoicePreview } from "@/components/invoices/invoice-preview"
 import { MarkAsPaidButton } from "@/components/invoices/mark-as-paid-button"
 import { DateTimeDisplay } from "@/components/ui/date-time-display"
@@ -32,57 +34,58 @@ export default async function ViewInvoicePage({ params }: { params: Promise<{ id
   ])
 
   return (
-    <div className="container mx-auto py-8 sm:py-12 px-4 sm:px-8 max-w-5xl">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
+    <>
+      <Topbar
+        title={`Faktura ${invoice.invoice_number}`}
+        action={
+          <div className="flex items-center gap-2">
+            {!invoice.paid_date && <MarkAsPaidButton invoiceId={invoice.id} />}
+            <form action={`/api/invoices/${id}/pdf`} method="GET">
+              <Button type="submit" size="sm">
+                <Download className="size-4" />
+                Stáhnout PDF
+              </Button>
+            </form>
+          </div>
+        }
+      />
+      <PageShell>
         <Button
           variant="ghost"
           asChild
-          className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground -ml-3"
+          className="-ml-3 mb-6 text-muted-foreground hover:text-foreground"
         >
           <Link href="/invoices">
-            <ArrowLeft className="mr-2 h-3.5 w-3.5" />
+            <ArrowLeft className="size-4" />
             Zpět na faktury
           </Link>
         </Button>
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          {!invoice.paid_date && <MarkAsPaidButton invoiceId={invoice.id} />}
-          <form action={`/api/invoices/${id}/pdf`} method="GET">
-            <Button type="submit" className="text-[11px] uppercase tracking-[0.22em] shadow-none">
-              <Download className="mr-2 h-3.5 w-3.5" />
-              Stáhnout PDF
-            </Button>
-          </form>
-        </div>
-      </div>
 
-      {(invoice.paid_date || invoice.email_sent_at) && (
-        <div className="grid sm:grid-cols-2 gap-3 mb-8">
-          {invoice.paid_date && (
-            <div className="flex items-center gap-3 border border-status-settled-line/30 bg-status-settled-bg px-5 py-4">
-              <CheckCircle className="h-4 w-4 text-status-settled-fg shrink-0" />
-              <p className="text-sm text-status-settled-fg">
-                <span className="text-[10px] uppercase tracking-[0.22em] text-status-settled-fg/70 mr-2">
-                  Zaplaceno
-                </span>
-                {new Date(invoice.paid_date).toLocaleDateString("cs-CZ")}
-              </p>
-            </div>
-          )}
-          {invoice.email_sent_at && (
-            <div className="flex items-center gap-3 border border-border bg-secondary/50 px-5 py-4">
-              <Mail className="h-4 w-4 text-primary shrink-0" />
-              <p className="text-sm text-foreground">
-                <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mr-2">
-                  E-mail
-                </span>
-                <DateTimeDisplay date={invoice.email_sent_at} />
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+        {(invoice.paid_date || invoice.email_sent_at) && (
+          <div className="mb-8 grid gap-3 sm:grid-cols-2">
+            {invoice.paid_date && (
+              <div className="flex items-center gap-3 rounded-lg border border-status-settled-line/30 bg-status-settled-bg px-5 py-4">
+                <CheckCircle className="size-4 shrink-0 text-status-settled-fg" />
+                <p className="text-sm text-status-settled-fg">
+                  <span className="mr-2 text-xs text-status-settled-fg/70">Zaplaceno</span>
+                  {new Date(invoice.paid_date).toLocaleDateString("cs-CZ")}
+                </p>
+              </div>
+            )}
+            {invoice.email_sent_at && (
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 px-5 py-4">
+                <Mail className="size-4 shrink-0 text-primary" />
+                <p className="text-sm text-foreground">
+                  <span className="mr-2 text-xs text-muted-foreground">E-mail</span>
+                  <DateTimeDisplay date={invoice.email_sent_at} />
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
-      <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />
-    </div>
+        <InvoicePreview invoice={invoice} items={items || []} companyDetails={companyDetails} />
+      </PageShell>
+    </>
   )
 }

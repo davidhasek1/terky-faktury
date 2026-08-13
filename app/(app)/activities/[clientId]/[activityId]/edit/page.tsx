@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 import { ActivityForm } from "@/components/activities/activity-form"
 import type { Activity, ActivityService } from "@/lib/types"
 
@@ -46,21 +48,20 @@ export default async function EditActivityPage(context: PageProps) {
   const existingServices: ActivityService[] = activity.services ?? []
 
   return (
-    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-4xl">
-      <PageHeader
-        eyebrow="Upravit aktivitu"
-        title={
-          <>
-            {customer.name}
-          </>
-        }
-        description="Upravte zaznamenané služby a datum aktivity."
-      />
-      <ActivityForm
-        customerId={clientId}
-        activity={activity}
-        existingServices={existingServices}
-      />
-    </div>
+    <>
+      <Topbar title={customer.name} />
+      <PageShell width="narrow">
+        <PageHeader
+          eyebrow="Upravit aktivitu"
+          title={customer.name}
+          description="Uprav zaznamenané služby a datum aktivity."
+        />
+        <ActivityForm
+          customerId={clientId}
+          activity={activity}
+          existingServices={existingServices}
+        />
+      </PageShell>
+    </>
   )
 }

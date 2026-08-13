@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { InvoiceForm } from "@/components/invoices/invoice-form"
-import { PageHeader } from "@/components/layout/page-header"
+import { Topbar } from "@/components/app-shell/topbar"
+import { PageHeader } from "@/components/patterns/page-header"
+import { PageShell } from "@/components/patterns/page-shell"
 import { notFound } from "next/navigation"
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,17 +28,16 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="container mx-auto py-10 sm:py-16 px-4 sm:px-8 max-w-5xl">
-      <PageHeader
-        eyebrow="Úprava faktury"
-        title={
-          <>
-            Faktura <span className="text-primary">{invoice.invoice_number}</span>
-          </>
-        }
-        description="Upravte údaje, položky nebo poznámku. Změny se uloží po stisku tlačítka."
-      />
-      <InvoiceForm customers={customers || []} invoice={invoice} existingItems={items || []} />
-    </div>
+    <>
+      <Topbar title={`Faktura ${invoice.invoice_number}`} />
+      <PageShell width="narrow">
+        <PageHeader
+          eyebrow="Úprava faktury"
+          title={`Faktura ${invoice.invoice_number}`}
+          description="Uprav údaje, položky nebo poznámku. Změny se uloží po stisku tlačítka."
+        />
+        <InvoiceForm customers={customers || []} invoice={invoice} existingItems={items || []} />
+      </PageShell>
+    </>
   )
 }

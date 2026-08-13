@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { SectionLabel } from "@/components/layout/section-label"
+import { SectionLabel } from "@/components/patterns/section-label"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
 import { createCustomer, updateCustomer } from "@/lib/services/customers"
 import { customerInputSchema } from "@/lib/validation/customers"
@@ -70,7 +70,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-12 sm:space-y-16">
       <section>
-        <SectionLabel number="01" title="Identifikace" />
+        <SectionLabel title="Identifikace" />
         <div className="grid gap-6 sm:gap-8">
           <Field
             id="name"
@@ -110,7 +110,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
       </section>
 
       <section>
-        <SectionLabel number="02" title="Kontakt" />
+        <SectionLabel title="Kontakt" />
         <div className="grid gap-6 sm:gap-8">
           <div className="grid md:grid-cols-2 gap-6">
             <Field
