@@ -37,7 +37,7 @@ export default function ConnectionPage() {
           <StepLabel number="01" title="Adresa serveru" />
 
           {isLocal && (
-            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/40 bg-primary/5 px-5 py-4">
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-primary/40 bg-primary/5 px-5 py-4">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p className="text-sm text-foreground">
                 Aplikace zatím běží lokálně. ChatGPT na <code className="text-xs">localhost</code>{" "}
@@ -55,7 +55,7 @@ export default function ConnectionPage() {
         <section className="mb-14 sm:mb-20">
           <StepLabel number="02" title="Připojení k ChatGPT" />
 
-          <div className="rounded-2xl border border-border/70 bg-card px-5 py-6 sm:px-8 sm:py-8">
+          <div className="rounded-lg border border-border bg-card px-5 py-6 sm:px-8 sm:py-8">
             <p className="text-sm text-muted-foreground mb-6">
               Potřebuješ ChatGPT <strong>Plus</strong> nebo vyšší. Token si tady generovat nemusíš —
               ChatGPT se přihlásí sám tvým účtem.
@@ -109,7 +109,7 @@ export default function ConnectionPage() {
             {EXAMPLES.map((example) => (
               <div
                 key={example}
-                className="rounded-2xl border border-border/70 bg-card px-5 py-4 text-sm text-foreground"
+                className="rounded-lg border border-border bg-card px-5 py-4 text-sm text-foreground"
               >
                 „{example}"
               </div>

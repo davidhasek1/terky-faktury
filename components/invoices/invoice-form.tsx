@@ -421,7 +421,7 @@ export function InvoiceForm({
             }
           />
 
-          <div className='rounded-2xl border border-border/70 bg-card divide-y divide-border shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)] overflow-hidden'>
+          <div className='rounded-lg border border-border bg-card divide-y divide-border shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)] overflow-hidden'>
             {items.map((item, index) => (
               <div
                 key={index}
@@ -510,7 +510,7 @@ export function InvoiceForm({
 
         <section>
           <SectionLabel title='Souhrn' />
-          <div className='rounded-2xl border border-border/70 bg-card px-6 py-8 sm:px-10 sm:py-10 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]'>
+          <div className='rounded-lg border border-border bg-card px-6 py-8 sm:px-10 sm:py-10 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]'>
             <div className='space-y-3 max-w-md ml-auto'>
               <SummaryRow
                 label='Mezisoučet'

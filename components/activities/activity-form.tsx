@@ -149,7 +149,7 @@ export function ActivityForm({ customerId, activity, existingServices = [] }: Ac
           {services.map((row, index) => (
             <div
               key={index}
-              className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]"
+              className="rounded-lg border border-border bg-card p-5 sm:p-6 shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)]"
             >
               <div className="mb-5 flex items-center justify-between gap-3">
                 <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-[11px] font-semibold tabular-nums">
