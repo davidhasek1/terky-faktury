@@ -126,7 +126,7 @@ Two-tier design tokens, both under `styles/`. `styles/tokens.css` is the primiti
 
 There is **no dark mode**. It was removed; there is no `.dark` class and nothing adds one, so a `dark:` variant anywhere is dead code that can never apply — don't reintroduce it.
 
-`app/(app)/` is a route group holding every page that needs a signed-in user; its `layout.tsx` renders `Sidebar` around them. Pages outside that group — `app/auth/*`, `app/invoices/download/[publicId]`, `app/mcp`, the OAuth routes — render with no sidebar and must stay reachable without auth (see `PUBLIC_PATH_PREFIXES` in `lib/supabase/middleware.ts`, which both route gating and layout rely on).
+`app/(app)/` is a route group holding every page that needs a signed-in user; its `layout.tsx` renders `Sidebar` around them. Pages outside that group — `app/auth/*`, `app/invoices/download/[publicId]`, `app/mcp` — render with no sidebar and must stay reachable without auth (see `PUBLIC_PATH_PREFIXES` in `lib/supabase/proxy.ts`, which both route gating and layout rely on). The OAuth consent screen, `app/(app)/oauth/authorize/page.tsx`, is **inside** the group — it's an authenticated page like any other and gets the sidebar; only the API handlers `/api/oauth/{token,register,revoke}` are public (no layout at all, since they're never rendered).
 
 Tailwind v4 — config is in `app/globals.css` via `@theme`; there is **no** `tailwind.config.*` file.
 
