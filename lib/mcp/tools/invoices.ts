@@ -61,8 +61,12 @@ const invoiceFields = {
     .min(1)
     .max(MAX_INVOICE_ITEMS)
     .describe("Položky faktury. Alespoň jedna."),
-  issue_date: z.string().optional().describe("Datum vystavení (RRRR-MM-DD). Výchozí dnešek."),
-  due_date: z.string().optional().describe("Datum splatnosti. Výchozí 14 dní od vystavení."),
+  issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD")
+    .optional()
+    .describe("Datum vystavení. Výchozí dnešek."),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD")
+    .optional()
+    .describe("Datum splatnosti. Výchozí 14 dní od vystavení."),
   tax_rate: decimalString.optional().describe("Sazba DPH v %. Výchozí 21."),
   retention_rate: decimalString
     .optional()
@@ -157,8 +161,8 @@ export const listInvoicesTool = defineTool({
       .default("all")
       .describe("overdue = nezaplacené s datem splatnosti v minulosti."),
     customer_id: z.string().uuid().optional().describe("Omezení na jednoho zákazníka."),
-    issued_from: z.string().optional().describe("Vystaveno od (RRRR-MM-DD)."),
-    issued_to: z.string().optional().describe("Vystaveno do (RRRR-MM-DD)."),
+    issued_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").optional().describe("Vystaveno od."),
+    issued_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").optional().describe("Vystaveno do."),
     limit: z.number().int().min(1).max(50).default(20),
     offset: z.number().int().min(0).max(10_000).default(0),
   },
@@ -390,10 +394,9 @@ export const setInvoicePaymentTool = defineTool({
     "Dvoufázové: nejdřív bez confirmation_token pro návrh, po souhlasu uživatele znovu s tokenem.",
   inputSchema: {
     invoice_id: z.string().uuid().describe("Identifikátor faktury."),
-    paid_date: z
-      .string()
+    paid_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD")
       .nullish()
-      .describe("Datum úhrady (RRRR-MM-DD). Vynech nebo pošli null pro zrušení platby."),
+      .describe("Datum úhrady. Vynech nebo pošli null pro zrušení platby."),
     confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },

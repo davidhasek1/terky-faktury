@@ -35,7 +35,7 @@ const activityServiceShape = z.object({
 
 const activityFields = {
   customer_id: z.string().uuid().describe("Identifikátor zákazníka ze search_customers."),
-  activity_date: z.string().describe("Datum aktivity ve tvaru RRRR-MM-DD."),
+  activity_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").describe("Datum aktivity."),
   services: z
     .array(activityServiceShape)
     .min(1)
@@ -85,8 +85,8 @@ export const listActivitiesTool = defineTool({
   inputSchema: {
     customer_id: z.string().uuid().optional().describe("Omezení na jednoho zákazníka."),
     status: z.enum(["all", "paid", "unpaid"]).default("all"),
-    date_from: z.string().optional().describe("Od data (RRRR-MM-DD)."),
-    date_to: z.string().optional().describe("Do data (RRRR-MM-DD)."),
+    date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").optional().describe("Od data."),
+    date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").optional().describe("Do data."),
     limit: z.number().int().min(1).max(50).default(20),
     offset: z.number().int().min(0).max(10_000).default(0),
   },

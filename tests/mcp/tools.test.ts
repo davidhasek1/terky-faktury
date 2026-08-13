@@ -156,6 +156,25 @@ describe("validace vstupu", () => {
     expect(body?.result?.isError ?? body?.error).toBeTruthy()
   })
 
+  it("špatný formát data řekne, co je špatně — ne jen „nepodařilo se“", async () => {
+    // Regrese: ZodError ze servisní vrstvy se dřív měnil v INTERNAL_ERROR,
+    // takže model uživateli hlásil jen neurčitou chybu konektoru.
+    const customerId = seedCustomer(db, OWNER)
+    const invoiceId = seedInvoice(db, OWNER, customerId)
+
+    const { body } = await rpc(db, token, "tools/call", {
+      name: "set_invoice_payment",
+      arguments: { invoice_id: invoiceId, paid_date: "13. 8. 2026" },
+    })
+
+    // Schéma to zachytí ještě před obalem nástroje, ale zpráva musí říct proč.
+    const text = JSON.stringify(body?.result)
+    expect(body?.result?.isError).toBe(true)
+    expect(text).toContain("RRRR-MM-DD")
+    expect(text).toContain("paid_date")
+    expect(db.invoices[0].paid_date).toBeNull()
+  })
+
   it("odmítne nulové množství", async () => {
     const customerId = seedCustomer(db, OWNER)
     const result = await callTool(db, token, "create_invoice", {
