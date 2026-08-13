@@ -48,7 +48,7 @@ function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof
           "fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]",
           "grid w-full max-w-[calc(100%-2rem)] gap-4",
           "bg-popover text-popover-foreground",
-          "rounded-lg border-2 border-gray-300 dark:border-gray-700",
+          "rounded-lg border-2 border-border",
           "p-6 shadow-2xl duration-200 sm:max-w-lg",
           className,
         )}
