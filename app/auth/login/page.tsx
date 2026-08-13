@@ -6,7 +6,6 @@ import { LogIn } from 'lucide-react'
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { FormField } from "@/components/patterns/form-field"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -83,21 +82,19 @@ export default function LoginPage() {
             onChange={setEmail}
             placeholder="vas@email.cz"
           />
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-foreground"
-              >
-                Heslo
-              </Label>
+          <FormField
+            id="password"
+            label="Heslo"
+            required
+            labelAction={
               <Link
                 href="/auth/forgot-password"
-                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                className="text-xs text-muted-foreground transition-colors hover:text-primary"
               >
                 Zapomněla jsi?
               </Link>
-            </div>
+            }
+          >
             <Input
               id="password"
               type="password"
@@ -105,7 +102,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-          </div>
+          </FormField>
 
           {error && (
             <p className="font-serif text-sm text-primary">{error}</p>

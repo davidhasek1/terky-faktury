@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 export function FormField({
   id,
   label,
+  labelAction,
   required,
   hint,
   error,
@@ -24,6 +25,11 @@ export function FormField({
   /** Musí sedět na `id` ovládacího prvku, jinak popisek nikam neukazuje. */
   id: string
   label: string
+  /**
+   * Drobná akce na řádku popisku, zarovnaná doprava — třeba odkaz
+   * „Zapomněla jsi?" u hesla. Bez ní se popisek chová jako dřív.
+   */
+  labelAction?: ReactNode
   required?: boolean
   /** Krátká nápověda pod polem. Vysvětluje, ne prodává. */
   hint?: ReactNode
@@ -36,14 +42,17 @@ export function FormField({
 
   return (
     <div className={cn("space-y-2", className)} data-slot="form-field">
-      <Label htmlFor={id} className="text-sm font-medium text-foreground">
-        {label}
-        {required && (
-          <span className="text-destructive" aria-hidden="true">
-            *
-          </span>
-        )}
-      </Label>
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor={id} className="text-sm font-medium text-foreground">
+          {label}
+          {required && (
+            <span className="text-destructive" aria-hidden="true">
+              *
+            </span>
+          )}
+        </Label>
+        {labelAction}
+      </div>
 
       {/* Ovládací prvek si `aria-describedby` a `aria-invalid` nastaví sám —
           tady jen říkáme, na jaké id se má odkázat. */}

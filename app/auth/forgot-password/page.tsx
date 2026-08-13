@@ -6,7 +6,6 @@ import { Mail } from 'lucide-react'
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { FormField } from "@/components/patterns/form-field"
 import Link from "next/link"
 import { useState } from "react"
@@ -71,13 +70,12 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleResetPassword} className="space-y-6">
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-sm font-medium text-foreground"
-              >
-                Email
-              </Label>
+            <FormField
+              id="email"
+              label="Email"
+              required
+              hint="Pošleme na něj odkaz pro nastavení nového hesla."
+            >
               <Input
                 id="email"
                 type="email"
@@ -85,7 +83,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-            </div>
+            </FormField>
 
             {error && (
               <p className="font-serif text-sm text-primary">{error}</p>
