@@ -26,3 +26,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 emails/out/
+
+# SDD scratch (subagent-driven-development workspace)
+.superpowers/
