@@ -232,7 +232,7 @@ curl -s -X POST https://<doména>/mcp \
 
 ## Dostupné nástroje
 
-Všech 24 nástrojů vyžaduje platný token. Sloupec *Oprávnění* říká, jaký scope
+Všech 19 nástrojů vyžaduje platný token. Sloupec *Oprávnění* říká, jaký scope
 musí token mít.
 
 ### Zákazníci
@@ -242,9 +242,8 @@ musí token mít.
 | `search_customers` | čtení | `invoices:read` | Najde kandidáty podle jména, e-mailu, NIE nebo NIF. Vrací seznam, nikdy nevybírá sám. |
 | — | — | — | *`list_invoices`, `get_invoice_summary` a `get_company_profile` vracejí navíc `account.email` — u prázdné odpovědi je z ní pak poznat, že je konektor připojený k jinému účtu.* |
 | `get_customer` | čtení | `invoices:read` | Úplné údaje jednoho zákazníka. |
-| `prepare_customer` | příprava | `invoices:write` | Návrh vytvoření či úpravy + potvrzovací token. |
-| `create_customer` | zápis | `invoices:write` | Založí zákazníka. Vyžaduje potvrzení. |
-| `update_customer` | zápis | `invoices:write` | Přepíše údaje zákazníka. Vyžaduje potvrzení. |
+| `create_customer` | zápis | `invoices:write` | Založí zákazníka. Dvoufázový. |
+| `update_customer` | zápis | `invoices:write` | Přepíše údaje zákazníka. Dvoufázový. |
 
 ### Faktury
 
@@ -254,11 +253,9 @@ musí token mít.
 | `get_invoice` | čtení | `invoices:read` | Detail včetně položek a sazeb. |
 | `get_invoice_summary` | čtení | `invoices:read` | Agregace: počty a částky celkem / zaplaceno / nezaplaceno / po splatnosti. |
 | `get_invoice_download_link` | čtení | `invoices:read` | Veřejný odkaz na PDF (ten samý, co dostane zákazník). |
-| `prepare_invoice` | příprava | `invoices:write` | Spočítá fakturu a vrátí souhrn + token. Nic neukládá. |
-| `create_invoice` | zápis | `invoices:write` | Vystaví fakturu. Číslo přiděluje databáze. |
-| `update_invoice` | zápis | `invoices:write` | Přepíše fakturu včetně položek. |
-| `prepare_invoice_action` | příprava | `invoices:write` | Návrh operace: úhrada, zrušení platby, odeslání, smazání. |
-| `set_invoice_payment` | zápis | `invoices:write` | Označí zaplaceno / zruší platbu. |
+| `create_invoice` | zápis | `invoices:write` | Vystaví fakturu. Číslo přiděluje databáze. Dvoufázový. |
+| `update_invoice` | zápis | `invoices:write` | Přepíše fakturu včetně položek. Dvoufázový. |
+| `set_invoice_payment` | zápis | `invoices:write` | Označí zaplaceno / zruší platbu. Dvoufázový. |
 | `send_invoice_email` | **riziková** | `invoices:write` | Odešle fakturu zákazníkovi. Nevratné. |
 | `delete_invoice` | **destruktivní** | `invoices:write` | Trvale smaže fakturu i položky. |
 
@@ -268,11 +265,9 @@ musí token mít.
 | --- | --- | --- | --- |
 | `list_activities` | čtení | `invoices:read` | Záznamy úklidu, praní a servisu apartmánu. |
 | `get_activity` | čtení | `invoices:read` | Detail aktivity včetně služeb. |
-| `prepare_activity` | příprava | `invoices:write` | Návrh zápisu nebo úpravy + token. |
-| `create_activity` | zápis | `invoices:write` | Zapíše aktivitu. |
-| `update_activity` | zápis | `invoices:write` | Přepíše aktivitu včetně služeb. |
-| `prepare_activity_status` | příprava | `invoices:write` | Návrh změny stavu úhrady + token. |
-| `set_activity_status` | zápis | `invoices:write` | Označí aktivitu zaplacenou / nezaplacenou. |
+| `create_activity` | zápis | `invoices:write` | Zapíše aktivitu. Dvoufázový. |
+| `update_activity` | zápis | `invoices:write` | Přepíše aktivitu včetně služeb. Dvoufázový. |
+| `set_activity_status` | zápis | `invoices:write` | Označí aktivitu zaplacenou / nezaplacenou. Dvoufázový. |
 
 ### Firma
 
@@ -310,15 +305,15 @@ Zobraz nezaplacené faktury po splatnosti.
 ```
 Připrav fakturu klientovi ABC na 100 EUR.
 ```
-→ `search_customers` → `prepare_invoice` → souhrn (zákazník, položky, DPH,
-retención, datum vystavení i splatnosti, celkem) → čeká na tvůj souhlas →
-`create_invoice`.
+→ `search_customers` → `create_invoice` bez tokenu → souhrn (zákazník, položky,
+DPH, retención, datum vystavení i splatnosti, celkem) → čeká na tvůj souhlas →
+`create_invoice` znovu, se stejnými argumenty a s tokenem.
 
 ```
 Odešli potvrzenou fakturu klientovi ABC.
 ```
-→ `list_invoices` → `prepare_invoice_action` s `action: "send_email"` →
-souhrn s příjemcem a upozorněními → po souhlasu `send_invoice_email`.
+→ `list_invoices` → `send_invoice_email` bez tokenu → souhrn s příjemcem
+a upozorněními → po souhlasu `send_invoice_email` znovu, s tokenem.
 
 Další, co funguje:
 
@@ -336,23 +331,20 @@ Zapiš úklid u klienta ABC za 30 € na dnešek.
 Žádná zápisová operace se neprovede bez potvrzení. Model si potvrzení nemůže
 vyrobit sám — prostý parametr `confirmed: true` by nestačil.
 
-1. **`prepare_*`** spočítá výsledek, uloží do databáze otisk parametrů
+Obě fáze obstará **jeden nástroj, volaný dvakrát**:
+
+1. **Bez `confirmation_token`** nástroj spočítá výsledek, uloží otisk parametrů
    (SHA-256 kanonizovaného JSONu) a vrátí:
    - `saved: false` a `status` — slovy, co se ještě **nestalo**,
-   - `required_action` — jméno nástroje, který musí ještě proběhnout,
+   - `required_action` — jméno nástroje, který se má zavolat znovu,
    - `summary` — přesně to, co se stane,
    - `warnings` — např. „faktura už byla odeslána",
-   - `confirmation_token` — jednorázový, platný 5 minut,
-   - `execute_arguments` — hotové argumenty pro zapisující nástroj.
-
-   První dvě pole jsou tam z tvrdé zkušenosti: souhrn vypadá jako hotový
-   doklad, takže model jednou `prepare_invoice` ohlásil jako vystavenou
-   fakturu a zapisující nástroj vůbec nezavolal.
-2. **ChatGPT ukáže souhrn** a vyžádá si tvůj výslovný souhlas.
-3. **Zapisující nástroj** dostane token a stejné parametry.
-4. **Databáze ověří** (`mcp_consume_confirmation`), že token patří témuž
-   uživateli, témuž nástroji a nezměněným parametrům, a atomicky ho spotřebuje.
-5. Teprve pak proběhne operace.
+   - `confirmation_token` — jednorázový, platný 5 minut.
+2. **ChatGPT ukáže souhrn** a vyžádá si výslovný souhlas.
+3. **Tentýž nástroj se zavolá znovu** se stejnými argumenty plus tokenem.
+4. **Databáze ověří**, že token patří témuž uživateli, témuž nástroji
+   a nezměněným parametrům, a atomicky ho spotřebuje.
+5. Teprve pak proběhne operace a odpověď má `saved: true`.
 
 Token je neplatný, když: vypršel, už byl použit, patří jinému uživateli,
 nebo se změnil jakýkoli parametr (třeba jen částka).
@@ -360,6 +352,22 @@ nebo se změnil jakýkoli parametr (třeba jen částka).
 U vytvoření faktury souhrn vždy obsahuje klienta, částku, měnu, položky,
 množství, sazbu DPH, retención, datum vystavení, datum splatnosti a způsob
 úhrady.
+
+### Proč jeden nástroj místo dvou
+
+Původně na to byly nástroje dva — `prepare_*` a zapisující. V provozu to
+opakovaně selhalo, vždy na přechodu mezi nimi:
+
+- model ukázal souhrn z `prepare_invoice` a zapisující nástroj vůbec nezavolal,
+  takže uživateli faktura chyběla, i když mu ChatGPT oznámil úspěch,
+- zapisující schéma odmítlo `null`, které příprava sama vrátila,
+- do vstupního schématu se prosákl tvar otisku: mazání faktury vyžadovalo
+  `action: "delete"` a `paid_date: null`, což model nesestavil a klient volání
+  zahodil ještě před odesláním — takže po něm nezůstala stopa ani v auditu.
+
+Teď model volá stejný nástroj se stejnými argumenty a jen přidá token. Otisk se
+počítá až uvnitř z normalizovaných hodnot, takže netvoří veřejné rozhraní,
+a chybějící hodnoty (datum, sazby, měnu) doplní server v obou fázích stejně.
 
 ### Idempotence
 
@@ -488,6 +496,7 @@ Co je pokryté:
 | Nedostatečná oprávnění | `tests/mcp/tools.test.ts` |
 | Přístup k datům jiného uživatele | `tests/mcp/tools.test.ts`, `tests/services/invoices.test.ts` |
 | Potvrzení: chybějící, vymyšlené, vypršelé, použité, pozměněné, cizí | `tests/mcp/tools.test.ts` |
+| Obě fáze zápisu u všech nástrojů | `tests/mcp/two-phase.test.ts` |
 | Idempotence a konflikt klíče | `tests/mcp/tools.test.ts` |
 | Destruktivní operace | `tests/mcp/tools.test.ts` |
 | Rate limiting | `tests/mcp/tools.test.ts` |
@@ -536,9 +545,11 @@ export const getSomethingTool = defineTool({
 ```
 
 3. **Zaregistruj ho** v `lib/mcp/server.ts`.
-4. **U zápisu přidej i `prepare_*`** nástroj, který vrátí `summary`,
-   `confirmation_token` a `execute_arguments`. Kanonické parametry pro otisk
-   skládej jednou sdílenou funkcí, aby prepare a zápis daly stejný hash.
+4. **U zápisu obal tělo do `twoPhase()`** (`lib/mcp/two-phase.ts`). Předej mu
+   jméno nástroje, `args.confirmation_token`, normalizované parametry pro otisk,
+   `status`, `summary` a funkci `execute`. Normalizaci dělej jednou funkcí, aby
+   obě fáze spočítaly stejný otisk. `confirmation_token` musí být v schématu
+   vždy **volitelný** — v první fázi ho model nemá odkud vzít.
 5. **Doplň nástroj do testu** `tests/mcp/protocol.test.ts` (seznam nástrojů)
    a napiš mu vlastní test v `tests/mcp/tools.test.ts`.
 6. **Doplň řádek do tabulky** v tomto dokumentu.

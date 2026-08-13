@@ -47,7 +47,7 @@ component or a route — add it to the service and call it.
 - `lib/services/browser-context.ts` / `server-context.ts` — build that context
   from the browser session / cookie session.
 - `lib/services/invoice-totals.ts` — pure calculation shared by the live form
-  preview, the MCP `prepare_invoice` summary and the actual save.
+  preview, the MCP draft summary and the actual save.
 - `lib/services/errors.ts` — `ServiceError` with a stable machine-readable
   `code` and a Czech user-facing message. Raw driver errors never leak out.
 - `lib/money.ts` — money is parsed to integer hundredths and only converted
@@ -107,7 +107,9 @@ OAuth 2.1 server under `/api/oauth/*`. Clients that can't do OAuth use a
 personal token (`tfm_…`) issued from the **`/connect`** page; `lib/mcp/auth.ts`
 accepts both and resolves them to the same identity. Tools live in `lib/mcp/tools/` and
 contain **no** business logic — they validate, call a service, and format the
-result. Writes require a single-use confirmation token from a `prepare_*` tool.
+result. Writes are two-phase through a **single** tool: called without
+`confirmation_token` it returns a draft plus a single-use token, called again
+with the same arguments and that token it performs the write (`lib/mcp/two-phase.ts`).
 Full reference, including how to add a tool: `docs/MCP.md`.
 
 Next.js 15 route handlers receive `params` as a `Promise` — every route under `app/api/**` must `await context.params`. Dynamic page components already do this; don't regress it.

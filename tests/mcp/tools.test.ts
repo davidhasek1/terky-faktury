@@ -145,7 +145,7 @@ describe("validace vstupu", () => {
   it("odmítne jinou měnu než EUR", async () => {
     const customerId = seedCustomer(db, OWNER)
     const { body } = await rpc(db, token, "tools/call", {
-      name: "prepare_invoice",
+      name: "create_invoice",
       arguments: {
         customer_id: customerId,
         currency: "USD",
@@ -158,7 +158,7 @@ describe("validace vstupu", () => {
 
   it("odmítne nulové množství", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const result = await callTool(db, token, "prepare_invoice", {
+    const result = await callTool(db, token, "create_invoice", {
       customer_id: customerId,
       items: [{ description: "Úklid", quantity: "0", unit_price: "100" }],
     })
@@ -172,7 +172,7 @@ describe("oprávnění", () => {
     const readOnly = await tokenFor(OWNER, "invoices:read")
     const customerId = seedCustomer(db, OWNER)
 
-    const result = await callTool(db, readOnly, "prepare_invoice", {
+    const result = await callTool(db, readOnly, "create_invoice", {
       customer_id: customerId,
       items: [{ description: "Úklid", quantity: "1", unit_price: "100" }],
     })
@@ -189,48 +189,31 @@ describe("oprávnění", () => {
 })
 
 describe("potvrzování zápisů", () => {
-  async function prepareInvoice(customerId: string) {
-    const prepared = await callTool(db, token, "prepare_invoice", {
+  const items = [{ description: "Úklid apartmánu", quantity: "2", unit_price: "50" }]
+
+  function invoiceArgs(customerId: string) {
+    return {
       customer_id: customerId,
       issue_date: "2026-03-01",
       due_date: "2026-03-15",
-      items: [{ description: "Úklid apartmánu", quantity: "2", unit_price: "50" }],
-    })
+      items,
+    }
+  }
 
+  async function draft(customerId: string) {
+    const prepared = await callTool(db, token, "create_invoice", invoiceArgs(customerId))
     expect(prepared.success).toBe(true)
     return prepared
   }
 
-  it("prepare_invoice dá jasně najevo, že nic neuložil, a jmenuje další krok", async () => {
-    // Regrese: v provozu model prepare_invoice pokládal za hotovou fakturu
-    // a create_invoice nikdy nezavolal. Souhrn totiž vypadá jako doklad.
+  it("první volání nic neuloží a vrátí úplný souhrn", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
+    const prepared = await draft(customerId)
 
+    expect(db.invoices).toHaveLength(0)
     expect(prepared.data?.saved).toBe(false)
     expect(String(prepared.data?.status)).toContain("NEBYLA vystavena")
     expect(prepared.data?.required_action).toMatchObject({ tool: "create_invoice" })
-    expect(db.invoices).toHaveLength(0)
-  })
-
-  it("u úpravy jmenuje update_invoice, ne create_invoice", async () => {
-    const customerId = seedCustomer(db, OWNER)
-    const invoiceId = seedInvoice(db, OWNER, customerId)
-
-    const prepared = await callTool(db, token, "prepare_invoice", {
-      invoice_id: invoiceId,
-      customer_id: customerId,
-      items: [{ description: "Úklid", quantity: "1", unit_price: "100" }],
-    })
-
-    expect(prepared.data?.required_action).toMatchObject({ tool: "update_invoice" })
-  })
-
-  it("prepare_invoice nic neuloží a vrátí úplný souhrn", async () => {
-    const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
-
-    expect(db.invoices).toHaveLength(0)
 
     const summary = prepared.data?.summary as Record<string, unknown>
     expect(summary.currency).toBe("EUR")
@@ -240,19 +223,19 @@ describe("potvrzování zápisů", () => {
     expect(summary.subtotal).toMatchObject({ amount: "100.00" })
     expect(summary.total).toMatchObject({ amount: "121.00" })
     expect(summary.payment_method).toBeTruthy()
-    expect(prepared.data?.confirmation_token).toBeTruthy()
   })
 
-  it("vystaví fakturu po potvrzení a přidělí číslo", async () => {
+  it("druhé volání s tokenem fakturu vystaví a přidělí číslo", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
+    const prepared = await draft(customerId)
 
     const created = await callTool(db, token, "create_invoice", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...invoiceArgs(customerId),
       confirmation_token: prepared.data?.confirmation_token,
     })
 
     expect(created.success).toBe(true)
+    expect(created.data?.saved).toBe(true)
     const invoice = created.data?.invoice as Record<string, unknown>
     expect(invoice.invoice_number).toMatch(/^\d{4}-\d{3,}$/)
     expect(invoice.total).toMatchObject({ amount: "121.00" })
@@ -260,25 +243,12 @@ describe("potvrzování zápisů", () => {
     expect(db.invoice_items).toHaveLength(1)
   })
 
-  it("bez potvrzovacího tokenu zápis neprojde", async () => {
-    const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
-
-    const { body } = await rpc(db, token, "tools/call", {
-      name: "create_invoice",
-      arguments: prepared.data?.execute_arguments as Record<string, unknown>,
-    })
-
-    expect(body?.result?.isError ?? body?.error).toBeTruthy()
-    expect(db.invoices).toHaveLength(0)
-  })
-
   it("vymyšlený potvrzovací token neprojde", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
+    await draft(customerId)
 
     const created = await callTool(db, token, "create_invoice", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...invoiceArgs(customerId),
       confirmation_token: `cnf_${crypto.randomUUID()}`,
     })
 
@@ -289,16 +259,13 @@ describe("potvrzování zápisů", () => {
 
   it("změněná částka potvrzení zneplatní", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
-    const args = prepared.data?.execute_arguments as Record<string, unknown>
+    const prepared = await draft(customerId)
 
-    const tampered = {
-      ...args,
+    const created = await callTool(db, token, "create_invoice", {
+      ...invoiceArgs(customerId),
       items: [{ description: "Úklid apartmánu", quantity: "2", unit_price: "500" }],
       confirmation_token: prepared.data?.confirmation_token,
-    }
-
-    const created = await callTool(db, token, "create_invoice", tampered)
+    })
 
     expect(created.success).toBe(false)
     expect(created.error?.code).toBe("CONFIRMATION_MISMATCH")
@@ -307,9 +274,9 @@ describe("potvrzování zápisů", () => {
 
   it("potvrzovací token je jednorázový", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
+    const prepared = await draft(customerId)
     const args = {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...invoiceArgs(customerId),
       confirmation_token: prepared.data?.confirmation_token,
     }
 
@@ -324,14 +291,14 @@ describe("potvrzování zápisů", () => {
 
   it("vypršelé potvrzení neprojde", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
+    const prepared = await draft(customerId)
 
     for (const confirmation of db.mcp_confirmations) {
       confirmation.expires_at = new Date(Date.now() - 1000).toISOString()
     }
 
     const created = await callTool(db, token, "create_invoice", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...invoiceArgs(customerId),
       confirmation_token: prepared.data?.confirmation_token,
     })
 
@@ -340,40 +307,44 @@ describe("potvrzování zápisů", () => {
 
   it("potvrzení jednoho uživatele nelze použít jménem druhého", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const prepared = await prepareInvoice(customerId)
+    const prepared = await draft(customerId)
 
     const otherToken = await tokenFor(OTHER)
     const created = await callTool(db, otherToken, "create_invoice", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...invoiceArgs(customerId),
       confirmation_token: prepared.data?.confirmation_token,
     })
 
     expect(created.success).toBe(false)
-    expect(created.error?.code).toBe("CONFIRMATION_INVALID")
+    expect(db.invoices).toHaveLength(0)
   })
 })
 
 describe("idempotence", () => {
+  function args(customerId: string, unitPrice: string) {
+    return {
+      customer_id: customerId,
+      issue_date: "2026-03-01",
+      due_date: "2026-03-15",
+      items: [{ description: "Úklid", quantity: "1", unit_price: unitPrice }],
+      idempotency_key: "faktura-brezen-2026",
+    }
+  }
+
+  async function issue(customerId: string, unitPrice: string) {
+    const base = args(customerId, unitPrice)
+    const prepared = await callTool(db, token, "create_invoice", base)
+    return callTool(db, token, "create_invoice", {
+      ...base,
+      confirmation_token: prepared.data?.confirmation_token,
+    })
+  }
+
   it("opakované volání se stejným klíčem nevytvoří druhou fakturu", async () => {
     const customerId = seedCustomer(db, OWNER)
 
-    const runOnce = async () => {
-      const prepared = await callTool(db, token, "prepare_invoice", {
-        customer_id: customerId,
-        issue_date: "2026-03-01",
-        due_date: "2026-03-15",
-        items: [{ description: "Úklid", quantity: "1", unit_price: "100" }],
-      })
-
-      return callTool(db, token, "create_invoice", {
-        ...(prepared.data?.execute_arguments as Record<string, unknown>),
-        confirmation_token: prepared.data?.confirmation_token,
-        idempotency_key: "faktura-brezen-2026",
-      })
-    }
-
-    const first = await runOnce()
-    const second = await runOnce()
+    const first = await issue(customerId, "100")
+    const second = await issue(customerId, "100")
 
     expect(first.success).toBe(true)
     expect(second.success).toBe(true)
@@ -384,23 +355,8 @@ describe("idempotence", () => {
   it("stejný klíč s jinými parametry je chyba", async () => {
     const customerId = seedCustomer(db, OWNER)
 
-    const create = async (unitPrice: string) => {
-      const prepared = await callTool(db, token, "prepare_invoice", {
-        customer_id: customerId,
-        issue_date: "2026-03-01",
-        due_date: "2026-03-15",
-        items: [{ description: "Úklid", quantity: "1", unit_price: unitPrice }],
-      })
-
-      return callTool(db, token, "create_invoice", {
-        ...(prepared.data?.execute_arguments as Record<string, unknown>),
-        confirmation_token: prepared.data?.confirmation_token,
-        idempotency_key: "stejny-klic",
-      })
-    }
-
-    await create("100")
-    const second = await create("250")
+    await issue(customerId, "100")
+    const second = await issue(customerId, "250")
 
     expect(second.success).toBe(false)
     expect(second.error?.code).toBe("IDEMPOTENCY_KEY_REUSED")
@@ -408,33 +364,25 @@ describe("idempotence", () => {
 })
 
 describe("destruktivní operace", () => {
-  it("smaže fakturu jen s potvrzením", async () => {
+  it("smaže fakturu jen s platným potvrzením", async () => {
     const customerId = seedCustomer(db, OWNER)
     const invoiceId = seedInvoice(db, OWNER, customerId)
 
     const withoutConfirmation = await callTool(db, token, "delete_invoice", {
       invoice_id: invoiceId,
-      action: "delete",
-      paid_date: null,
       confirmation_token: `cnf_${crypto.randomUUID()}`,
     })
 
     expect(withoutConfirmation.success).toBe(false)
     expect(db.invoices).toHaveLength(1)
 
-    const prepared = await callTool(db, token, "prepare_invoice_action", {
-      invoice_id: invoiceId,
-      action: "delete",
-    })
-
+    const prepared = await callTool(db, token, "delete_invoice", { invoice_id: invoiceId })
     expect(prepared.data?.warnings).toContain(
       "Smazání je nevratné. Aplikace nemá archivaci ani koš.",
     )
-    expect(prepared.data?.saved).toBe(false)
-    expect(prepared.data?.required_action).toMatchObject({ tool: "delete_invoice" })
 
     const deleted = await callTool(db, token, "delete_invoice", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      invoice_id: invoiceId,
       confirmation_token: prepared.data?.confirmation_token,
     })
 
@@ -447,10 +395,7 @@ describe("destruktivní operace", () => {
     const foreignCustomer = seedCustomer(db, OTHER)
     const foreignInvoice = seedInvoice(db, OTHER, foreignCustomer)
 
-    const prepared = await callTool(db, token, "prepare_invoice_action", {
-      invoice_id: foreignInvoice,
-      action: "delete",
-    })
+    const prepared = await callTool(db, token, "delete_invoice", { invoice_id: foreignInvoice })
 
     expect(prepared.success).toBe(false)
     expect(prepared.error?.code).toBe("INVOICE_NOT_FOUND")
@@ -461,10 +406,7 @@ describe("destruktivní operace", () => {
     const customerId = seedCustomer(db, OWNER, { email: null })
     const invoiceId = seedInvoice(db, OWNER, customerId)
 
-    const prepared = await callTool(db, token, "prepare_invoice_action", {
-      invoice_id: invoiceId,
-      action: "send_email",
-    })
+    const prepared = await callTool(db, token, "send_invoice_email", { invoice_id: invoiceId })
 
     expect(prepared.success).toBe(false)
     expect(prepared.error?.code).toBe("CUSTOMER_EMAIL_MISSING")
@@ -472,16 +414,14 @@ describe("destruktivní operace", () => {
 
   it("označí fakturu jako zaplacenou po potvrzení", async () => {
     const customerId = seedCustomer(db, OWNER)
-    const invoiceId = seedInvoice(db, OWNER, customerId)
-
-    const prepared = await callTool(db, token, "prepare_invoice_action", {
-      invoice_id: invoiceId,
-      action: "mark_paid",
+    const args = {
+      invoice_id: seedInvoice(db, OWNER, customerId),
       paid_date: "2026-04-01",
-    })
+    }
 
+    const prepared = await callTool(db, token, "set_invoice_payment", args)
     const done = await callTool(db, token, "set_invoice_payment", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...args,
       confirmation_token: prepared.data?.confirmation_token,
     })
 
@@ -495,14 +435,14 @@ describe("deník služeb", () => {
   it("zapíše aktivitu po potvrzení", async () => {
     const customerId = seedCustomer(db, OWNER)
 
-    const prepared = await callTool(db, token, "prepare_activity", {
+    const args = {
       customer_id: customerId,
       activity_date: "2026-05-05",
       services: [{ service_type: "cleaning", price: "30" }],
-    })
-
+    }
+    const prepared = await callTool(db, token, "create_activity", args)
     const created = await callTool(db, token, "create_activity", {
-      ...(prepared.data?.execute_arguments as Record<string, unknown>),
+      ...args,
       confirmation_token: prepared.data?.confirmation_token,
     })
 

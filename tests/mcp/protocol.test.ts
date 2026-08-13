@@ -34,33 +34,28 @@ describe("MCP endpoint /mcp", () => {
     expect(tools).toBeDefined()
     const names = tools!.map((tool) => tool.name)
 
-    expect(names).toEqual(
-      expect.arrayContaining([
+    expect(names.sort()).toEqual(
+      [
         "search_customers",
         "get_customer",
-        "prepare_customer",
         "create_customer",
         "update_customer",
         "list_invoices",
         "get_invoice",
         "get_invoice_summary",
         "get_invoice_download_link",
-        "prepare_invoice",
         "create_invoice",
         "update_invoice",
-        "prepare_invoice_action",
         "set_invoice_payment",
         "send_invoice_email",
         "delete_invoice",
         "list_activities",
         "get_activity",
-        "prepare_activity",
         "create_activity",
         "update_activity",
-        "prepare_activity_status",
         "set_activity_status",
         "get_company_profile",
-      ]),
+      ].sort(),
     )
 
     for (const tool of tools!) {
@@ -78,7 +73,6 @@ describe("MCP endpoint /mcp", () => {
 
     expect(byName.get("list_invoices")?.readOnlyHint).toBe(true)
     expect(byName.get("get_invoice")?.readOnlyHint).toBe(true)
-    expect(byName.get("prepare_invoice")?.readOnlyHint).toBe(true)
 
     expect(byName.get("create_invoice")?.readOnlyHint).toBe(false)
     expect(byName.get("delete_invoice")?.destructiveHint).toBe(true)
@@ -86,12 +80,41 @@ describe("MCP endpoint /mcp", () => {
     expect(byName.get("send_invoice_email")?.openWorldHint).toBe(true)
   })
 
+  it("zapisující nástroje mají přirozené povinné argumenty", async () => {
+    // Dřív se do schématu prosákl tvar otisku potvrzení: mazání faktury
+    // vyžadovalo `action` a `paid_date: null`. Model takové volání nesestavil
+    // a klient ho zahodil dřív, než dorazilo na server.
+    const db = createFakeDatabase()
+    const { body } = await rpc(db, await tokenFor("user-1"), "tools/list")
+    const tools = body!.result!.tools as {
+      name: string
+      inputSchema: { required?: string[]; properties?: Record<string, unknown> }
+    }[]
+    const required = (name: string) =>
+      tools.find((tool) => tool.name === name)!.inputSchema.required ?? []
+
+    expect(required("delete_invoice")).toEqual(["invoice_id"])
+    expect(required("send_invoice_email")).toEqual(["invoice_id"])
+    expect(required("set_invoice_payment")).toEqual(["invoice_id"])
+    expect(required("create_invoice")).toEqual(["customer_id", "items"])
+    expect(required("create_customer")).toEqual(["name"])
+
+    // confirmation_token je vždy volitelný — první fáze ho nemá čím vyplnit.
+    for (const name of ["create_invoice", "create_customer", "delete_invoice"]) {
+      expect(required(name), name).not.toContain("confirmation_token")
+      expect(
+        tools.find((tool) => tool.name === name)!.inputSchema.properties,
+        name,
+      ).toHaveProperty("confirmation_token")
+    }
+  })
+
   it("řekne modelu, že popisy položek patří na fakturu španělsky", async () => {
     const db = createFakeDatabase()
     const { body } = await rpc(db, await tokenFor("user-1"), "tools/list")
     const tools = body!.result!.tools as { name: string; inputSchema: Record<string, unknown> }[]
 
-    for (const name of ["prepare_invoice", "create_invoice", "update_invoice"]) {
+    for (const name of ["create_invoice", "update_invoice"]) {
       const schema = JSON.stringify(tools.find((tool) => tool.name === name)!.inputSchema)
 
       for (const preset of INVOICE_ITEM_PRESETS) {

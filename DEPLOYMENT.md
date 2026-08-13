@@ -143,5 +143,5 @@ project at the same repo.
 - [ ] `/api/invoices/download/[publicId]` returns the PDF without auth
 - [ ] `/.well-known/oauth-protected-resource` returns JSON with the right origin
 - [ ] `POST /mcp` without a token returns 401 with a `WWW-Authenticate` header
-- [ ] The ChatGPT connector connects and `tools/list` returns 24 tools
+- [ ] The ChatGPT connector connects and `tools/list` returns 19 tools
 - [ ] `/connect` shows the production MCP URL and can issue + revoke a token
