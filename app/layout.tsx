@@ -24,10 +24,6 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 })
 
-import { Header } from "@/components/layout/header"
-import { Footer } from "@/components/layout/footer"
-import { createClient } from "@/lib/supabase/server"
-import { Suspense } from "react"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
@@ -49,22 +45,15 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   return (
     <html lang="cs">
-      <body className={`font-sans ${inter.variable} ${poppins.variable} ${plexMono.variable} flex flex-col min-h-screen`}>
-        <Suspense>{user && <Header />}</Suspense>
-        <main className="flex-1">{children}</main>
-        <Suspense>{user && <Footer />}</Suspense>
+      <body className={`font-sans ${inter.variable} ${poppins.variable} ${plexMono.variable} min-h-screen`}>
+        {children}
         <Toaster />
         <Analytics />
       </body>
