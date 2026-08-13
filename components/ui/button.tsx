@@ -62,28 +62,39 @@ function Button({
      */
     loading?: boolean
   }) {
-  const Comp = asChild ? Slot : 'button'
-
-  // Slot přijímá jediného potomka, takže do `asChild` tlačítka spinner nevkládáme.
-  const showSpinner = loading && !asChild
+  // `asChild` tlačítko předává potomka beze změny. Slot přijímá právě jedno
+  // dítě, takže sem nesmí přibýt ani spinner, ani prázdný výraz — `{false}`
+  // vedle potomka z toho udělá pole a Slot spadne. Proto dvě samostatné větve
+  // místo jednoho `<Comp>` se společným tělem.
+  if (asChild) {
+    return (
+      <Slot
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size }), className)}
+        {...props}
+      >
+        {children}
+      </Slot>
+    )
+  }
 
   return (
-    <Comp
+    <button
       data-slot="button"
       aria-busy={loading || undefined}
-      disabled={asChild ? undefined : disabled || loading}
+      disabled={disabled || loading}
       className={cn(
         buttonVariants({ variant, size }),
-        showSpinner && '[&>svg:not([data-slot=spinner])]:hidden',
+        loading && '[&>svg:not([data-slot=spinner])]:hidden',
         className,
       )}
       {...props}
     >
-      {showSpinner && (
+      {loading && (
         <Loader2 data-slot="spinner" className="animate-spin" aria-hidden="true" />
       )}
       {children}
-    </Comp>
+    </button>
   )
 }
 
