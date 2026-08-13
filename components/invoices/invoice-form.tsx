@@ -405,24 +405,21 @@ export function InvoiceForm({
         </section>
 
         <section>
-          <div className='flex items-center justify-between gap-4 mb-6 sm:mb-8'>
-            <div className='flex items-center gap-3 min-w-0 flex-1'>
-              <span className='font-display font-semibold text-lg sm:text-xl text-foreground'>
-                Položky
-              </span>
-              <span className='flex-1 h-px bg-border' aria-hidden='true' />
-            </div>
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={addItem}
-              className='text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground'
-            >
-              <Plus className='mr-2 h-3.5 w-3.5' />
-              Přidat položku
-            </Button>
-          </div>
+          <SectionLabel
+            title='Položky'
+            action={
+              <Button
+                type='button'
+                variant='ghost'
+                size='sm'
+                onClick={addItem}
+                className='text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground'
+              >
+                <Plus className='mr-2 h-3.5 w-3.5' />
+                Přidat položku
+              </Button>
+            }
+          />
 
           <div className='rounded-2xl border border-border/70 bg-card divide-y divide-border shadow-[0_4px_28px_-12px_rgba(27,23,49,0.15)] overflow-hidden'>
             {items.map((item, index) => (
