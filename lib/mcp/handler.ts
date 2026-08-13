@@ -73,6 +73,11 @@ export async function handleMcpRequest(
     enableJsonResponse: true,
   })
 
+  // Log na úrovni transportu: audit se zapisuje až uvnitř obalu nástroje, takže
+  // volání odmítnuté dřív (třeba validací vstupu v SDK) po sobě nenechá stopu.
+  // Bez tohohle řádku nejde poznat, jestli požadavek vůbec dorazil.
+  logIncoming(body, auth.identity.userId)
+
   try {
     await server.connect(transport)
 
@@ -104,6 +109,17 @@ function headersToObject(headers: Headers): Record<string, string> {
     result[key] = value
   })
   return result
+}
+
+/** Zaznamená, co dorazilo — bez argumentů, ať se do logu nedostanou osobní údaje. */
+function logIncoming(body: unknown, userId: string): void {
+  if (!body || typeof body !== "object") return
+
+  const message = body as { method?: unknown; params?: { name?: unknown } }
+  if (typeof message.method !== "string") return
+
+  const tool = typeof message.params?.name === "string" ? ` ${message.params.name}` : ""
+  console.log(`[mcp] ${userId} → ${message.method}${tool}`)
 }
 
 /** Id požadavku pro chybovou odpověď; u dávky nebo nečitelného těla `null`. */
