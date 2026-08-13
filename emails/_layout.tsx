@@ -8,7 +8,7 @@ import {
   Tailwind as TailwindBase,
   Text,
   pixelBasedPreset,
-} from "@react-email/components"
+} from "react-email"
 import * as React from "react"
 
 // @react-email/components 1.x typuje Tailwind s návratem ReactNode, což pod

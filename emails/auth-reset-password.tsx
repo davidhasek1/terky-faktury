@@ -1,4 +1,4 @@
-import { Button, Heading, Link, Text } from "@react-email/components"
+import { Button, Heading, Link, Text } from "react-email"
 import * as React from "react"
 import { BrandShell } from "./_layout"
 
