@@ -2,6 +2,9 @@ import path from "node:path"
 
 import { defineConfig } from "vitest/config"
 
+// Nastav timezone aplikace na Prague (kde ji používají)
+process.env.TZ = "Europe/Prague"
+
 export default defineConfig({
   test: {
     environment: "node",

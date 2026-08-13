@@ -2,8 +2,8 @@
  * Čistá logika časové osy splatnosti.
  *
  * Splatnost je datum, ne okamžik — proto se obě strany srovnávají na půlnoc
- * UTC. Bez toho by faktura splatná dnes večer vycházela jako „po splatnosti"
- * podle toho, kolik je hodin.
+ * v místním čase uživatele. Bez toho by faktura splatná dnes večer vycházela
+ * jako „po splatnosti" podle toho, kolik je hodin.
  */
 
 export type DueBucket = "overdue" | "due" | "upcoming"
@@ -26,9 +26,22 @@ export interface DueSchedule<T> {
   span: { min: number; max: number }
 }
 
-function midnightUtc(value: Date | string): number {
-  const d = typeof value === "string" ? new Date(`${value}T00:00:00Z`) : value
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+/**
+ * Konvertuj okamžik (Date) na den v místním čase uživatele.
+ * Používáme lokální gettery (getFullYear, getMonth, getDate) abychom dostali
+ * kalendářní den na kterém uživatel skutečně je.
+ */
+function dateKeyFromInstant(today: Date): number {
+  return Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+}
+
+/**
+ * Konvertuj holý datum ve stringu (YYYY-MM-DD, bez timezone, z Postgres) na den.
+ * Parsujeme string direktně proto že Postgres `date` typ nemá timezone.
+ */
+function dateKeyFromString(dateStr: string): number {
+  const [year, month, date] = dateStr.split("-").map(Number)
+  return Date.UTC(year, month - 1, date)
 }
 
 function bucketFor(days: number): DueBucket {
@@ -39,12 +52,12 @@ function bucketFor(days: number): DueBucket {
 export function buildDueSchedule<
   T extends { due_date: string; paid_date: string | null },
 >(invoices: readonly T[], today: Date): DueSchedule<T> {
-  const anchor = midnightUtc(today)
+  const anchor = dateKeyFromInstant(today)
 
   const scheduled = invoices
     .filter((item) => !item.paid_date)
     .map((item) => {
-      const days = Math.round((midnightUtc(item.due_date) - anchor) / MS_PER_DAY)
+      const days = Math.round((dateKeyFromString(item.due_date) - anchor) / MS_PER_DAY)
       return { item, bucket: bucketFor(days), daysFromToday: days }
     })
     .sort((a, b) => a.daysFromToday - b.daysFromToday)

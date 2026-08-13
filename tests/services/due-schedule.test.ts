@@ -22,7 +22,10 @@ describe("buildDueSchedule", () => {
   })
 
   it("ignoruje denní dobu — splatnost je datum, ne okamžik", () => {
-    const late = new Date("2026-08-13T23:59:00Z")
+    // Oba časy jsou na stejném kalendářním dni (13. srpna v místním čase)
+    const morning = new Date(2026, 7, 13, 8, 0)
+    const late = new Date(2026, 7, 13, 23, 30)
+    expect(buildDueSchedule([inv("2026-08-13")], morning).due[0].daysFromToday).toBe(0)
     expect(buildDueSchedule([inv("2026-08-13")], late).due[0].daysFromToday).toBe(0)
   })
 
@@ -45,6 +48,32 @@ describe("buildDueSchedule", () => {
 
   it("u prázdného vstupu vrátí rozpětí kolem dneška", () => {
     expect(buildDueSchedule([], today).span).toEqual({ min: 0, max: 0 })
+  })
+
+  it("je agnostické k místnímu času — faktura splatná dnes je vždy due, nikdy overdue", () => {
+    // new Date(2026, 7, 14, 0, 30) = 14 August 00:30 local time
+    // V Prague = 2026-08-13T22:30:00Z, ale kalendář místního uživatele říká "dnes je 14. srpna"
+    const localToday = new Date(2026, 7, 14, 0, 30)
+    const s = buildDueSchedule([inv("2026-08-14")], localToday)
+    expect(s.due[0].daysFromToday).toBe(0)
+    expect(s.overdue).toEqual([])
+  })
+
+  it("je agnostické k místnímu času — včerejší splatnost je overdue i v brzké hodině", () => {
+    const localToday = new Date(2026, 7, 14, 0, 30)
+    const s = buildDueSchedule([inv("2026-08-13")], localToday)
+    expect(s.overdue[0].daysFromToday).toBe(-1)
+    expect(s.due).toEqual([])
+  })
+
+  it("rozlišuje hranici DUE_SOON_DAYS: 7 dní dopředu je due", () => {
+    const s = buildDueSchedule([inv("2026-08-20")], today)
+    expect(s.due.map((e) => e.daysFromToday)).toContain(7)
+  })
+
+  it("rozlišuje hranici DUE_SOON_DAYS: 8 dní dopředu je upcoming", () => {
+    const s = buildDueSchedule([inv("2026-08-21")], today)
+    expect(s.upcoming.map((e) => e.daysFromToday)).toContain(8)
   })
 })
 
