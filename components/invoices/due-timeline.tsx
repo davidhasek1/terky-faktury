@@ -1,6 +1,6 @@
 import Link from "next/link"
 
-import { axisPosition, buildDueSchedule } from "@/lib/services/due-schedule"
+import { axisPosition, buildDueSchedule, groupByDay } from "@/lib/services/due-schedule"
 import type { DueBucket } from "@/lib/services/due-schedule"
 import { cn, formatCurrency, formatDate } from "@/lib/utils"
 
@@ -17,6 +17,13 @@ const MARK: Record<DueBucket, string> = {
   overdue: "bg-status-overdue-line",
   due: "bg-status-due-line",
   upcoming: "bg-status-upcoming-line",
+}
+
+/** Čitelná dvojice pozadí/text pro značku, která nese číslo (víc faktur v jednom dni). */
+const GROUP_MARK: Record<DueBucket, string> = {
+  overdue: "bg-status-overdue-bg text-status-overdue-fg",
+  due: "bg-status-due-bg text-status-due-fg",
+  upcoming: "bg-status-upcoming-bg text-status-upcoming-fg",
 }
 
 const BUCKET_LABEL: Record<DueBucket, string> = {
@@ -51,6 +58,7 @@ export function DueTimeline({
 }) {
   const schedule = buildDueSchedule(invoices, today)
   const all = [...schedule.overdue, ...schedule.due, ...schedule.upcoming]
+  const groups = groupByDay(all)
 
   if (all.length === 0) {
     return (
@@ -82,20 +90,54 @@ export function DueTimeline({
             <span className="mt-1 h-12 w-px bg-foreground/40" aria-hidden="true" />
           </div>
 
-          {all.map((entry) => (
-            <Link
-              key={entry.item.id}
-              href={`/invoices/${entry.item.id}/view`}
-              style={{ left: `${axisPosition(entry.daysFromToday, schedule.span) * 100}%` }}
-              className="group absolute top-12 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className={cn("block size-3 rounded-full ring-2 ring-card", MARK[entry.bucket])} />
-              <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:block group-focus-visible:block">
-                {entry.item.invoice_number} · {formatCurrency(entry.item.total)} ·{" "}
-                {formatDate(entry.item.due_date)}
-              </span>
-            </Link>
-          ))}
+          {groups.map((group) => {
+            const left = `${axisPosition(group.daysFromToday, schedule.span) * 100}%`
+
+            if (group.items.length === 1) {
+              const item = group.items[0]
+              return (
+                <Link
+                  key={group.daysFromToday}
+                  href={`/invoices/${item.id}/view`}
+                  style={{ left }}
+                  className="group absolute top-12 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className={cn("block size-3 rounded-full ring-2 ring-card", MARK[group.bucket])} />
+                  <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:block group-focus-visible:block">
+                    {item.invoice_number} · {formatCurrency(item.total)} · {formatDate(item.due_date)}
+                  </span>
+                </Link>
+              )
+            }
+
+            // Víc faktur se stejnou splatností nemá jeden jednoznačný cíl, kam
+            // odkaz vést — místo výmyslu na cíl je značka jen nositelka
+            // detailu v tooltipu.
+            return (
+              <button
+                key={group.daysFromToday}
+                type="button"
+                style={{ left }}
+                className="group absolute top-12 -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span
+                  className={cn(
+                    "flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-semibold leading-none tabular-nums ring-2 ring-card",
+                    GROUP_MARK[group.bucket],
+                  )}
+                >
+                  {group.items.length}
+                </span>
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background group-hover:flex group-focus-visible:flex">
+                  <span>{group.items.map((item) => item.invoice_number).join(", ")}</span>
+                  <span className="text-background/70">
+                    {group.items.length} {invoiceCountLabel(group.items.length)} ·{" "}
+                    {formatCurrency(group.total)} · {formatDate(group.items[0].due_date)}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 

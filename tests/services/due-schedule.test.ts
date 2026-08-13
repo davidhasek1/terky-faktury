@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest"
-import { axisPosition, buildDueSchedule } from "@/lib/services/due-schedule"
+import { axisPosition, buildDueSchedule, groupByDay } from "@/lib/services/due-schedule"
 
 const today = new Date("2026-08-13T10:30:00Z")
 const inv = (due: string, paid: string | null = null) => ({ due_date: due, paid_date: paid })
+const invT = (due: string, total: number, paid: string | null = null) => ({
+  due_date: due,
+  paid_date: paid,
+  total,
+})
 
 describe("buildDueSchedule", () => {
   it("rozřadí faktury podle vzdálenosti od dneška", () => {
@@ -74,6 +79,44 @@ describe("buildDueSchedule", () => {
   it("rozlišuje hranici DUE_SOON_DAYS: 8 dní dopředu je upcoming", () => {
     const s = buildDueSchedule([inv("2026-08-21")], today)
     expect(s.upcoming.map((e) => e.daysFromToday)).toContain(8)
+  })
+})
+
+describe("groupByDay", () => {
+  it("sloučí faktury se stejnou splatností do jedné skupiny", () => {
+    const s = buildDueSchedule([invT("2026-08-15", 1000), invT("2026-08-15", 500)], today)
+    const groups = groupByDay(s.due)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].items).toHaveLength(2)
+  })
+
+  it("nechá faktury z různých dní oddělené", () => {
+    const s = buildDueSchedule([invT("2026-08-15", 1000), invT("2026-08-16", 500)], today)
+    const all = [...s.overdue, ...s.due, ...s.upcoming]
+    expect(groupByDay(all)).toHaveLength(2)
+  })
+
+  it("vrátí skupiny v chronologickém pořadí", () => {
+    const s = buildDueSchedule(
+      [invT("2026-09-20", 100), invT("2026-07-30", 200), invT("2026-08-15", 300)],
+      today,
+    )
+    const all = [...s.overdue, ...s.due, ...s.upcoming]
+    expect(groupByDay(all).map((g) => g.daysFromToday)).toEqual([-14, 2, 38])
+  })
+
+  it("u prázdného vstupu nevrátí žádné skupiny", () => {
+    expect(groupByDay([])).toEqual([])
+  })
+
+  it("sečte částku za den správně", () => {
+    const s = buildDueSchedule([invT("2026-08-15", 1000), invT("2026-08-15", 2500)], today)
+    expect(groupByDay(s.due)[0].total).toBe(3500)
+  })
+
+  it("zachová bucket skupiny", () => {
+    const s = buildDueSchedule([invT("2026-07-30", 1000)], today)
+    expect(groupByDay(s.overdue)[0].bucket).toBe("overdue")
   })
 })
 

@@ -75,6 +75,45 @@ export function buildDueSchedule<
   }
 }
 
+export interface DueGroup<T> {
+  daysFromToday: number
+  bucket: DueBucket
+  items: T[]
+  total: number
+}
+
+/**
+ * Seskup rozvrh podle dne splatnosti.
+ *
+ * Osa je denní, ne položková: faktury vystavené týž den se stejnou splatností
+ * mají stejné `daysFromToday`, a to je běžný případ (stejné platební
+ * podmínky), ne výjimka. Bez seskupení by se jejich značky na ose překrývaly
+ * a jedna by tu druhou skryla. Skupina nese součet částky, aby šlo ukázat i
+ * celkovou dlužnou sumu za daný den.
+ */
+export function groupByDay<T extends { total: number }>(
+  entries: readonly ScheduledInvoice<T>[],
+): DueGroup<T>[] {
+  const groups = new Map<number, DueGroup<T>>()
+
+  for (const entry of entries) {
+    const existing = groups.get(entry.daysFromToday)
+    if (existing) {
+      existing.items.push(entry.item)
+      existing.total += entry.item.total
+    } else {
+      groups.set(entry.daysFromToday, {
+        daysFromToday: entry.daysFromToday,
+        bucket: entry.bucket,
+        items: [entry.item],
+        total: entry.item.total,
+      })
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => a.daysFromToday - b.daysFromToday)
+}
+
 export function axisPosition(
   daysFromToday: number,
   span: { min: number; max: number },
