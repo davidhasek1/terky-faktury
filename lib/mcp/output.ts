@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { isServiceError, type ServiceErrorCode } from "@/lib/services/errors"
+import { firstIssueMessage } from "@/lib/validation/common"
 
 /**
  * Jednotný tvar odpovědi MCP nástroje.
@@ -51,6 +52,14 @@ export function fail(
  * jde obecná hláška, detail zůstane v logu.
  */
 export function toEnvelope(error: unknown, toolName: string): ToolEnvelope {
+  // Schémata se validují dvakrát: na vstupu nástroje a znovu v servisní vrstvě.
+  // Když projde to první a padne až druhé (typicky formát data), je to pořád
+  // chyba vstupu — bez tohohle by se z ní stala neurčitá interní chyba a model
+  // by uživateli hlásil jen „konektor selhal".
+  if (error instanceof z.ZodError) {
+    return fail("VALIDATION_ERROR", firstIssueMessage(error))
+  }
+
   if (isServiceError(error)) {
     return { success: false, error: { code: error.code, message: error.message, retryable: error.retryable } }
   }

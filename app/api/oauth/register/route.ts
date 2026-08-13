@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { DEFAULT_SCOPE, normalizeScope } from "@/lib/oauth/config"
-import { jsonResponse, oauthError, preflightResponse } from "@/lib/oauth/http"
+import { jsonResponse, oauthError, preflightResponse, withOAuthErrors } from "@/lib/oauth/http"
 import { registerClient } from "@/lib/oauth/store"
 
 /**
@@ -47,6 +47,10 @@ const registrationSchema = z.object({
 })
 
 export async function POST(request: Request) {
+  return withOAuthErrors("register", () => register(request))
+}
+
+async function register(request: Request) {
   let body: unknown
   try {
     body = await request.json()

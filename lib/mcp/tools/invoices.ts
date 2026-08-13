@@ -1,8 +1,8 @@
 import { z } from "zod"
 
-import { baseUrl } from "@/lib/oauth/config"
 import { invoiceItemDescriptionHint } from "@/lib/invoice-items"
 import { formatScaled, parseDecimal, toDecimal } from "@/lib/money"
+import { baseUrl } from "@/lib/oauth/config"
 import { getCustomer } from "@/lib/services/customers"
 import { ServiceError } from "@/lib/services/errors"
 import { sendInvoiceEmail } from "@/lib/services/invoice-email"
@@ -13,39 +13,45 @@ import {
   deleteInvoice,
   getInvoice,
   getInvoiceStats,
+  invoiceStatus,
   listInvoices,
   setInvoicePayment,
   updateInvoice,
+  type InvoiceDetail,
 } from "@/lib/services/invoices"
 import { idempotencyKeySchema } from "@/lib/validation/common"
 import { MAX_INVOICE_ITEMS, invoiceInputSchema } from "@/lib/validation/invoices"
 
-import { consumeConfirmation, createConfirmation } from "@/lib/mcp/confirmations"
 import { defineTool } from "@/lib/mcp/define-tool"
 import { withIdempotency } from "@/lib/mcp/idempotency"
 import { safeText } from "@/lib/mcp/output"
 import {
   amount,
   amountFields,
-  invoiceStatus,
   presentInvoiceDetail,
   presentInvoiceSummary,
 } from "@/lib/mcp/present"
+import { CONFIRMATION_TOKEN_HINT, twoPhase } from "@/lib/mcp/two-phase"
 
-/** Nástroje pro faktury: čtení, příprava, zápis a nevratné operace. */
+/** Nástroje pro faktury: čtení, zápis a nevratné operace. */
 
 const DEFAULT_DUE_DAYS = 14
 
 const decimalString = z
   .union([z.string(), z.number()])
-  .describe("Desetinné číslo jako řetězec, např. \"100\" nebo \"100.50\".")
+  .describe("Desetinné číslo, např. \"100\" nebo \"100.50\".")
 
 const invoiceItemShape = z.object({
   description: z.string().trim().min(1).max(500).describe(invoiceItemDescriptionHint()),
-  quantity: decimalString.describe("Množství, větší než nula."),
+  quantity: decimalString.describe("Množství, větší než nula. Výchozí 1."),
   unit_price: decimalString.describe("Cena za jednotku v EUR bez DPH."),
 })
 
+/**
+ * Vstupní pole faktury. Všechno kromě zákazníka a položek je volitelné —
+ * chybějící hodnoty doplní server stejně v obou fázích, takže model nemusí
+ * mezi voláními nic přepisovat.
+ */
 const invoiceFields = {
   customer_id: z
     .string()
@@ -56,71 +62,47 @@ const invoiceFields = {
     .min(1)
     .max(MAX_INVOICE_ITEMS)
     .describe("Položky faktury. Alespoň jedna."),
-  issue_date: z.string().describe("Datum vystavení ve tvaru RRRR-MM-DD."),
-  due_date: z.string().describe("Datum splatnosti ve tvaru RRRR-MM-DD."),
-  tax_rate: decimalString.describe("Sazba DPH v procentech, výchozí 21."),
-  retention_rate: decimalString.describe(
-    "Retención v procentech. Podnikajícím subjektům se sráží 15 %, ostatním 0 %.",
-  ),
-  notes: z
-    .string()
-    .trim()
-    .max(2000)
-    .nullish()
-    .describe("Poznámka na faktuře. Když žádná není, pošli null."),
-  currency: z.literal("EUR").describe("Aplikace umí pouze EUR."),
+  issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD")
+    .optional()
+    .describe("Datum vystavení. Výchozí dnešek."),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD")
+    .optional()
+    .describe("Datum splatnosti. Výchozí 14 dní od vystavení."),
+  tax_rate: decimalString.optional().describe("Sazba DPH v %. Výchozí 21."),
+  retention_rate: decimalString
+    .optional()
+    .describe("Retención v %. Výchozí podle typu zákazníka: 15 % pro podnikatele, jinak 0 %."),
+  notes: z.string().trim().max(2000).nullish().describe("Poznámka na faktuře."),
+  currency: z.literal("EUR").optional().describe("Aplikace umí pouze EUR."),
+  confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
 }
 
 type InvoiceArgs = {
   customer_id: string
   items: { description: string; quantity: string | number; unit_price: string | number }[]
-  issue_date: string
-  due_date: string
-  tax_rate: string | number
-  retention_rate: string | number
+  issue_date?: string
+  due_date?: string
+  tax_rate?: string | number
+  retention_rate?: string | number
   notes?: string | null
-  currency: "EUR"
+  currency?: "EUR"
   invoice_id?: string
 }
 
-/**
- * Kanonické parametry pro potvrzovací token. Čísla se normalizují na dvě
- * desetinná místa, takže "100" a "100.00" dají stejný otisk — a naopak
- * jakákoli skutečná změna částky potvrzení zneplatní.
- */
-function confirmationPayload(args: InvoiceArgs) {
-  return {
-    invoice_id: args.invoice_id ?? null,
-    customer_id: args.customer_id,
-    issue_date: args.issue_date,
-    due_date: args.due_date,
-    tax_rate: normalizeDecimal(args.tax_rate),
-    retention_rate: normalizeDecimal(args.retention_rate),
-    notes: args.notes?.trim() || null,
-    currency: args.currency,
-    items: args.items.map((item) => ({
-      description: item.description.trim(),
-      quantity: normalizeDecimal(item.quantity),
-      unit_price: normalizeDecimal(item.unit_price),
-    })),
-  }
+/** Vstup doplněný o výchozí hodnoty. Musí vyjít stejně v obou fázích. */
+interface ResolvedInvoice {
+  customer_id: string
+  issue_date: string
+  due_date: string
+  tax_rate: string
+  retention_rate: string
+  notes: string | null
+  currency: "EUR"
+  items: { description: string; quantity: string; unit_price: string }[]
 }
 
 function normalizeDecimal(value: string | number): string {
   return toDecimal(parseDecimal(value)).toFixed(2)
-}
-
-function toServiceInput(args: InvoiceArgs) {
-  return invoiceInputSchema.parse({
-    customer_id: args.customer_id,
-    issue_date: args.issue_date,
-    due_date: args.due_date,
-    tax_rate: args.tax_rate,
-    retention_rate: args.retention_rate,
-    notes: args.notes,
-    currency: args.currency,
-    items: args.items,
-  })
 }
 
 function today(): string {
@@ -133,21 +115,73 @@ function addDays(date: string, days: number): string {
   return result.toISOString().slice(0, 10)
 }
 
+/** Existující faktura jako výchozí hodnoty pro částečnou úpravu. */
+function existingAsArgs(invoice: InvoiceDetail): Required<Omit<InvoiceArgs, "invoice_id">> {
+  return {
+    customer_id: invoice.customer_id,
+    items: invoice.items.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+    })),
+    issue_date: invoice.issue_date,
+    due_date: invoice.due_date,
+    tax_rate: invoice.tax_rate,
+    retention_rate: invoice.retention_rate,
+    notes: invoice.notes ?? null,
+    currency: "EUR",
+  }
+}
+
+async function resolveInvoice(
+  ctx: Parameters<typeof getCustomer>[0] extends never ? never : import("@/lib/mcp/context").McpContext,
+  args: InvoiceArgs,
+): Promise<{ resolved: ResolvedInvoice; customerName: string | null; isBusiness: boolean }> {
+  const customer = await getCustomer(ctx.service, args.customer_id)
+  const issueDate = args.issue_date ?? today()
+
+  return {
+    customerName: safeText(customer.name, 200),
+    isBusiness: customer.is_business ?? false,
+    resolved: {
+      customer_id: args.customer_id,
+      issue_date: issueDate,
+      due_date: args.due_date ?? addDays(issueDate, DEFAULT_DUE_DAYS),
+      tax_rate: normalizeDecimal(args.tax_rate ?? amount(DEFAULT_TAX_RATE)),
+      retention_rate: normalizeDecimal(
+        args.retention_rate ?? amount(defaultRetentionRate(customer.is_business)),
+      ),
+      notes: args.notes?.trim() || null,
+      currency: "EUR",
+      items: args.items.map((item) => ({
+        description: item.description.trim(),
+        quantity: normalizeDecimal(item.quantity),
+        unit_price: normalizeDecimal(item.unit_price),
+      })),
+    },
+  }
+}
+
+function toServiceInput(resolved: ResolvedInvoice) {
+  return invoiceInputSchema.parse(resolved)
+}
+
 export const listInvoicesTool = defineTool({
   name: "list_invoices",
   title: "Seznam faktur",
   description:
     "Vrátí faktury přihlášeného uživatele s možností filtrovat podle stavu, zákazníka a období. " +
     "Použij na dotazy typu „nezaplacené faktury po splatnosti“ nebo „faktury klienta X“. " +
-    "Vrací nejvýše 50 záznamů, na další použij offset.",
+    "Vrací nejvýše 50 záznamů, na další použij offset. Ve výsledku je i e-mail účtu — když je " +
+    "seznam prázdný, uveď ho, ať uživatel pozná, že je konektor připojený k jinému účtu.",
   inputSchema: {
     status: z
       .enum(["all", "paid", "unpaid", "overdue"])
       .default("all")
       .describe("overdue = nezaplacené s datem splatnosti v minulosti."),
     customer_id: z.string().uuid().optional().describe("Omezení na jednoho zákazníka."),
-    issued_from: z.string().optional().describe("Vystaveno od (RRRR-MM-DD)."),
-    issued_to: z.string().optional().describe("Vystaveno do (RRRR-MM-DD)."),
+    issued_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").optional().describe("Vystaveno od."),
+    issued_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD").optional().describe("Vystaveno do."),
     limit: z.number().int().min(1).max(50).default(20),
     offset: z.number().int().min(0).max(10_000).default(0),
   },
@@ -158,6 +192,7 @@ export const listInvoicesTool = defineTool({
     const invoices = await listInvoices(ctx.service, args)
     return {
       payload: {
+        account: { email: ctx.accountEmail },
         invoices: invoices.map(presentInvoiceSummary),
         count: invoices.length,
         has_more: invoices.length === args.limit,
@@ -191,7 +226,8 @@ export const getInvoiceSummaryTool = defineTool({
   title: "Souhrn fakturace",
   description:
     "Vrátí agregovaný přehled: počty a částky celkem, zaplacené, nezaplacené a po splatnosti. " +
-    "Použij na dotazy typu „kolik mi dluží“ nebo „jak jsem na tom letos“.",
+    "Použij na dotazy typu „kolik mi dluží“ nebo „jak jsem na tom letos“. Ve výsledku je i e-mail " +
+    "účtu — když jsou počty nulové, uveď ho, ať uživatel pozná, že je konektor připojený jinam.",
   inputSchema: {},
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   scope: "invoices:read",
@@ -200,12 +236,8 @@ export const getInvoiceSummaryTool = defineTool({
     const stats = await getInvoiceStats(ctx.service)
     return {
       payload: {
-        counts: {
-          total: stats.total,
-          paid: stats.paid,
-          unpaid: stats.unpaid,
-          overdue: stats.overdue,
-        },
+        account: { email: ctx.accountEmail },
+        counts: { total: stats.total, paid: stats.paid, unpaid: stats.unpaid, overdue: stats.overdue },
         amounts: {
           total: amountFields(stats.totalAmount),
           paid: amountFields(stats.paidAmount),
@@ -243,108 +275,16 @@ export const getInvoiceDownloadLinkTool = defineTool({
   },
 })
 
-export const prepareInvoiceTool = defineTool({
-  name: "prepare_invoice",
-  title: "Připravit fakturu",
-  description:
-    "Spočítá fakturu (mezisoučet, DPH, retención, celkem) a vrátí souhrn s potvrzovacím tokenem. " +
-    "Nic neukládá. Chybějící datum vystavení doplní na dnešek, splatnost na 14 dní, sazbu DPH na " +
-    "21 % a retención podle typu zákazníka. Souhrn ukaž uživateli, vyžádej si výslovný souhlas " +
-    "a pak zavolej create_invoice (nebo update_invoice) s argumenty z pole execute_arguments.",
-  inputSchema: {
-    customer_id: invoiceFields.customer_id,
-    items: invoiceFields.items,
-    issue_date: z.string().optional().describe("Datum vystavení. Výchozí dnešek."),
-    due_date: z.string().optional().describe("Datum splatnosti. Výchozí 14 dní od vystavení."),
-    tax_rate: decimalString.optional().describe("Sazba DPH v %. Výchozí 21."),
-    retention_rate: decimalString
-      .optional()
-      .describe("Retención v %. Výchozí podle typu zákazníka (15 % pro podnikatele)."),
-    notes: invoiceFields.notes,
-    currency: z.literal("EUR").default("EUR").describe("Aplikace umí pouze EUR."),
-    invoice_id: z.string().uuid().optional().describe("Vyplň jen při úpravě existující faktury."),
-  },
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  scope: "invoices:write",
-  rateLimit: "call",
-  handler: async (args, ctx) => {
-    const customer = await getCustomer(ctx.service, args.customer_id)
-    const issueDate = args.issue_date ?? today()
-
-    const resolved: InvoiceArgs = {
-      invoice_id: args.invoice_id,
-      customer_id: args.customer_id,
-      items: args.items,
-      issue_date: issueDate,
-      due_date: args.due_date ?? addDays(issueDate, DEFAULT_DUE_DAYS),
-      tax_rate: args.tax_rate ?? amount(DEFAULT_TAX_RATE),
-      retention_rate:
-        args.retention_rate ?? amount(defaultRetentionRate(customer.is_business)),
-      notes: args.notes,
-      currency: args.currency,
-    }
-
-    const existing = args.invoice_id ? await getInvoice(ctx.service, args.invoice_id) : null
-    const draft = await buildInvoiceDraft(ctx.service, toServiceInput(resolved))
-    const payload = confirmationPayload(resolved)
-
-    const summary = {
-      mode: args.invoice_id ? "update" : "create",
-      customer: { id: customer.id, name: safeText(customer.name, 200), is_business: customer.is_business ?? false },
-      issue_date: resolved.issue_date,
-      due_date: resolved.due_date,
-      currency: "EUR",
-      payment_method: "Bankovní převod na účet uvedený na faktuře",
-      tax_rate_percent: normalizeDecimal(resolved.tax_rate),
-      retention_rate_percent: normalizeDecimal(resolved.retention_rate),
-      items: draft.items.map((item) => ({
-        description: safeText(item.description, 500),
-        quantity: amount(item.quantity),
-        unit_price: amountFields(item.unit_price),
-        total: amountFields(item.total),
-      })),
-      subtotal: amountFields(draft.subtotal),
-      tax_amount: amountFields(draft.tax_amount),
-      retention_amount: amountFields(draft.retention_amount),
-      total: amountFields(draft.total),
-      notes: safeText(draft.notes, 2000),
-    }
-
-    const warnings: string[] = []
-    if (!customer.email) warnings.push("Zákazník nemá e-mail, fakturu mu nepůjde odeslat.")
-    if (existing?.email_sent_at) {
-      warnings.push("Faktura už byla odeslána e-mailem. Po úpravě ji bude potřeba odeslat znovu.")
-    }
-
-    const confirmation = await createConfirmation(ctx, "prepare_invoice", payload, summary)
-
-    return {
-      payload: {
-        summary,
-        warnings,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        execute_arguments: payload,
-        next_step:
-          "Ukaž uživateli celý souhrn (zákazník, částka, měna, položky, sazby, data) a vyžádej si " +
-          `souhlas. Po potvrzení zavolej ${args.invoice_id ? "update_invoice" : "create_invoice"} ` +
-          "s hodnotami z execute_arguments a s confirmation_token.",
-      },
-      resourceType: "invoice",
-      resourceId: args.invoice_id ?? null,
-    }
-  },
-})
-
 export const createInvoiceTool = defineTool({
   name: "create_invoice",
   title: "Vystavit fakturu",
   description:
-    "Vystaví novou fakturu. Číslo přidělí systém. Vyžaduje potvrzovací token z prepare_invoice " +
-    "se shodnými parametry — volej až po výslovném souhlasu uživatele.",
+    "Vystaví fakturu. Číslo přidělí systém. Probíhá na dva kroky: zavolej nejdřív BEZ " +
+    "confirmation_token — spočítá se DPH, retención i celková částka a vrátí se návrh, ale nic " +
+    "se neuloží. Ukaž návrh uživateli, a teprve po jeho souhlasu zavolej tentýž nástroj znovu " +
+    "se stejnými argumenty a s tokenem z návrhu.",
   inputSchema: {
     ...invoiceFields,
-    confirmation_token: z.string().min(1).describe("Token z prepare_invoice."),
     idempotency_key: idempotencyKeySchema
       .optional()
       .describe("Doporučeno: brání vystavení dvou stejných faktur při opakovaném volání."),
@@ -353,32 +293,55 @@ export const createInvoiceTool = defineTool({
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
-    const payload = confirmationPayload(args)
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_invoice",
-      args.confirmation_token,
-      payload,
-    )
+    const { resolved, customerName, isBusiness } = await resolveInvoice(ctx, args)
+    const draft = await buildInvoiceDraft(ctx.service, toServiceInput(resolved))
 
-    const outcome = await withIdempotency(
-      ctx,
-      "create_invoice",
-      args.idempotency_key,
-      payload,
-      async () => {
-        const invoice = await createInvoice(ctx.service, toServiceInput(args))
-        return { invoice: presentInvoiceDetail(invoice) }
+    return twoPhase(ctx, {
+      tool: "create_invoice",
+      token: args.confirmation_token,
+      params: resolved,
+      status: "NÁVRH — faktura zatím NEBYLA vystavena",
+      warnings: draft.customer.email ? [] : ["Zákazník nemá e-mail, fakturu mu nepůjde odeslat."],
+      summary: {
+        customer: { id: resolved.customer_id, name: customerName, is_business: isBusiness },
+        issue_date: resolved.issue_date,
+        due_date: resolved.due_date,
+        currency: "EUR",
+        payment_method: "Bankovní převod na účet uvedený na faktuře",
+        tax_rate_percent: resolved.tax_rate,
+        retention_rate_percent: resolved.retention_rate,
+        items: draft.items.map((item) => ({
+          description: safeText(item.description, 500),
+          quantity: amount(item.quantity),
+          unit_price: amountFields(item.unit_price),
+          total: amountFields(item.total),
+        })),
+        subtotal: amountFields(draft.subtotal),
+        tax_amount: amountFields(draft.tax_amount),
+        retention_amount: amountFields(draft.retention_amount),
+        total: amountFields(draft.total),
+        notes: safeText(draft.notes, 2000),
       },
-    )
-
-    return {
-      payload: { ...outcome.payload, replayed: outcome.replayed },
       resourceType: "invoice",
-      resourceId: readInvoiceId(outcome.payload.invoice),
-      confirmationId,
-      idempotencyKey: args.idempotency_key ?? null,
-    }
+      execute: async (confirmationId) => {
+        const outcome = await withIdempotency(
+          ctx,
+          "create_invoice",
+          args.idempotency_key,
+          resolved,
+          async () => ({
+            invoice: presentInvoiceDetail(await createInvoice(ctx.service, toServiceInput(resolved))),
+          }),
+        )
+
+        return {
+          payload: { saved: true, ...outcome.payload, replayed: outcome.replayed },
+          resourceType: "invoice",
+          confirmationId,
+          idempotencyKey: args.idempotency_key ?? null,
+        }
+      },
+    })
   },
 })
 
@@ -386,136 +349,92 @@ export const updateInvoiceTool = defineTool({
   name: "update_invoice",
   title: "Upravit fakturu",
   description:
-    "Přepíše existující fakturu včetně všech položek. Vyžaduje potvrzovací token z prepare_invoice " +
-    "se shodnými parametry (a se stejným invoice_id). Pokud už byla faktura odeslána zákazníkovi, " +
-    "upozorni uživatele, že ji bude potřeba odeslat znovu.",
+    "Upraví existující fakturu. Posílej JEN pole, která se mají změnit — co neuvedeš, zůstane " +
+    "jak bylo. Pozor: když pošleš items, nahradí VŠECHNY stávající položky, takže na doplnění " +
+    "jedné položky si nejdřív načti fakturu přes get_invoice a pošli i ty původní. Dvoufázové: " +
+    "nejdřív bez confirmation_token pro návrh, po souhlasu uživatele znovu se stejnými argumenty " +
+    "a s tokenem. Pokud už byla faktura odeslána zákazníkovi, upozorni, že ji bude potřeba " +
+    "odeslat znovu.",
   inputSchema: {
-    ...invoiceFields,
     invoice_id: z.string().uuid().describe("Identifikátor upravované faktury."),
-    confirmation_token: z.string().min(1).describe("Token z prepare_invoice."),
+    customer_id: z
+      .string()
+      .uuid()
+      .optional()
+      .describe("Jen když se má faktura přepsat na jiného zákazníka."),
+    items: z
+      .array(invoiceItemShape)
+      .min(1)
+      .max(MAX_INVOICE_ITEMS)
+      .optional()
+      .describe("Jen když se mají položky změnit. Nahradí VŠECHNY stávající položky."),
+    issue_date: invoiceFields.issue_date,
+    due_date: invoiceFields.due_date,
+    tax_rate: invoiceFields.tax_rate,
+    retention_rate: invoiceFields.retention_rate,
+    notes: invoiceFields.notes,
+    currency: invoiceFields.currency,
+    confirmation_token: invoiceFields.confirmation_token,
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
-    const payload = confirmationPayload(args)
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_invoice",
-      args.confirmation_token,
-      payload,
-    )
+    const existing = await getInvoice(ctx.service, args.invoice_id)
+    const current = existingAsArgs(existing)
 
-    const invoice = await updateInvoice(ctx.service, args.invoice_id, toServiceInput(args))
-
-    return {
-      payload: { invoice: presentInvoiceDetail(invoice) },
-      resourceType: "invoice",
-      resourceId: invoice.id,
-      confirmationId,
-    }
-  },
-})
-
-const invoiceActionSchema = z.enum(["mark_paid", "unmark_paid", "send_email", "delete"])
-
-type InvoiceAction = z.infer<typeof invoiceActionSchema>
-
-function actionPayload(args: { invoice_id: string; action: InvoiceAction; paid_date?: string }) {
-  return {
-    invoice_id: args.invoice_id,
-    action: args.action,
-    paid_date: args.action === "mark_paid" ? (args.paid_date ?? today()) : null,
-  }
-}
-
-export const prepareInvoiceActionTool = defineTool({
-  name: "prepare_invoice_action",
-  title: "Připravit operaci s fakturou",
-  description:
-    "Připraví operaci nad existující fakturou (označení jako zaplacené, zrušení platby, odeslání " +
-    "e-mailem, smazání) a vrátí souhrn, upozornění a potvrzovací token. Nic nemění. " +
-    "Souhrn ukaž uživateli, vyžádej si výslovný souhlas a teprve pak zavolej příslušný " +
-    "zapisující nástroj se stejnými parametry a tímto tokenem.",
-  inputSchema: {
-    invoice_id: z.string().uuid().describe("Identifikátor faktury."),
-    action: invoiceActionSchema.describe(
-      "mark_paid = označit jako zaplacenou, unmark_paid = zrušit platbu, " +
-        "send_email = odeslat zákazníkovi, delete = trvale smazat.",
-    ),
-    paid_date: z
-      .string()
-      .optional()
-      .describe("Datum úhrady pro mark_paid (RRRR-MM-DD). Výchozí dnešek."),
-  },
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  scope: "invoices:write",
-  rateLimit: "call",
-  handler: async (args, ctx) => {
-    const invoice = await getInvoice(ctx.service, args.invoice_id)
-    const payload = actionPayload(args)
-    const warnings: string[] = []
-
-    if (args.action === "send_email") {
-      if (!invoice.customer?.email) {
-        throw new ServiceError(
-          "CUSTOMER_EMAIL_MISSING",
-          "Zákazník nemá vyplněný e-mail, fakturu nelze odeslat.",
-        )
-      }
-      if (invoice.email_sent_at) {
-        warnings.push(`Faktura už byla odeslána ${invoice.email_sent_at}. Odešle se znovu.`)
-      }
-    }
-
-    if (args.action === "delete") {
-      warnings.push("Smazání je nevratné. Aplikace nemá archivaci ani koš.")
-      if (invoice.email_sent_at) {
-        warnings.push("Faktura už byla odeslána zákazníkovi — odkaz na stažení přestane fungovat.")
-      }
-      if (invoice.paid_date) warnings.push("Faktura je označená jako zaplacená.")
-    }
-
-    if (args.action === "mark_paid" && invoice.paid_date) {
-      warnings.push(`Faktura je už označená jako zaplacená k ${invoice.paid_date}.`)
-    }
-
-    if (args.action === "unmark_paid" && !invoice.paid_date) {
-      warnings.push("Faktura není označená jako zaplacená, operace nic nezmění.")
-    }
-
-    const confirmation = await createConfirmation(ctx, "prepare_invoice_action", payload, {
-      action: args.action,
-      invoice_number: invoice.invoice_number,
+    // Co uživatel neuvedl, zůstává jak bylo — jinak by „posuň splatnost"
+    // znamenalo poslat znovu i všechny položky a riskovat jejich přepsání.
+    const { resolved, customerName } = await resolveInvoice(ctx, {
+      customer_id: args.customer_id ?? current.customer_id,
+      items: args.items ?? current.items,
+      issue_date: args.issue_date ?? current.issue_date,
+      due_date: args.due_date ?? current.due_date,
+      tax_rate: args.tax_rate ?? current.tax_rate,
+      retention_rate: args.retention_rate ?? current.retention_rate,
+      notes: args.notes === undefined ? current.notes : args.notes,
+      currency: "EUR",
     })
+    const draft = await buildInvoiceDraft(ctx.service, toServiceInput(resolved))
 
-    return {
-      payload: {
-        action: args.action,
-        summary: {
-          invoice_number: invoice.invoice_number,
-          customer_name: safeText(invoice.customer?.name, 200),
-          total: amountFields(parseDecimal(invoice.total)),
-          status: invoiceStatus(invoice),
-          due_date: invoice.due_date,
-          recipient: args.action === "send_email" ? invoice.customer?.email : undefined,
-          paid_date: payload.paid_date,
-        },
-        warnings,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        execute_arguments: payload,
-        next_step: `Ukaž souhrn a upozornění uživateli. Po jeho výslovném souhlasu zavolej ${
-          args.action === "delete"
-            ? "delete_invoice"
-            : args.action === "send_email"
-              ? "send_invoice_email"
-              : "set_invoice_payment"
-        } s hodnotami z execute_arguments a s confirmation_token.`,
+    return twoPhase(ctx, {
+      tool: "update_invoice",
+      token: args.confirmation_token,
+      params: { ...resolved, invoice_id: args.invoice_id },
+      status: "NÁVRH — faktura zatím NEBYLA upravena",
+      warnings: existing.email_sent_at
+        ? ["Faktura už byla odeslána e-mailem. Po úpravě ji bude potřeba odeslat znovu."]
+        : [],
+      summary: {
+        invoice_number: existing.invoice_number,
+        customer: { id: resolved.customer_id, name: customerName },
+        issue_date: resolved.issue_date,
+        due_date: resolved.due_date,
+        currency: "EUR",
+        tax_rate_percent: resolved.tax_rate,
+        retention_rate_percent: resolved.retention_rate,
+        items: draft.items.map((item) => ({
+          description: safeText(item.description, 500),
+          quantity: amount(item.quantity),
+          unit_price: amountFields(item.unit_price),
+          total: amountFields(item.total),
+        })),
+        total: amountFields(draft.total),
+        previous_total: amountFields(parseDecimal(existing.total)),
       },
       resourceType: "invoice",
-      resourceId: invoice.id,
-    }
+      resourceId: args.invoice_id,
+      execute: async (confirmationId) => {
+        const invoice = await updateInvoice(ctx.service, args.invoice_id, toServiceInput(resolved))
+
+        return {
+          payload: { saved: true, invoice: presentInvoiceDetail(invoice) },
+          resourceType: "invoice",
+          resourceId: invoice.id,
+          confirmationId,
+        }
+      },
+    })
   },
 })
 
@@ -523,48 +442,65 @@ export const setInvoicePaymentTool = defineTool({
   name: "set_invoice_payment",
   title: "Změnit stav platby faktury",
   description:
-    "Označí fakturu jako zaplacenou nebo platbu zruší. Vyžaduje potvrzovací token " +
-    "z prepare_invoice_action se shodnými parametry.",
+    "Označí fakturu jako zaplacenou (zadej paid_date) nebo platbu zruší (pošli paid_date: null). " +
+    "Dvoufázové: nejdřív bez confirmation_token pro návrh, po souhlasu uživatele znovu s tokenem.",
   inputSchema: {
-    invoice_id: z.string().uuid(),
-    action: z.enum(["mark_paid", "unmark_paid"]),
-    paid_date: z.string().nullable().describe("Datum úhrady u mark_paid, jinak null."),
-    confirmation_token: z.string().min(1).describe("Token z prepare_invoice_action."),
+    invoice_id: z.string().uuid().describe("Identifikátor faktury."),
+    paid_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum musí být ve tvaru RRRR-MM-DD")
+      .nullish()
+      .describe("Datum úhrady. Vynech nebo pošli null pro zrušení platby."),
+    confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
-    const payload = {
-      invoice_id: args.invoice_id,
-      action: args.action,
-      paid_date: args.action === "mark_paid" ? args.paid_date : null,
+    const invoice = await getInvoice(ctx.service, args.invoice_id)
+    const paidDate = args.paid_date ?? null
+    const params = { invoice_id: args.invoice_id, paid_date: paidDate }
+
+    const warnings: string[] = []
+    if (paidDate && invoice.paid_date) {
+      warnings.push(`Faktura je už označená jako zaplacená k ${invoice.paid_date}.`)
+    }
+    if (!paidDate && !invoice.paid_date) {
+      warnings.push("Faktura není označená jako zaplacená, operace nic nezmění.")
     }
 
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_invoice_action",
-      args.confirmation_token,
-      payload,
-    )
-
-    if (args.action === "mark_paid" && !payload.paid_date) {
-      throw new ServiceError("VALIDATION_ERROR", "Chybí datum úhrady.")
-    }
-
-    const invoice = await setInvoicePayment(ctx.service, args.invoice_id, payload.paid_date)
-
-    return {
-      payload: {
-        invoice_id: invoice.id,
+    return twoPhase(ctx, {
+      tool: "set_invoice_payment",
+      token: args.confirmation_token,
+      params,
+      status: paidDate
+        ? "NÁVRH — faktura zatím NEBYLA označena jako zaplacená"
+        : "NÁVRH — platba zatím NEBYLA zrušena",
+      warnings,
+      summary: {
         invoice_number: invoice.invoice_number,
-        status: invoiceStatus(invoice),
-        paid_date: invoice.paid_date ?? null,
+        customer_name: safeText(invoice.customer?.name, 200),
+        total: amountFields(parseDecimal(invoice.total)),
+        current_status: invoiceStatus(invoice),
+        new_paid_date: paidDate,
       },
       resourceType: "invoice",
       resourceId: invoice.id,
-      confirmationId,
-    }
+      execute: async (confirmationId) => {
+        const updated = await setInvoicePayment(ctx.service, args.invoice_id, paidDate)
+
+        return {
+          payload: {
+            saved: true,
+            invoice_id: updated.id,
+            invoice_number: updated.invoice_number,
+            status: invoiceStatus(updated),
+            paid_date: updated.paid_date ?? null,
+          },
+          resourceType: "invoice",
+          resourceId: updated.id,
+          confirmationId,
+        }
+      },
+    })
   },
 })
 
@@ -572,14 +508,12 @@ export const sendInvoiceEmailTool = defineTool({
   name: "send_invoice_email",
   title: "Odeslat fakturu e-mailem",
   description:
-    "Odešle zákazníkovi e-mail s odkazem na fakturu a zapíše čas odeslání. Operace je nevratná — " +
-    "odeslaný e-mail nelze vzít zpět. Vyžaduje potvrzovací token z prepare_invoice_action " +
-    "se shodnými parametry. Vždy použij idempotency_key, ať zákazník nedostane fakturu dvakrát.",
+    "Odešle zákazníkovi e-mail s odkazem na fakturu. Operace je nevratná — odeslaný e-mail nelze " +
+    "vzít zpět. Dvoufázové: nejdřív bez confirmation_token pro návrh s příjemcem, po souhlasu " +
+    "uživatele znovu s tokenem. Vždy použij idempotency_key, ať zákazník nedostane fakturu dvakrát.",
   inputSchema: {
-    invoice_id: z.string().uuid(),
-    action: z.literal("send_email"),
-    paid_date: z.null().describe("Vždy null; pole je součástí potvrzených parametrů."),
-    confirmation_token: z.string().min(1).describe("Token z prepare_invoice_action."),
+    invoice_id: z.string().uuid().describe("Identifikátor faktury."),
+    confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
     idempotency_key: idempotencyKeySchema
       .optional()
       .describe("Doporučeno: opakované volání se stejným klíčem e-mail znovu nepošle."),
@@ -588,37 +522,61 @@ export const sendInvoiceEmailTool = defineTool({
   scope: "invoices:write",
   rateLimit: "email",
   handler: async (args, ctx) => {
-    const payload = { invoice_id: args.invoice_id, action: args.action, paid_date: null }
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_invoice_action",
-      args.confirmation_token,
-      payload,
-    )
+    const invoice = await getInvoice(ctx.service, args.invoice_id)
+    const recipient = invoice.customer?.email
 
-    const outcome = await withIdempotency(
-      ctx,
-      "send_invoice_email",
-      args.idempotency_key,
-      payload,
-      async () => {
-        const result = await sendInvoiceEmail(ctx.service, args.invoice_id)
+    if (!recipient) {
+      throw new ServiceError(
+        "CUSTOMER_EMAIL_MISSING",
+        "Zákazník nemá vyplněný e-mail, fakturu nelze odeslat.",
+      )
+    }
+
+    const params = { invoice_id: args.invoice_id }
+
+    return twoPhase(ctx, {
+      tool: "send_invoice_email",
+      token: args.confirmation_token,
+      params,
+      status: "NÁVRH — e-mail zatím NEBYL odeslán",
+      warnings: invoice.email_sent_at
+        ? [`Faktura už byla odeslána ${invoice.email_sent_at}. Odešle se znovu.`]
+        : [],
+      summary: {
+        invoice_number: invoice.invoice_number,
+        customer_name: safeText(invoice.customer?.name, 200),
+        recipient,
+        total: amountFields(parseDecimal(invoice.total)),
+        due_date: invoice.due_date,
+      },
+      resourceType: "invoice",
+      resourceId: invoice.id,
+      execute: async (confirmationId) => {
+        const outcome = await withIdempotency(
+          ctx,
+          "send_invoice_email",
+          args.idempotency_key,
+          params,
+          async () => {
+            const result = await sendInvoiceEmail(ctx.service, args.invoice_id)
+            return {
+              invoice_id: result.invoiceId,
+              invoice_number: result.invoiceNumber,
+              recipient: result.recipient,
+              sent_at: result.sentAt,
+            }
+          },
+        )
+
         return {
-          invoice_id: result.invoiceId,
-          invoice_number: result.invoiceNumber,
-          recipient: result.recipient,
-          sent_at: result.sentAt,
+          payload: { saved: true, ...outcome.payload, replayed: outcome.replayed },
+          resourceType: "invoice",
+          resourceId: args.invoice_id,
+          confirmationId,
+          idempotencyKey: args.idempotency_key ?? null,
         }
       },
-    )
-
-    return {
-      payload: { ...outcome.payload, replayed: outcome.replayed },
-      resourceType: "invoice",
-      resourceId: args.invoice_id,
-      confirmationId,
-      idempotencyKey: args.idempotency_key ?? null,
-    }
+    })
   },
 })
 
@@ -627,48 +585,57 @@ export const deleteInvoiceTool = defineTool({
   title: "Smazat fakturu",
   description:
     "Trvale smaže fakturu i její položky. Aplikace nemá archivaci ani koš, takže operace je " +
-    "nevratná a veřejný odkaz na stažení přestane fungovat. Vyžaduje potvrzovací token " +
-    "z prepare_invoice_action se shodnými parametry. Pokud uživatel jen nechce fakturu evidovat " +
-    "jako nezaplacenou, nabídni místo mazání označení jako zaplacené.",
+    "nevratná a veřejný odkaz na stažení přestane fungovat. Dvoufázové: nejdřív bez " +
+    "confirmation_token pro návrh s upozorněními, po výslovném souhlasu uživatele znovu " +
+    "s tokenem. Pokud uživatel jen nechce fakturu evidovat jako nezaplacenou, nabídni místo " +
+    "mazání označení jako zaplacené.",
   inputSchema: {
-    invoice_id: z.string().uuid(),
-    action: z.literal("delete"),
-    paid_date: z.null().describe("Vždy null; pole je součástí potvrzených parametrů."),
-    confirmation_token: z.string().min(1).describe("Token z prepare_invoice_action."),
+    invoice_id: z.string().uuid().describe("Identifikátor faktury."),
+    confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
-    const payload = { invoice_id: args.invoice_id, action: args.action, paid_date: null }
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_invoice_action",
-      args.confirmation_token,
-      payload,
-    )
-
     const invoice = await getInvoice(ctx.service, args.invoice_id)
-    await deleteInvoice(ctx.service, args.invoice_id)
 
-    return {
-      payload: {
-        deleted: true,
-        invoice_id: args.invoice_id,
+    const warnings = ["Smazání je nevratné. Aplikace nemá archivaci ani koš."]
+    if (invoice.email_sent_at) {
+      warnings.push("Faktura už byla odeslána zákazníkovi — odkaz na stažení přestane fungovat.")
+    }
+    if (invoice.paid_date) warnings.push("Faktura je označená jako zaplacená.")
+
+    return twoPhase(ctx, {
+      tool: "delete_invoice",
+      token: args.confirmation_token,
+      params: { invoice_id: args.invoice_id },
+      status: "NÁVRH — faktura zatím NEBYLA smazána",
+      warnings,
+      summary: {
         invoice_number: invoice.invoice_number,
-        total: formatScaled(parseDecimal(invoice.total)),
+        customer_name: safeText(invoice.customer?.name, 200),
+        total: amountFields(parseDecimal(invoice.total)),
+        status: invoiceStatus(invoice),
+        issue_date: invoice.issue_date,
       },
       resourceType: "invoice",
-      resourceId: args.invoice_id,
-      confirmationId,
-    }
+      resourceId: invoice.id,
+      execute: async (confirmationId) => {
+        await deleteInvoice(ctx.service, args.invoice_id)
+
+        return {
+          payload: {
+            saved: true,
+            deleted: true,
+            invoice_id: args.invoice_id,
+            invoice_number: invoice.invoice_number,
+            total: formatScaled(parseDecimal(invoice.total)),
+          },
+          resourceType: "invoice",
+          resourceId: args.invoice_id,
+          confirmationId,
+        }
+      },
+    })
   },
 })
-
-function readInvoiceId(value: unknown): string | null {
-  if (value && typeof value === "object" && "id" in value) {
-    const id = (value as { id: unknown }).id
-    if (typeof id === "string") return id
-  }
-  return null
-}

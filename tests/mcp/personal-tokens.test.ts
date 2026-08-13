@@ -120,7 +120,7 @@ describe("ověření tokenu na /mcp", () => {
     const customerId = seedCustomer(db, OWNER)
     const { body } = await createToken()
 
-    const result = await callTool(db, body.token!.token, "prepare_invoice", {
+    const result = await callTool(db, body.token!.token, "create_invoice", {
       customer_id: customerId,
       items: [{ description: "Úklid", quantity: "1", unit_price: "100" }],
     })
@@ -137,13 +137,14 @@ describe("ověření tokenu na /mcp", () => {
       ttl_days: 30,
     })
 
-    const result = await callTool(db, body.token!.token, "prepare_invoice", {
+    const result = await callTool(db, body.token!.token, "create_invoice", {
       customer_id: customerId,
       items: [{ description: "Úklid", quantity: "1", unit_price: "100" }],
     })
 
     expect(result.success).toBe(true)
     expect(result.data?.confirmation_token).toBeTruthy()
+    expect(result.data?.saved).toBe(false)
   })
 
   it("odmítne neznámý token", async () => {

@@ -95,3 +95,41 @@ export async function consumeConfirmation(
       )
   }
 }
+
+/**
+ * Jednotný tvar výstupu `prepare_*` nástrojů.
+ *
+ * První pokus vracel souhrn, token a instrukci v poli `next_step`. V provozu
+ * se ukázalo, že to nestačí: souhrn vypadá jako hotový doklad (má položky,
+ * DPH i celkovou částku), model ho ohlásil jako vystavenou fakturu a zapisující
+ * nástroj nikdy nezavolal. Uživateli pak faktura chyběla v aplikaci i v MCP.
+ *
+ * Proto je teď hned na začátku `saved: false` a `status`, který říká, že nic
+ * nevzniklo, a povinné pokračování má vlastní objekt `required_action` se
+ * jménem nástroje. Souhrn zůstává až za tím.
+ */
+export function preparePayload(params: {
+  status: string
+  executeTool: string
+  summary: Record<string, unknown>
+  confirmation: Confirmation
+  executeArguments: Record<string, unknown>
+  warnings?: string[]
+}): Record<string, unknown> {
+  return {
+    saved: false,
+    status: params.status,
+    required_action: {
+      tool: params.executeTool,
+      note:
+        `Nic zatím nevzniklo. Zavolej ${params.executeTool} s hodnotami z execute_arguments ` +
+        "a s confirmation_token. Uživateli neoznamuj, že je hotovo, dokud tenhle nástroj " +
+        "neproběhne a nevrátí success.",
+    },
+    summary: params.summary,
+    warnings: params.warnings ?? [],
+    confirmation_token: params.confirmation.token,
+    expires_at: params.confirmation.expiresAt,
+    execute_arguments: params.executeArguments,
+  }
+}

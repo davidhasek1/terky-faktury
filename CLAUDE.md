@@ -47,7 +47,7 @@ component or a route — add it to the service and call it.
 - `lib/services/browser-context.ts` / `server-context.ts` — build that context
   from the browser session / cookie session.
 - `lib/services/invoice-totals.ts` — pure calculation shared by the live form
-  preview, the MCP `prepare_invoice` summary and the actual save.
+  preview, the MCP draft summary and the actual save.
 - `lib/services/errors.ts` — `ServiceError` with a stable machine-readable
   `code` and a Czech user-facing message. Raw driver errors never leak out.
 - `lib/money.ts` — money is parsed to integer hundredths and only converted
@@ -81,7 +81,7 @@ There are four entry points in `lib/supabase/` and they are not interchangeable:
 - `server.ts` → `createClient()` — server components / route handlers. Reads cookies, respects RLS as the signed-in user.
 - `client.ts` → `createClient()` — client components. Browser-side, persists session.
 - `proxy.ts` → `updateSession()` — only called from the root `proxy.ts`.
-- `user-scoped.ts` → `createUserScopedClient(userId)` — for requests with no cookies (the MCP endpoint). Signs a short-lived Supabase JWT so **RLS still applies** as that user.
+- `user-scoped.ts` → `createUserScopedClient(userId)` — for requests with no cookies (the MCP endpoint). Asks Supabase Auth for a real short-lived access token for that user, so **RLS still applies** as that user. Tokens are cached in process memory until they expire.
 - `service-role.ts` → `createServiceRoleClient()` — **bypasses RLS**. Only for the OAuth store and the public invoice download, where no user session exists and the query is pinned to a single unguessable token.
 
 Never instantiate `createClient` from `@supabase/supabase-js` directly — always go through these wrappers so cookie/RLS behavior stays consistent.
@@ -107,8 +107,33 @@ OAuth 2.1 server under `/api/oauth/*`. Clients that can't do OAuth use a
 personal token (`tfm_…`) issued from the **`/connect`** page; `lib/mcp/auth.ts`
 accepts both and resolves them to the same identity. Tools live in `lib/mcp/tools/` and
 contain **no** business logic — they validate, call a service, and format the
-result. Writes require a single-use confirmation token from a `prepare_*` tool.
-Full reference, including how to add a tool: `docs/MCP.md`.
+result. Writes are two-phase through a **single** tool: called without
+`confirmation_token` it returns a draft plus a single-use token, called again
+with the same arguments and that token it performs the write (`lib/mcp/two-phase.ts`).
+Full reference, including how to add a tool: `docs/MCP.md`. Why it is built this
+way: `docs/adr/`. What it is for: `docs/prd/mcp-integration.md`.
+
+### New functionality ships to MCP in the same change
+
+MCP is a second door to the same rooms, not a subset. When you add or change a
+user-facing capability, extend the MCP surface in the same commit — a feature
+that exists only in the UI is a gap the operator will hit while talking to
+ChatGPT, and nothing will point them at the reason.
+
+Concretely, for anything a user can do in the app:
+
+1. Put the rule in `lib/services/*` (ADR 0004). Never in a component or a route.
+2. Add or extend a tool in `lib/mcp/tools/*` and register it in `lib/mcp/server.ts`.
+   Reads are plain; writes wrap their body in `twoPhase()` (ADR 0003) and keep
+   `confirmation_token` optional in the schema.
+3. Cover both phases in `tests/mcp/two-phase.test.ts` and add the tool name to
+   the list in `tests/mcp/protocol.test.ts`.
+4. Add a row to the tool table in `docs/MCP.md`.
+
+If a capability should **not** be reachable from a model — anything touching
+credentials, billing identity, or a cascading delete — say so explicitly in the
+"not exposed" table in `docs/MCP.md` and in the PRD, with the reason. Silence
+reads as an oversight; a recorded refusal reads as a decision.
 
 Next.js 15 route handlers receive `params` as a `Promise` — every route under `app/api/**` must `await context.params`. Dynamic page components already do this; don't regress it.
 
@@ -136,7 +161,7 @@ UI copy is **Czech**. The codebase had stray Spanish strings from the v0 origin 
 
 All listed in `.env.example`; canonical reference (with required-vs-optional and notes) is the table in `DEPLOYMENT.md`. The required-in-prod set:
 
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `SENDER_EMAIL`, `MCP_TOKEN_SECRET`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `SENDER_EMAIL`, `MCP_TOKEN_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 `NEXT_PUBLIC_SITE_URL` must match the public origin exactly — the OAuth `issuer`
 and `resource` identifiers are derived from it.

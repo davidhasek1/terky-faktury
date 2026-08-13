@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { SignJWT } from "jose"
 
@@ -34,33 +34,28 @@ describe("MCP endpoint /mcp", () => {
     expect(tools).toBeDefined()
     const names = tools!.map((tool) => tool.name)
 
-    expect(names).toEqual(
-      expect.arrayContaining([
+    expect(names.sort()).toEqual(
+      [
         "search_customers",
         "get_customer",
-        "prepare_customer",
         "create_customer",
         "update_customer",
         "list_invoices",
         "get_invoice",
         "get_invoice_summary",
         "get_invoice_download_link",
-        "prepare_invoice",
         "create_invoice",
         "update_invoice",
-        "prepare_invoice_action",
         "set_invoice_payment",
         "send_invoice_email",
         "delete_invoice",
         "list_activities",
         "get_activity",
-        "prepare_activity",
         "create_activity",
         "update_activity",
-        "prepare_activity_status",
         "set_activity_status",
         "get_company_profile",
-      ]),
+      ].sort(),
     )
 
     for (const tool of tools!) {
@@ -78,7 +73,6 @@ describe("MCP endpoint /mcp", () => {
 
     expect(byName.get("list_invoices")?.readOnlyHint).toBe(true)
     expect(byName.get("get_invoice")?.readOnlyHint).toBe(true)
-    expect(byName.get("prepare_invoice")?.readOnlyHint).toBe(true)
 
     expect(byName.get("create_invoice")?.readOnlyHint).toBe(false)
     expect(byName.get("delete_invoice")?.destructiveHint).toBe(true)
@@ -86,12 +80,42 @@ describe("MCP endpoint /mcp", () => {
     expect(byName.get("send_invoice_email")?.openWorldHint).toBe(true)
   })
 
+  it("zapisující nástroje mají přirozené povinné argumenty", async () => {
+    // Dřív se do schématu prosákl tvar otisku potvrzení: mazání faktury
+    // vyžadovalo `action` a `paid_date: null`. Model takové volání nesestavil
+    // a klient ho zahodil dřív, než dorazilo na server.
+    const db = createFakeDatabase()
+    const { body } = await rpc(db, await tokenFor("user-1"), "tools/list")
+    const tools = body!.result!.tools as {
+      name: string
+      inputSchema: { required?: string[]; properties?: Record<string, unknown> }
+    }[]
+    const required = (name: string) =>
+      tools.find((tool) => tool.name === name)!.inputSchema.required ?? []
+
+    expect(required("delete_invoice")).toEqual(["invoice_id"])
+    expect(required("send_invoice_email")).toEqual(["invoice_id"])
+    expect(required("set_invoice_payment")).toEqual(["invoice_id"])
+    expect(required("create_invoice")).toEqual(["customer_id", "items"])
+    expect(required("create_customer")).toEqual(["name"])
+    expect(required("update_invoice")).toEqual(["invoice_id"])
+
+    // confirmation_token je vždy volitelný — první fáze ho nemá čím vyplnit.
+    for (const name of ["create_invoice", "create_customer", "delete_invoice"]) {
+      expect(required(name), name).not.toContain("confirmation_token")
+      expect(
+        tools.find((tool) => tool.name === name)!.inputSchema.properties,
+        name,
+      ).toHaveProperty("confirmation_token")
+    }
+  })
+
   it("řekne modelu, že popisy položek patří na fakturu španělsky", async () => {
     const db = createFakeDatabase()
     const { body } = await rpc(db, await tokenFor("user-1"), "tools/list")
     const tools = body!.result!.tools as { name: string; inputSchema: Record<string, unknown> }[]
 
-    for (const name of ["prepare_invoice", "create_invoice", "update_invoice"]) {
+    for (const name of ["create_invoice", "update_invoice"]) {
       const schema = JSON.stringify(tools.find((tool) => tool.name === name)!.inputSchema)
 
       for (const preset of INVOICE_ITEM_PRESETS) {
@@ -149,6 +173,29 @@ describe("MCP endpoint /mcp", () => {
 
     const { status } = await rpc(db, foreignToken, "tools/list")
     expect(status).toBe(401)
+  })
+
+  it("selhání Supabase session vrátí JSON-RPC chybu, ne holou 500", async () => {
+    // Regrese: vydání session sahá po síti a bylo mimo try/catch, takže
+    // z výpadku byla neošetřená 500 — klient hlásil nedostupný konektor
+    // a do auditu se nezapsalo nic.
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const response = await handleMcpRequest(
+      mcpRequest({ jsonrpc: "2.0", id: 7, method: "tools/list" }, await tokenFor("user-1")),
+      {
+        createClient: async () => {
+          throw new Error("supabase auth nedostupné")
+        },
+        resolveEmail: async () => null,
+      },
+    )
+    const body = (await response.json()) as { id: number; error?: { message: string } }
+    spy.mockRestore()
+
+    expect(response.status).toBe(200)
+    expect(body.id).toBe(7)
+    expect(body.error?.message).toContain("ověřit identitu")
+    expect(JSON.stringify(body)).not.toContain("supabase auth nedostupné")
   })
 
   it("odmítne tělo, které není platný JSON", async () => {

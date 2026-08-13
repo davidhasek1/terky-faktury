@@ -10,6 +10,11 @@ a teprve pak fakturu vystaví.
 
 ---
 
+> **Proč je to postavené takhle:** rozhodnutí jsou zaznamenaná v `docs/adr/`.
+> **Co má integrace umět a proč:** `docs/prd/mcp-integration.md`.
+> **Pravidlo:** nová funkcionalita v aplikaci se přidává i do MCP ve stejné
+> změně — viz `CLAUDE.md`.
+
 ## Obsah
 
 - [Architektura](#architektura)
@@ -68,14 +73,23 @@ na obou místech naráz, protože je jen jeden: `lib/services/invoice-totals.ts`
 ### Jak MCP vystupuje vůči databázi
 
 MCP nemá cookie session, ale autorizaci nechceme přesouvat do aplikačního kódu.
-`lib/supabase/user-scoped.ts` proto podepíše krátkodobý Supabase JWT
-(`sub` = id uživatele, `role` = `authenticated`) klíčem `SUPABASE_JWT_SECRET`
-a pošle ho v hlavičce. Databáze vidí přesně stejnou identitu jako při práci
-v prohlížeči a **platí úplně stejná RLS pravidla**.
+`lib/supabase/user-scoped.ts` si proto od Supabase vyžádá **skutečný access
+token** daného uživatele: přes Auth Admin API vyrobí `generateLink` jednorázový
+`hashed_token` (e-mail se neodesílá, endpoint jen generuje) a `verifyOtp` ho
+vymění za session. Token se drží v paměti procesu do konce své platnosti,
+takže na jedno volání auth API připadá zhruba hodina provozu.
 
-Service-role klíč se v MCP cestě nepoužívá vůbec. Sahají na něj jen dvě místa,
-kde žádný přihlášený uživatel neexistuje: úložiště OAuth klientů a veřejné
-stažení faktury podle `public_id`.
+Databáze díky tomu vidí přesně stejnou identitu jako při práci v prohlížeči
+a **platí úplně stejná RLS pravidla**.
+
+Vlastní podepisování tokenu tu záměrně není: projekt běží na asymetrických
+podpisových klíčích a jejich privátní půlku Supabase ven nevydává. Legacy HS256
+secret by fungoval, ale je ve stavu „previously used" a Supabase sám doporučuje
+ho revokovat — integrace by jednou tiše odešla.
+
+Service-role klíč slouží jen tam, kde žádný přihlášený uživatel neexistuje:
+úložiště OAuth klientů, veřejné stažení faktury podle `public_id` a právě
+vydání uživatelského tokenu výše. Data nástrojů se přes něj nikdy nečtou.
 
 ---
 
@@ -223,7 +237,7 @@ curl -s -X POST https://<doména>/mcp \
 
 ## Dostupné nástroje
 
-Všech 24 nástrojů vyžaduje platný token. Sloupec *Oprávnění* říká, jaký scope
+Všech 19 nástrojů vyžaduje platný token. Sloupec *Oprávnění* říká, jaký scope
 musí token mít.
 
 ### Zákazníci
@@ -231,10 +245,10 @@ musí token mít.
 | Nástroj | Typ | Oprávnění | Účel |
 | --- | --- | --- | --- |
 | `search_customers` | čtení | `invoices:read` | Najde kandidáty podle jména, e-mailu, NIE nebo NIF. Vrací seznam, nikdy nevybírá sám. |
+| — | — | — | *`list_invoices`, `get_invoice_summary` a `get_company_profile` vracejí navíc `account.email` — u prázdné odpovědi je z ní pak poznat, že je konektor připojený k jinému účtu.* |
 | `get_customer` | čtení | `invoices:read` | Úplné údaje jednoho zákazníka. |
-| `prepare_customer` | příprava | `invoices:write` | Návrh vytvoření či úpravy + potvrzovací token. |
-| `create_customer` | zápis | `invoices:write` | Založí zákazníka. Vyžaduje potvrzení. |
-| `update_customer` | zápis | `invoices:write` | Přepíše údaje zákazníka. Vyžaduje potvrzení. |
+| `create_customer` | zápis | `invoices:write` | Založí zákazníka. Dvoufázový. |
+| `update_customer` | zápis | `invoices:write` | Přepíše údaje zákazníka. Dvoufázový. |
 
 ### Faktury
 
@@ -244,11 +258,9 @@ musí token mít.
 | `get_invoice` | čtení | `invoices:read` | Detail včetně položek a sazeb. |
 | `get_invoice_summary` | čtení | `invoices:read` | Agregace: počty a částky celkem / zaplaceno / nezaplaceno / po splatnosti. |
 | `get_invoice_download_link` | čtení | `invoices:read` | Veřejný odkaz na PDF (ten samý, co dostane zákazník). |
-| `prepare_invoice` | příprava | `invoices:write` | Spočítá fakturu a vrátí souhrn + token. Nic neukládá. |
-| `create_invoice` | zápis | `invoices:write` | Vystaví fakturu. Číslo přiděluje databáze. |
-| `update_invoice` | zápis | `invoices:write` | Přepíše fakturu včetně položek. |
-| `prepare_invoice_action` | příprava | `invoices:write` | Návrh operace: úhrada, zrušení platby, odeslání, smazání. |
-| `set_invoice_payment` | zápis | `invoices:write` | Označí zaplaceno / zruší platbu. |
+| `create_invoice` | zápis | `invoices:write` | Vystaví fakturu. Číslo přiděluje databáze. Dvoufázový. |
+| `update_invoice` | zápis | `invoices:write` | Upraví fakturu. Neuvedená pole zůstávají; `items` nahrazuje všechny položky. Dvoufázový. |
+| `set_invoice_payment` | zápis | `invoices:write` | Označí zaplaceno / zruší platbu. Dvoufázový. |
 | `send_invoice_email` | **riziková** | `invoices:write` | Odešle fakturu zákazníkovi. Nevratné. |
 | `delete_invoice` | **destruktivní** | `invoices:write` | Trvale smaže fakturu i položky. |
 
@@ -258,11 +270,9 @@ musí token mít.
 | --- | --- | --- | --- |
 | `list_activities` | čtení | `invoices:read` | Záznamy úklidu, praní a servisu apartmánu. |
 | `get_activity` | čtení | `invoices:read` | Detail aktivity včetně služeb. |
-| `prepare_activity` | příprava | `invoices:write` | Návrh zápisu nebo úpravy + token. |
-| `create_activity` | zápis | `invoices:write` | Zapíše aktivitu. |
-| `update_activity` | zápis | `invoices:write` | Přepíše aktivitu včetně služeb. |
-| `prepare_activity_status` | příprava | `invoices:write` | Návrh změny stavu úhrady + token. |
-| `set_activity_status` | zápis | `invoices:write` | Označí aktivitu zaplacenou / nezaplacenou. |
+| `create_activity` | zápis | `invoices:write` | Zapíše aktivitu. Dvoufázový. |
+| `update_activity` | zápis | `invoices:write` | Přepíše aktivitu včetně služeb. Dvoufázový. |
+| `set_activity_status` | zápis | `invoices:write` | Označí aktivitu zaplacenou / nezaplacenou. Dvoufázový. |
 
 ### Firma
 
@@ -300,15 +310,15 @@ Zobraz nezaplacené faktury po splatnosti.
 ```
 Připrav fakturu klientovi ABC na 100 EUR.
 ```
-→ `search_customers` → `prepare_invoice` → souhrn (zákazník, položky, DPH,
-retención, datum vystavení i splatnosti, celkem) → čeká na tvůj souhlas →
-`create_invoice`.
+→ `search_customers` → `create_invoice` bez tokenu → souhrn (zákazník, položky,
+DPH, retención, datum vystavení i splatnosti, celkem) → čeká na tvůj souhlas →
+`create_invoice` znovu, se stejnými argumenty a s tokenem.
 
 ```
 Odešli potvrzenou fakturu klientovi ABC.
 ```
-→ `list_invoices` → `prepare_invoice_action` s `action: "send_email"` →
-souhrn s příjemcem a upozorněními → po souhlasu `send_invoice_email`.
+→ `list_invoices` → `send_invoice_email` bez tokenu → souhrn s příjemcem
+a upozorněními → po souhlasu `send_invoice_email` znovu, s tokenem.
 
 Další, co funguje:
 
@@ -326,17 +336,20 @@ Zapiš úklid u klienta ABC za 30 € na dnešek.
 Žádná zápisová operace se neprovede bez potvrzení. Model si potvrzení nemůže
 vyrobit sám — prostý parametr `confirmed: true` by nestačil.
 
-1. **`prepare_*`** spočítá výsledek, uloží do databáze otisk parametrů
+Obě fáze obstará **jeden nástroj, volaný dvakrát**:
+
+1. **Bez `confirmation_token`** nástroj spočítá výsledek, uloží otisk parametrů
    (SHA-256 kanonizovaného JSONu) a vrátí:
+   - `saved: false` a `status` — slovy, co se ještě **nestalo**,
+   - `required_action` — jméno nástroje, který se má zavolat znovu,
    - `summary` — přesně to, co se stane,
    - `warnings` — např. „faktura už byla odeslána",
-   - `confirmation_token` — jednorázový, platný 5 minut,
-   - `execute_arguments` — hotové argumenty pro zapisující nástroj.
-2. **ChatGPT ukáže souhrn** a vyžádá si tvůj výslovný souhlas.
-3. **Zapisující nástroj** dostane token a stejné parametry.
-4. **Databáze ověří** (`mcp_consume_confirmation`), že token patří témuž
-   uživateli, témuž nástroji a nezměněným parametrům, a atomicky ho spotřebuje.
-5. Teprve pak proběhne operace.
+   - `confirmation_token` — jednorázový, platný 5 minut.
+2. **ChatGPT ukáže souhrn** a vyžádá si výslovný souhlas.
+3. **Tentýž nástroj se zavolá znovu** se stejnými argumenty plus tokenem.
+4. **Databáze ověří**, že token patří témuž uživateli, témuž nástroji
+   a nezměněným parametrům, a atomicky ho spotřebuje.
+5. Teprve pak proběhne operace a odpověď má `saved: true`.
 
 Token je neplatný, když: vypršel, už byl použit, patří jinému uživateli,
 nebo se změnil jakýkoli parametr (třeba jen částka).
@@ -344,6 +357,22 @@ nebo se změnil jakýkoli parametr (třeba jen částka).
 U vytvoření faktury souhrn vždy obsahuje klienta, částku, měnu, položky,
 množství, sazbu DPH, retención, datum vystavení, datum splatnosti a způsob
 úhrady.
+
+### Proč jeden nástroj místo dvou
+
+Původně na to byly nástroje dva — `prepare_*` a zapisující. V provozu to
+opakovaně selhalo, vždy na přechodu mezi nimi:
+
+- model ukázal souhrn z `prepare_invoice` a zapisující nástroj vůbec nezavolal,
+  takže uživateli faktura chyběla, i když mu ChatGPT oznámil úspěch,
+- zapisující schéma odmítlo `null`, které příprava sama vrátila,
+- do vstupního schématu se prosákl tvar otisku: mazání faktury vyžadovalo
+  `action: "delete"` a `paid_date: null`, což model nesestavil a klient volání
+  zahodil ještě před odesláním — takže po něm nezůstala stopa ani v auditu.
+
+Teď model volá stejný nástroj se stejnými argumenty a jen přidá token. Otisk se
+počítá až uvnitř z normalizovaných hodnot, takže netvoří veřejné rozhraní,
+a chybějící hodnoty (datum, sazby, měnu) doplní server v obou fázích stejně.
 
 ### Idempotence
 
@@ -406,8 +435,7 @@ a v tabulce v `DEPLOYMENT.md`):
 | Proměnná | Povinná | Popis |
 | --- | --- | --- |
 | `MCP_TOKEN_SECRET` | ano | Tajemství pro podpis access tokenů a autorizačních požadavků. Alespoň 32 znaků. Vygeneruj `openssl rand -base64 48`. |
-| `SUPABASE_JWT_SECRET` | ano | *Legacy JWT secret* projektu (Supabase → Project Settings → API → JWT Settings). MCP jím podepisuje uživatelský token, aby platila RLS. |
-| `SUPABASE_SERVICE_ROLE_KEY` | ano | Servisní klíč pro úložiště OAuth a veřejné stažení faktury. **Nikdy nesmí do prohlížeče.** |
+| `SUPABASE_SERVICE_ROLE_KEY` | ano | Servisní klíč pro úložiště OAuth, veřejné stažení faktury a vydávání uživatelských session pro MCP. **Nikdy nesmí do prohlížeče.** |
 
 `NEXT_PUBLIC_SITE_URL` musí přesně odpovídat veřejné doméně — skládá se z ní
 `issuer` i `resource` v OAuth metadatech. Když nesedí, ChatGPT konektor
@@ -473,6 +501,7 @@ Co je pokryté:
 | Nedostatečná oprávnění | `tests/mcp/tools.test.ts` |
 | Přístup k datům jiného uživatele | `tests/mcp/tools.test.ts`, `tests/services/invoices.test.ts` |
 | Potvrzení: chybějící, vymyšlené, vypršelé, použité, pozměněné, cizí | `tests/mcp/tools.test.ts` |
+| Obě fáze zápisu u všech nástrojů | `tests/mcp/two-phase.test.ts` |
 | Idempotence a konflikt klíče | `tests/mcp/tools.test.ts` |
 | Destruktivní operace | `tests/mcp/tools.test.ts` |
 | Rate limiting | `tests/mcp/tools.test.ts` |
@@ -480,6 +509,7 @@ Co je pokryté:
 | Audit | `tests/mcp/tools.test.ts` |
 | OAuth: registrace, PKCE, rotace, reuse detection, revokace | `tests/oauth/flow.test.ts` |
 | Osobní tokeny: generování, oprávnění, odvolání, expirace, izolace | `tests/mcp/personal-tokens.test.ts` |
+| Vydávání uživatelského Supabase tokenu, cache a chyby | `tests/mcp/user-scoped.test.ts` |
 | Peníze a výpočty faktury | `tests/money.test.ts` |
 | Servisní vrstva | `tests/services/invoices.test.ts` |
 
@@ -520,9 +550,11 @@ export const getSomethingTool = defineTool({
 ```
 
 3. **Zaregistruj ho** v `lib/mcp/server.ts`.
-4. **U zápisu přidej i `prepare_*`** nástroj, který vrátí `summary`,
-   `confirmation_token` a `execute_arguments`. Kanonické parametry pro otisk
-   skládej jednou sdílenou funkcí, aby prepare a zápis daly stejný hash.
+4. **U zápisu obal tělo do `twoPhase()`** (`lib/mcp/two-phase.ts`). Předej mu
+   jméno nástroje, `args.confirmation_token`, normalizované parametry pro otisk,
+   `status`, `summary` a funkci `execute`. Normalizaci dělej jednou funkcí, aby
+   obě fáze spočítaly stejný otisk. `confirmation_token` musí být v schématu
+   vždy **volitelný** — v první fázi ho model nemá odkud vzít.
 5. **Doplň nástroj do testu** `tests/mcp/protocol.test.ts` (seznam nástrojů)
    a napiš mu vlastní test v `tests/mcp/tools.test.ts`.
 6. **Doplň řádek do tabulky** v tomto dokumentu.
@@ -537,9 +569,8 @@ v `lib/mcp/define-tool.ts`.
 1. **Migrace.** Push na `master` spustí `supabase db push`
    (viz `DEPLOYMENT.md`). Migrace `014` zakládá tabulky pro OAuth a MCP,
    `015` ruší děravé veřejné RLS politiky a `016` přidává osobní tokeny.
-2. **Proměnné prostředí.** Do Vercelu doplň `MCP_TOKEN_SECRET`,
-   `SUPABASE_JWT_SECRET` a `SUPABASE_SERVICE_ROLE_KEY` do všech prostředí,
-   ve kterých má MCP fungovat.
+2. **Proměnné prostředí.** Do Vercelu doplň `MCP_TOKEN_SECRET`
+   a `SUPABASE_SERVICE_ROLE_KEY` do všech prostředí, ve kterých má MCP fungovat.
 3. **Doména.** Zkontroluj, že `NEXT_PUBLIC_SITE_URL` odpovídá produkční
    doméně (ne `*.vercel.app`, pokud používáš vlastní doménu).
 4. **Ověření po nasazení:**

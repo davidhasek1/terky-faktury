@@ -7,53 +7,71 @@ import {
   searchCustomers,
   updateCustomer,
 } from "@/lib/services/customers"
-import { customerInputSchema } from "@/lib/validation/customers"
 import { idempotencyKeySchema } from "@/lib/validation/common"
+import { customerInputSchema } from "@/lib/validation/customers"
 
-import { consumeConfirmation, createConfirmation } from "@/lib/mcp/confirmations"
 import { defineTool } from "@/lib/mcp/define-tool"
 import { withIdempotency } from "@/lib/mcp/idempotency"
 import { safeText } from "@/lib/mcp/output"
 import { presentCustomer, presentCustomerCandidate } from "@/lib/mcp/present"
+import { CONFIRMATION_TOKEN_HINT, twoPhase } from "@/lib/mcp/two-phase"
 
 /** Nástroje pro práci se zákazníky. */
 
+/**
+ * Volitelná pole jsou `nullish`: model je běžně posílá jako `null`, když je
+ * uživatel neuvedl. Se samotným `optional()` by takové volání spadlo na
+ * validaci ještě před obalem nástroje, takže by po něm nezůstala ani stopa
+ * v auditu.
+ */
 const customerFields = {
   name: z.string().trim().min(1).max(200).describe("Název zákazníka nebo jméno osoby."),
-  email: z.string().trim().email().max(254).optional().describe("E-mail pro odesílání faktur."),
-  phone: z.string().trim().max(40).optional().describe("Telefonní číslo."),
-  address: z.string().trim().max(500).optional().describe("Fakturační adresa."),
-  nie: z.string().trim().max(40).optional().describe("Identifikační číslo NIE."),
-  nif: z.string().trim().max(40).optional().describe("Daňové číslo NIF."),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(254)
+    .nullish()
+    .describe("E-mail pro odesílání faktur. Když žádný není, vynech nebo pošli null."),
+  phone: z.string().trim().max(40).nullish().describe("Telefonní číslo."),
+  address: z.string().trim().max(500).nullish().describe("Fakturační adresa."),
+  nie: z.string().trim().max(40).nullish().describe("Identifikační číslo NIE."),
+  nif: z.string().trim().max(40).nullish().describe("Daňové číslo NIF."),
   is_business: z
     .boolean()
     .optional()
     .describe(
       "Zda jde o podnikající subjekt. Ovlivňuje výchozí retención na fakturách (15 % místo 0 %).",
     ),
+  confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
 }
 
-type CustomerFields = z.infer<z.ZodObject<typeof customerFields>>
+type CustomerArgs = {
+  name: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  nie?: string | null
+  nif?: string | null
+  is_business?: boolean
+  customer_id?: string
+}
 
-/**
- * Kanonická podoba parametrů pro potvrzovací token. `prepare_customer`
- * i zapisující nástroje ji skládají stejně, takže otisk sedí jen tehdy,
- * když se opravdu nic nezměnilo.
- */
-function confirmationPayload(args: CustomerFields & { customer_id?: string }) {
+/** Normalizované parametry pro otisk potvrzení. Ven se nikdy neposílají. */
+function canonicalParams(args: CustomerArgs) {
   return {
     customer_id: args.customer_id ?? null,
-    name: args.name,
-    email: args.email ?? null,
-    phone: args.phone ?? null,
-    address: args.address ?? null,
-    nie: args.nie ?? null,
-    nif: args.nif ?? null,
+    name: args.name.trim(),
+    email: args.email?.trim() || null,
+    phone: args.phone?.trim() || null,
+    address: args.address?.trim() || null,
+    nie: args.nie?.trim() || null,
+    nif: args.nif?.trim() || null,
     is_business: args.is_business ?? false,
   }
 }
 
-function toServiceInput(args: CustomerFields) {
+function toServiceInput(args: CustomerArgs) {
   return customerInputSchema.parse({
     name: args.name,
     email: args.email,
@@ -63,6 +81,18 @@ function toServiceInput(args: CustomerFields) {
     dic: args.nif,
     is_business: args.is_business ?? false,
   })
+}
+
+function summaryOf(args: CustomerArgs) {
+  return {
+    name: safeText(args.name, 200),
+    email: args.email ?? null,
+    phone: args.phone ?? null,
+    address: safeText(args.address, 500),
+    nie: args.nie ?? null,
+    nif: args.nif ?? null,
+    is_business: args.is_business ?? false,
+  }
 }
 
 export const searchCustomersTool = defineTool({
@@ -92,6 +122,7 @@ export const searchCustomersTool = defineTool({
 
     return {
       payload: {
+        account: { email: ctx.accountEmail },
         candidates: customers.map((customer) =>
           presentCustomerCandidate(customer, counts.get(customer.id) ?? 0),
         ),
@@ -101,7 +132,7 @@ export const searchCustomersTool = defineTool({
           customers.length > 1
             ? "Zeptej se uživatele, kterého z kandidátů myslí, a použij jeho id."
             : customers.length === 0
-              ? "Žádný zákazník neodpovídá. Nabídni vytvoření nového přes prepare_customer."
+              ? "Žádný zákazník neodpovídá. Nabídni vytvoření nového přes create_customer."
               : "Potvrď s uživatelem, že jde o tohoto zákazníka, a použij jeho id.",
       },
       resourceType: "customer",
@@ -131,68 +162,15 @@ export const getCustomerTool = defineTool({
   },
 })
 
-export const prepareCustomerTool = defineTool({
-  name: "prepare_customer",
-  title: "Připravit zákazníka",
-  description:
-    "Připraví vytvoření nebo úpravu zákazníka a vrátí souhrn s potvrzovacím tokenem. " +
-    "Nic neukládá. Souhrn ukaž uživateli, vyžádej si výslovný souhlas a teprve pak zavolej " +
-    "create_customer nebo update_customer se stejnými parametry a tímto tokenem.",
-  inputSchema: {
-    ...customerFields,
-    customer_id: z
-      .string()
-      .uuid()
-      .optional()
-      .describe("Vyplň jen při úpravě existujícího zákazníka."),
-  },
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  scope: "invoices:write",
-  rateLimit: "call",
-  handler: async (args, ctx) => {
-    const payload = confirmationPayload(args)
-    const mode = args.customer_id ? "update" : "create"
-    const current = args.customer_id ? await getCustomer(ctx.service, args.customer_id) : null
-
-    const confirmation = await createConfirmation(ctx, "prepare_customer", payload, {
-      mode,
-      customer: payload,
-    })
-
-    return {
-      payload: {
-        mode,
-        summary: {
-          name: safeText(args.name, 200),
-          email: args.email ?? null,
-          phone: args.phone ?? null,
-          address: safeText(args.address, 500),
-          nie: args.nie ?? null,
-          nif: args.nif ?? null,
-          is_business: args.is_business ?? false,
-        },
-        current: current ? presentCustomer(current) : null,
-        confirmation_token: confirmation.token,
-        expires_at: confirmation.expiresAt,
-        next_step:
-          "Ukaž uživateli souhrn a zeptej se na souhlas. Po potvrzení zavolej " +
-          `${mode === "create" ? "create_customer" : "update_customer"} se stejnými parametry a tímto tokenem.`,
-      },
-      resourceType: "customer",
-      resourceId: args.customer_id ?? null,
-    }
-  },
-})
-
 export const createCustomerTool = defineTool({
   name: "create_customer",
   title: "Vytvořit zákazníka",
   description:
-    "Vytvoří nového zákazníka. Vyžaduje potvrzovací token z prepare_customer se shodnými " +
-    "parametry. Volej až po výslovném souhlasu uživatele.",
+    "Založí zákazníka. Probíhá na dva kroky: zavolej nejdřív BEZ confirmation_token — vrátí se " +
+    "návrh a nic se neuloží. Ukaž ho uživateli, a po jeho souhlasu zavolej tentýž nástroj znovu " +
+    "se stejnými argumenty a s tokenem z návrhu.",
   inputSchema: {
     ...customerFields,
-    confirmation_token: z.string().min(1).describe("Token z prepare_customer."),
     idempotency_key: idempotencyKeySchema
       .optional()
       .describe("Volitelný klíč proti duplicitnímu založení při opakovaném volání."),
@@ -201,32 +179,34 @@ export const createCustomerTool = defineTool({
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
-    const payload = confirmationPayload(args)
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_customer",
-      args.confirmation_token,
-      payload,
-    )
+    const params = canonicalParams(args)
 
-    const outcome = await withIdempotency(
-      ctx,
-      "create_customer",
-      args.idempotency_key,
-      payload,
-      async () => {
-        const customer = await createCustomer(ctx.service, toServiceInput(args))
-        return { customer: presentCustomer(customer) }
-      },
-    )
-
-    return {
-      payload: { ...outcome.payload, replayed: outcome.replayed },
+    return twoPhase(ctx, {
+      tool: "create_customer",
+      token: args.confirmation_token,
+      params,
+      status: "NÁVRH — zákazník zatím NEBYL vytvořen",
+      summary: summaryOf(args),
       resourceType: "customer",
-      resourceId: readId(outcome.payload.customer),
-      confirmationId,
-      idempotencyKey: args.idempotency_key ?? null,
-    }
+      execute: async (confirmationId) => {
+        const outcome = await withIdempotency(
+          ctx,
+          "create_customer",
+          args.idempotency_key,
+          params,
+          async () => ({
+            customer: presentCustomer(await createCustomer(ctx.service, toServiceInput(args))),
+          }),
+        )
+
+        return {
+          payload: { saved: true, ...outcome.payload, replayed: outcome.replayed },
+          resourceType: "customer",
+          confirmationId,
+          idempotencyKey: args.idempotency_key ?? null,
+        }
+      },
+    })
   },
 })
 
@@ -234,42 +214,38 @@ export const updateCustomerTool = defineTool({
   name: "update_customer",
   title: "Upravit zákazníka",
   description:
-    "Přepíše údaje existujícího zákazníka. Vyžaduje potvrzovací token z prepare_customer " +
-    "se shodnými parametry. Neuvedená pole se vymažou — vždy posílej kompletní údaje.",
+    "Přepíše údaje existujícího zákazníka. Neuvedená pole se vymažou, takže posílej kompletní " +
+    "údaje. Dvoufázové: nejdřív bez confirmation_token pro návrh, po souhlasu uživatele znovu " +
+    "se stejnými argumenty a s tokenem.",
   inputSchema: {
     ...customerFields,
     customer_id: z.string().uuid().describe("Identifikátor upravovaného zákazníka."),
-    confirmation_token: z.string().min(1).describe("Token z prepare_customer."),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   scope: "invoices:write",
   rateLimit: "write",
   handler: async (args, ctx) => {
-    const payload = confirmationPayload(args)
-    const confirmationId = await consumeConfirmation(
-      ctx,
-      "prepare_customer",
-      args.confirmation_token,
-      payload,
-    )
+    const current = await getCustomer(ctx.service, args.customer_id)
+    const params = canonicalParams(args)
 
-    const customer = await updateCustomer(ctx.service, args.customer_id, toServiceInput(args))
-
-    return {
-      payload: { customer: presentCustomer(customer) },
+    return twoPhase(ctx, {
+      tool: "update_customer",
+      token: args.confirmation_token,
+      params,
+      status: "NÁVRH — zákazník zatím NEBYL upraven",
+      summary: { ...summaryOf(args), current: presentCustomer(current) },
       resourceType: "customer",
-      resourceId: customer.id,
-      confirmationId,
-    }
+      resourceId: args.customer_id,
+      execute: async (confirmationId) => {
+        const customer = await updateCustomer(ctx.service, args.customer_id, toServiceInput(args))
+
+        return {
+          payload: { saved: true, customer: presentCustomer(customer) },
+          resourceType: "customer",
+          resourceId: customer.id,
+          confirmationId,
+        }
+      },
+    })
   },
 })
-
-/** Bezpečné vytažení id z už sestaveného výstupu (může jít o přehrané volání). */
-function readId(value: unknown): string | null {
-  if (value && typeof value === "object" && "id" in value) {
-    const id = (value as { id: unknown }).id
-    if (typeof id === "string") return id
-  }
-  return null
-}
-
