@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { DEFAULT_TAX_RATE } from "@/lib/services/invoice-totals"
+
 import {
   amountSchema,
   currencySchema,
@@ -29,8 +31,12 @@ export const invoiceInputSchema = z
     customer_id: uuidSchema,
     issue_date: dateSchema,
     due_date: dateSchema,
-    /** Sazba DPH v %. Výchozí 21 % odpovídá formuláři v aplikaci. */
-    tax_rate: percentSchema.default("21"),
+    /**
+     * Sazba DPH v %. Výchozí hodnota je stejná konstanta, se kterou počítá
+     * formulář i MCP nástroj. Pozor: zod 4 bere `.default()` na výstupní
+     * straně, takže je v setinách procenta (2100 = 21 %).
+     */
+    tax_rate: percentSchema.default(DEFAULT_TAX_RATE),
     /**
      * Retención v %. Když se nezadá, doplní ji servisní vrstva podle toho,
      * zda je zákazník podnikající subjekt (15 %), jinak 0 %.

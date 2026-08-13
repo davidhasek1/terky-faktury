@@ -23,7 +23,7 @@ export const dateSchema = z
  * nevystaví fakturu ve špatné měně jen proto, že se o ni uživatel otřel.
  */
 export const currencySchema = z
-  .enum(["EUR"], { errorMap: () => ({ message: "Podporována je pouze měna EUR" }) })
+  .enum(["EUR"], { error: "Podporována je pouze měna EUR" })
   .default("EUR")
 
 /**

@@ -8,9 +8,6 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
   },
-  // tsconfig.json má kvůli Next.js `jsx: "preserve"`; pro testy musí být JSX
-  // skutečně přeloženo (e-mailové šablony jsou .tsx).
-  oxc: { jsx: { runtime: "automatic", importSource: "react" } },
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, ".") },
   },

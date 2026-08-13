@@ -6,7 +6,7 @@ import { formatScaled, parseDecimal, toDecimal } from "@/lib/money"
 import { getCustomer } from "@/lib/services/customers"
 import { ServiceError } from "@/lib/services/errors"
 import { sendInvoiceEmail } from "@/lib/services/invoice-email"
-import { defaultRetentionRate } from "@/lib/services/invoice-totals"
+import { DEFAULT_TAX_RATE, defaultRetentionRate } from "@/lib/services/invoice-totals"
 import {
   buildInvoiceDraft,
   createInvoice,
@@ -277,7 +277,7 @@ export const prepareInvoiceTool = defineTool({
       items: args.items,
       issue_date: issueDate,
       due_date: args.due_date ?? addDays(issueDate, DEFAULT_DUE_DAYS),
-      tax_rate: args.tax_rate ?? "21",
+      tax_rate: args.tax_rate ?? amount(DEFAULT_TAX_RATE),
       retention_rate:
         args.retention_rate ?? amount(defaultRetentionRate(customer.is_business)),
       notes: args.notes,

@@ -15,7 +15,6 @@ pnpm install --frozen-lockfile   # install (matches Vercel's install command)
 pnpm dev                         # next dev
 pnpm build                       # next build
 pnpm start                       # next start (after build)
-pnpm lint                        # next lint  (NOT configured — see note below)
 pnpm typecheck                   # tsc --noEmit  (run before declaring work done)
 pnpm test                        # vitest run
 pnpm test:watch                  # vitest
@@ -25,12 +24,12 @@ Tests are Vitest (`vitest.config.ts`, specs in `tests/`). They run against an
 in-memory Supabase stand-in (`tests/helpers/fake-supabase.ts`) that also
 emulates RLS, so no database, Docker or network is needed.
 
-`pnpm lint` has never been set up in this repo: ESLint is not installed and
-`next lint` drops into an interactive setup prompt. Treat `pnpm typecheck`,
-`pnpm test` and `pnpm build` as the gate, plus the smoke-test checklist at the
-bottom of `DEPLOYMENT.md`.
+There is no linter. ESLint was never installed here, and `next lint` was
+removed in Next 16, so the `lint` script is gone. The gate is `pnpm typecheck`,
+`pnpm test` and `pnpm build`, plus the smoke-test checklist at the bottom of
+`DEPLOYMENT.md`.
 
-`next.config.mjs` does **not** silence type or lint errors — both must pass for `pnpm build` to succeed.
+`next.config.mjs` does **not** silence type errors — `pnpm build` runs the TypeScript check and fails on it.
 
 ## Architecture
 
