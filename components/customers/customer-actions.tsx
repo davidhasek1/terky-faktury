@@ -75,12 +75,20 @@ export function CustomerActions({ customerId }: CustomerActionsProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Zrušit</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Mažu..." : "Smazat"}
+            <AlertDialogAction asChild>
+              {/* preventDefault drží dialog otevřený, dokud mazání běží —
+                  jinak zmizí dřív, než je spinner vidět. */}
+              <Button
+                variant="destructive"
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleDelete()
+                }}
+                loading={isDeleting}
+              >
+                <Trash2 />
+                Smazat
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

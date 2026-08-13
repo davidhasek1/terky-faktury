@@ -25,9 +25,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 import { z } from 'zod';
 import { SectionLabel } from '@/components/patterns/section-label';
+import { FormActions } from '@/components/patterns/form-field';
 import { INVOICE_ITEM_DESCRIPTIONS } from '@/lib/invoice-items';
 import { formatScaled, parseDecimal, toDecimal, type Scaled } from '@/lib/money';
 import { createBrowserServiceContext } from '@/lib/services/browser-context';
@@ -76,10 +77,7 @@ const parseScaled = (value: string): Scaled => {
 
 // Klasické boxed inputy (styl řídí komponenta Input); necháváme prázdné,
 // ať se nepřepisuje nový výchozí vzhled.
-const inputBare = '';
-const inputBoxed = '';
-const fieldLabel =
-  'text-sm font-semibold text-muted-foreground';
+const fieldLabel = 'text-sm font-medium text-foreground';
 
 export function InvoiceForm({
   customers,
@@ -297,7 +295,6 @@ export function InvoiceForm({
                 placeholder={
                   invoice ? undefined : 'Přidělí se automaticky po uložení'
                 }
-                className={inputBare}
               />
             </div>
 
@@ -337,7 +334,6 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormData({ ...formData, issue_date: e.target.value })
                 }
-                className={inputBare}
               />
             </div>
 
@@ -353,7 +349,6 @@ export function InvoiceForm({
                 onChange={(e) =>
                   setFormData({ ...formData, due_date: e.target.value })
                 }
-                className={inputBare}
               />
             </div>
 
@@ -374,7 +369,6 @@ export function InvoiceForm({
                     setFormData({ ...formData, tax_rate: value });
                   }
                 }}
-                className={inputBare}
               />
             </div>
 
@@ -394,7 +388,6 @@ export function InvoiceForm({
                     setFormData({ ...formData, retention_rate: value });
                   }
                 }}
-                className={inputBare}
               />
               <p className='text-xs text-muted-foreground italic'>
                 Automaticky nastaveno podle typu zákazníka (15 % pro podnikající
@@ -443,7 +436,6 @@ export function InvoiceForm({
                     }
                     list={`description-options-${index}`}
                     placeholder='Vyberte nebo napište popis'
-                    className={inputBoxed}
                   />
                   <datalist id={`description-options-${index}`}>
                     {INVOICE_ITEM_DESCRIPTIONS.map((description) => (
@@ -465,7 +457,6 @@ export function InvoiceForm({
                     onChange={(e) =>
                       updateItem(index, 'quantity', e.target.value)
                     }
-                    className={inputBoxed}
                   />
                 </div>
                 <div className='md:col-span-2 space-y-2'>
@@ -482,7 +473,6 @@ export function InvoiceForm({
                     onChange={(e) =>
                       updateItem(index, 'unit_price', e.target.value)
                     }
-                    className={inputBoxed}
                   />
                 </div>
                 <div className='md:col-span-2 space-y-2'>
@@ -553,28 +543,21 @@ export function InvoiceForm({
           />
         </section>
 
-        <div className='flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-border'>
+        <FormActions>
           <Button
             type='button'
             variant='ghost'
             onClick={() => router.back()}
             disabled={isLoading}
-            className='text-sm text-muted-foreground hover:text-foreground'
           >
+            <X />
             Zrušit
           </Button>
-          <Button
-            type='submit'
-            disabled={isLoading}
-            className='text-sm shadow-none'
-          >
-            {isLoading
-              ? 'Ukládám…'
-              : invoice
-                ? 'Uložit změny'
-                : 'Vytvořit fakturu'}
+          <Button type='submit' loading={isLoading}>
+            {invoice ? <Save /> : <Plus />}
+            {invoice ? 'Uložit změny' : 'Vytvořit fakturu'}
           </Button>
-        </div>
+        </FormActions>
       </form>
     </>
   );

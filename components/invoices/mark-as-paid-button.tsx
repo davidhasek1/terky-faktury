@@ -80,8 +80,17 @@ export function MarkAsPaidButton({ invoiceId, open, onOpenChange, onSuccess }: M
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isLoading}>Zrušit</AlertDialogCancel>
-          <AlertDialogAction onClick={handleMarkAsPaid} disabled={isLoading}>
-            {isLoading ? "Ukládám..." : "Potvrdit"}
+          <AlertDialogAction asChild>
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                void handleMarkAsPaid()
+              }}
+              loading={isLoading}
+            >
+              <CheckCircle />
+              Potvrdit
+            </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
