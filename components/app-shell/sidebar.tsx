@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,14 @@ import { NAV_ITEMS, isActive } from "./nav-items"
 import { UserMenu } from "./user-menu"
 
 const STORAGE_KEY = "tf-sidebar-collapsed"
+// Šířka hřbetu, kterou čte i server layout (viz app/(app)/layout.tsx) —
+// takže padding obsahu jde se skládáním/rozbalením ruku v ruce.
+const CONTENT_OFFSET_VAR = "--sidebar-content-offset"
+
+// Na serveru je useLayoutEffect no-op a hlásí varování do konzole. Na
+// klientovi ale potřebujeme spustit synchronně před prvním malováním, aby
+// se sbalený stav neprobliknul jako rozbalený.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : () => {}
 
 function NavList({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -58,18 +66,31 @@ function Brand({ collapsed }: { collapsed: boolean }) {
   )
 }
 
+function applyContentOffset(collapsed: boolean) {
+  document.documentElement.style.setProperty(
+    CONTENT_OFFSET_VAR,
+    collapsed ? "var(--sidebar-width-collapsed)" : "var(--sidebar-width)",
+  )
+}
+
 export function Sidebar({ email }: { email: string | null }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  useEffect(() => {
-    setCollapsed(window.localStorage.getItem(STORAGE_KEY) === "1")
+  // Synchronně před prvním malováním — jinak se na okamžik probliknul
+  // rozbalený hřbet, i když si uživatel sbalený stav uložil dřív.
+  useIsomorphicLayoutEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEY) === "1"
+    setCollapsed(stored)
+    applyContentOffset(stored)
   }, [])
 
   const toggle = () => {
     setCollapsed((prev) => {
-      window.localStorage.setItem(STORAGE_KEY, prev ? "0" : "1")
-      return !prev
+      const next = !prev
+      window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0")
+      applyContentOffset(next)
+      return next
     })
   }
 

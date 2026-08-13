@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <Sidebar email={user?.email ?? null} />
-      <div className="lg:pl-[var(--sidebar-width)]">{children}</div>
+      <div className="lg:pl-[var(--sidebar-content-offset,var(--sidebar-width))]">{children}</div>
     </div>
   )
 }
