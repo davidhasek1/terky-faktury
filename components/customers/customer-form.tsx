@@ -4,12 +4,13 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Plus, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SectionLabel } from "@/components/patterns/section-label"
+import { FormActions, FormField, FormRow } from "@/components/patterns/form-field"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
 import { createCustomer, updateCustomer } from "@/lib/services/customers"
 import { customerInputSchema } from "@/lib/validation/customers"
@@ -68,73 +69,88 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-12 sm:space-y-16">
+    <form onSubmit={handleSubmit} className="space-y-10">
       <section>
         <SectionLabel title="Identifikace" />
-        <div className="grid gap-6 sm:gap-8">
-          <Field
-            id="name"
-            label="Název"
-            required
-            value={formData.name}
-            onChange={(v) => setFormData({ ...formData, name: v })}
-          />
-          <div className="grid md:grid-cols-2 gap-6">
-            <Field
-              id="ico"
-              label="NIE"
-              value={formData.ico}
-              onChange={(v) => setFormData({ ...formData, ico: v })}
+        <div className="grid gap-5">
+          <FormField id="name" label="Název" required>
+            <Input
+              id="name"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
-            <Field
-              id="dic"
-              label="NIF"
-              value={formData.dic}
-              onChange={(v) => setFormData({ ...formData, dic: v })}
-            />
-          </div>
-          <div className="flex items-center gap-3 pt-2">
+          </FormField>
+
+          <FormRow>
+            <FormField id="ico" label="IČO">
+              <Input
+                id="ico"
+                inputMode="numeric"
+                value={formData.ico}
+                onChange={(e) => setFormData({ ...formData, ico: e.target.value })}
+              />
+            </FormField>
+            <FormField id="dic" label="DIČ">
+              <Input
+                id="dic"
+                value={formData.dic}
+                onChange={(e) => setFormData({ ...formData, dic: e.target.value })}
+              />
+            </FormField>
+          </FormRow>
+
+          <label
+            htmlFor="is_business"
+            className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40"
+          >
             <Checkbox
               id="is_business"
               checked={formData.is_business}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_business: checked === true })}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, is_business: checked === true })
+              }
+              className="mt-0.5"
             />
-            <Label
-              htmlFor="is_business"
-              className="text-sm font-normal cursor-pointer text-foreground"
-            >
-              Podnikající subjekt
-            </Label>
-          </div>
+            <span>
+              <span className="block text-sm font-medium text-foreground">
+                Podnikající subjekt
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Fakturám tohoto zákazníka se předvyplní srážka 15 %.
+              </span>
+            </span>
+          </label>
         </div>
       </section>
 
       <section>
         <SectionLabel title="Kontakt" />
-        <div className="grid gap-6 sm:gap-8">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Field
-              id="email"
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(v) => setFormData({ ...formData, email: v })}
-            />
-            <Field
-              id="phone"
-              label="Telefon"
-              type="tel"
-              value={formData.phone}
-              onChange={(v) => setFormData({ ...formData, phone: v })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label
-              htmlFor="address"
-              className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
-            >
-              Adresa
-            </Label>
+        <div className="grid gap-5">
+          <FormRow>
+            <FormField id="email" label="Email">
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </FormField>
+            <FormField id="phone" label="Telefon">
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </FormField>
+          </FormRow>
+
+          <FormField
+            id="address"
+            label="Adresa"
+            hint="Objeví se na faktuře jako adresa odběratele."
+          >
             <Textarea
               id="address"
               value={formData.address}
@@ -142,62 +158,20 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               rows={3}
               className="resize-none"
             />
-          </div>
+          </FormField>
         </div>
       </section>
 
-      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-border">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.back()}
-          disabled={isLoading}
-          className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground hover:text-foreground"
-        >
+      <FormActions>
+        <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isLoading}>
+          <X />
           Zrušit
         </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="text-[11px] uppercase tracking-[0.22em] shadow-none"
-        >
-          {isLoading ? "Ukládám…" : customer ? "Uložit změny" : "Vytvořit zákazníka"}
+        <Button type="submit" loading={isLoading}>
+          {customer ? <Save /> : <Plus />}
+          {customer ? "Uložit změny" : "Vytvořit zákazníka"}
         </Button>
-      </div>
+      </FormActions>
     </form>
-  )
-}
-
-function Field({
-  id,
-  label,
-  required,
-  value,
-  onChange,
-  type = "text",
-}: {
-  id: string
-  label: string
-  required?: boolean
-  value: string
-  onChange: (v: string) => void
-  type?: string
-}) {
-  return (
-    <div className="space-y-2">
-      <Label
-        htmlFor={id}
-        className="text-[10px] uppercase tracking-[0.22em] font-medium text-muted-foreground"
-      >
-        {label} {required && <span className="text-primary">*</span>}
-      </Label>
-      <Input
-        id={id}
-        type={type}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
   )
 }

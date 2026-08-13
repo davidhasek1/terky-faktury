@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { CheckCircle, MoreHorizontal, Pencil, Trash2, XCircle } from "lucide-react"
+import { toast } from "sonner"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -19,20 +22,51 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { createBrowserServiceContext } from "@/lib/services/browser-context"
-import { deleteActivity } from "@/lib/services/activities"
-import { toast } from "sonner"
+import { deleteActivity, setActivityStatus } from "@/lib/services/activities"
+import type { ActivityStatus } from "@/lib/types"
 
 interface ActivityRowActionsProps {
   customerId: string
   activityId: string
+  status: ActivityStatus
 }
 
-export function ActivityRowActions({ customerId, activityId }: ActivityRowActionsProps) {
+/**
+ * Akce nad jednou aktivitou.
+ *
+ * Přepnutí stavu sem přišlo z dřívějšího klikacího štítku, který vypadal
+ * jako popisek. Tady sedí vedle Upravit a Smazat — stejně jako u faktur,
+ * takže na obou místech se platba mění na jednom a tomtéž místě.
+ */
+export function ActivityRowActions({
+  customerId,
+  activityId,
+  status,
+}: ActivityRowActionsProps) {
   const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isChangingStatus, setIsChangingStatus] = useState(false)
+
+  const isPaid = status === "paid"
+
+  const handleToggleStatus = async () => {
+    if (isChangingStatus) return
+    const next: ActivityStatus = isPaid ? "unpaid" : "paid"
+
+    setIsChangingStatus(true)
+    try {
+      await setActivityStatus(await createBrowserServiceContext(), activityId, next)
+      toast.success(next === "paid" ? "Označeno jako zaplacené" : "Označeno jako nezaplacené")
+      router.refresh()
+    } catch (err) {
+      console.error("[activities] Nepodařilo se změnit stav aktivity:", err)
+      toast.error("Nepodařilo se změnit stav aktivity")
+    } finally {
+      setIsChangingStatus(false)
+    }
+  }
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -55,10 +89,18 @@ export function ActivityRowActions({ customerId, activityId }: ActivityRowAction
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon">
             <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Otevřít menu</span>
+            <span className="sr-only">Otevřít menu aktivity</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleToggleStatus} disabled={isChangingStatus}>
+            {isPaid ? (
+              <XCircle className="mr-2 h-4 w-4" />
+            ) : (
+              <CheckCircle className="mr-2 h-4 w-4" />
+            )}
+            {isPaid ? "Označit jako nezaplacené" : "Označit jako zaplacené"}
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/activities/${customerId}/${activityId}/edit`)}
           >
@@ -85,12 +127,21 @@ export function ActivityRowActions({ customerId, activityId }: ActivityRowAction
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Zrušit</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Mažu..." : "Smazat"}
+            <AlertDialogAction asChild>
+              {/* preventDefault drží dialog otevřený, dokud mazání běží —
+                  jinak zmizí dřív, než je spinner vidět, a při chybě by se
+                  hláška objevila nad zavřeným dialogem. */}
+              <Button
+                variant="destructive"
+                onClick={(e) => {
+                  e.preventDefault()
+                  void handleDelete()
+                }}
+                loading={isDeleting}
+              >
+                <Trash2 />
+                Smazat
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

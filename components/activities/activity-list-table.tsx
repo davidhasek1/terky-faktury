@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/patterns/empty-state"
 import type { Activity } from "@/lib/types"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { SERVICE_LABELS } from "./service-labels"
-import { ActivityStatusToggle } from "./activity-status-toggle"
+import { ActivityStatusBadge } from "./activity-status-badge"
 import { ActivityRowActions } from "./activity-row-actions"
 
 interface ActivityListTableProps {
@@ -49,10 +49,14 @@ export function ActivityListTable({ customerId, activities }: ActivityListTableP
             {formatCurrency(activity.total_amount)}
           </TableCell>
           <TableCell>
-            <ActivityStatusToggle activityId={activity.id} status={activity.status} />
+            <ActivityStatusBadge status={activity.status} />
           </TableCell>
           <TableCell align="right">
-            <ActivityRowActions customerId={customerId} activityId={activity.id} />
+            <ActivityRowActions
+              customerId={customerId}
+              activityId={activity.id}
+              status={activity.status}
+            />
           </TableCell>
         </tr>
       ))}

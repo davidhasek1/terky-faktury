@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { Loader2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -42,19 +43,47 @@ function Button({
   variant,
   size,
   asChild = false,
+  loading = false,
+  children,
+  disabled,
   ...props
 }: React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    /**
+     * Probíhá mutace. Vymění ikonu tlačítka za spinner a zamkne ho.
+     *
+     * Popisek se schválně nemění — „Uložit změny" zůstane „Uložit změny".
+     * Přepisování na „Ukládám…" mění šířku tlačítka pod kurzorem a popisek
+     * přestane pojmenovávat akci. Akce se má jmenovat stejně celou cestu.
+     *
+     * Ikony se předávají jako potomci, jako u každého jiného tlačítka;
+     * spinner je na dobu načítání jen dočasně překryje.
+     */
+    loading?: boolean
   }) {
   const Comp = asChild ? Slot : 'button'
+
+  // Slot přijímá jediného potomka, takže do `asChild` tlačítka spinner nevkládáme.
+  const showSpinner = loading && !asChild
 
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      aria-busy={loading || undefined}
+      disabled={asChild ? undefined : disabled || loading}
+      className={cn(
+        buttonVariants({ variant, size }),
+        showSpinner && '[&>svg:not([data-slot=spinner])]:hidden',
+        className,
+      )}
       {...props}
-    />
+    >
+      {showSpinner && (
+        <Loader2 data-slot="spinner" className="animate-spin" aria-hidden="true" />
+      )}
+      {children}
+    </Comp>
   )
 }
 
