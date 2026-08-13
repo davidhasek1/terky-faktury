@@ -56,7 +56,7 @@ component or a route — add it to the service and call it.
 
 ### Auth & route gating
 
-`middleware.ts` runs `lib/supabase/middleware.ts:updateSession` on every request. It refreshes the Supabase session cookie and redirects unauthenticated users to `/auth/login` — **except** for these public path prefixes, which must remain reachable without auth:
+`proxy.ts` runs `lib/supabase/proxy.ts:updateSession` on every request (Next 16 renamed the `middleware` convention to `proxy`). It refreshes the Supabase session cookie and redirects unauthenticated users to `/auth/login` — **except** for these public path prefixes, which must remain reachable without auth:
 
 - `/auth/*` — login, signup, password reset
 - `/invoices/download/[publicId]` — public invoice download page (linked from emailed invoices)
@@ -68,7 +68,7 @@ component or a route — add it to the service and call it.
 - `/api/oauth/{token,register,revoke}` — called by the OAuth client, not a user
 
 New public routes go into the single `PUBLIC_PATH_PREFIXES` list in
-`lib/supabase/middleware.ts`; both branches of `updateSession` read from it.
+`lib/supabase/proxy.ts`; both branches of `updateSession` read from it.
 
 `/api/oauth/authorize` is deliberately **not** public — it needs a signed-in
 user, and the middleware redirect carries `redirect_to` so the user comes back
@@ -80,7 +80,7 @@ There are four entry points in `lib/supabase/` and they are not interchangeable:
 
 - `server.ts` → `createClient()` — server components / route handlers. Reads cookies, respects RLS as the signed-in user.
 - `client.ts` → `createClient()` — client components. Browser-side, persists session.
-- `middleware.ts` → `updateSession()` — only called from `middleware.ts`.
+- `proxy.ts` → `updateSession()` — only called from the root `proxy.ts`.
 - `user-scoped.ts` → `createUserScopedClient(userId)` — for requests with no cookies (the MCP endpoint). Signs a short-lived Supabase JWT so **RLS still applies** as that user.
 - `service-role.ts` → `createServiceRoleClient()` — **bypasses RLS**. Only for the OAuth store and the public invoice download, where no user session exists and the query is pinned to a single unguessable token.
 

@@ -1,7 +1,12 @@
-import { updateSession } from "@/lib/supabase/middleware"
+import { updateSession } from "@/lib/supabase/proxy"
 import type { NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
+/**
+ * Next 16 přejmenoval konvenci `middleware` na `proxy`. Chování zůstává
+ * stejné: běží před každým požadavkem podle `matcher` níže a stará se
+ * o obnovu Supabase session a o přesměrování nepřihlášených uživatelů.
+ */
+export async function proxy(request: NextRequest) {
   return await updateSession(request)
 }
 

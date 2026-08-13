@@ -58,7 +58,7 @@ export async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("[middleware] Chybí Supabase proměnné prostředí")
+    console.error("[proxy] Chybí Supabase proměnné prostředí")
 
     if (isPublicPath(request.nextUrl.pathname)) {
       return NextResponse.next({ request })
@@ -97,10 +97,10 @@ export async function updateSession(request: NextRequest) {
 
     return supabaseResponse
   } catch (error) {
-    // Nikdy neshoď celý web na 500 (MIDDLEWARE_INVOCATION_FAILED). Když
+    // Nikdy neshoď celý web na 500. Když
     // ověření session selže (síť, Edge, špatná konfigurace), pusť request
     // dál — jednotlivé stránky si auth pohlídají samy.
-    console.error("[middleware] session check failed:", error)
+    console.error("[proxy] session check failed:", error)
     return supabaseResponse
   }
 }
