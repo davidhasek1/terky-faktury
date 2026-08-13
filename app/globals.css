@@ -57,6 +57,9 @@
   --radius-md: var(--tf-radius-md);
   --radius-lg: var(--tf-radius-lg);
   --radius-xl: var(--tf-radius-xl);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
 }
 
 @layer base {

@@ -56,4 +56,10 @@
   /* Šířky shellu — promováno na sémantickou úroveň ze stejného důvodu. */
   --sidebar-width: var(--tf-sidebar-w);
   --sidebar-width-collapsed: var(--tf-sidebar-w-collapsed);
+
+  /* Stíny — promováno na sémantickou úroveň, aby šly použít jako Tailwind
+     třídy (shadow-sm / shadow-md) místo ručně psaných rgba stínů v
+     komponentách. */
+  --shadow-sm: var(--tf-shadow-sm);
+  --shadow-md: var(--tf-shadow-md);
 }
