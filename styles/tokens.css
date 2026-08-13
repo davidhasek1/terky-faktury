@@ -1,0 +1,54 @@
+/* Primitivní vrstva. Surové hodnoty. Komponenty sem NIKDY nesahají —
+   čtou výhradně sémantické tokeny ze semantic.css. */
+:root {
+  /* Plochy a text */
+  --tf-ink: #1a1533;
+  --tf-ink-soft: #2a2350;
+  --tf-iris: #5638e8;
+  --tf-iris-strong: #4527d4;
+  --tf-iris-wash: #efecfe;
+  --tf-canvas: #f3f2f8;
+  --tf-surface: #ffffff;
+  --tf-mute: #6a667e;
+  --tf-hairline: #e4e2ee;
+
+  /* Teplotní škála: čas vůči splatnosti.
+     horké (po splatnosti) → teplé (brzy) → studené (nadchází) → vyřešené */
+  --tf-hot: #d63848;
+  --tf-hot-wash: #fdeaec;
+  --tf-warm: #c77510;
+  --tf-warm-wash: #fdf1e0;
+  --tf-cool: #5638e8;
+  --tf-cool-wash: #efecfe;
+  --tf-done: #1f8a63;
+  --tf-done-wash: #e6f5ee;
+
+  /* Odstupy */
+  --tf-space-1: 0.25rem;
+  --tf-space-2: 0.5rem;
+  --tf-space-3: 0.75rem;
+  --tf-space-4: 1rem;
+  --tf-space-6: 1.5rem;
+  --tf-space-8: 2rem;
+  --tf-space-12: 3rem;
+
+  /* Poloměry */
+  --tf-radius-sm: 0.5rem;
+  --tf-radius-md: 0.75rem;
+  --tf-radius-lg: 1rem;
+  --tf-radius-full: 9999px;
+
+  /* Stíny — jemné, laděné do inkoustu, ne do černé */
+  --tf-shadow-sm: 0 1px 2px rgb(26 21 51 / 0.05);
+  --tf-shadow-md: 0 4px 16px -6px rgb(26 21 51 / 0.12);
+
+  /* Šířky shellu */
+  --tf-sidebar-w: 16.5rem;
+  --tf-sidebar-w-collapsed: 4.5rem;
+
+  /* Škála vrstev — nahrazuje !important záplaty */
+  --tf-layer-dropdown: 40;
+  --tf-layer-overlay: 50;
+  --tf-layer-dialog: 60;
+  --tf-layer-toast: 70;
+}

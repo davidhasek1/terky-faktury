@@ -1,0 +1,59 @@
+/* Sémantická vrstva. Jediné, na co smí sáhnout komponenta.
+   Názvy shadcn se zachovávají, aby existující primitivy fungovaly beze změny. */
+:root {
+  --background: var(--tf-canvas);
+  --foreground: var(--tf-ink);
+  --card: var(--tf-surface);
+  --card-foreground: var(--tf-ink);
+  --popover: var(--tf-surface);
+  --popover-foreground: var(--tf-ink);
+  --primary: var(--tf-iris);
+  --primary-foreground: var(--tf-surface);
+  --secondary: var(--tf-iris-wash);
+  --secondary-foreground: var(--tf-iris-strong);
+  --muted: var(--tf-canvas);
+  --muted-foreground: var(--tf-mute);
+  --accent: var(--tf-iris-wash);
+  --accent-foreground: var(--tf-iris-strong);
+  --destructive: var(--tf-hot);
+  --destructive-foreground: var(--tf-surface);
+  --border: var(--tf-hairline);
+  --input: var(--tf-hairline);
+  --ring: var(--tf-iris);
+
+  /* Sidebar — dřív existoval jen v .dark, tedy nikdy */
+  --sidebar: var(--tf-ink);
+  --sidebar-foreground: #cfcae6;
+  --sidebar-accent: var(--tf-ink-soft);
+  --sidebar-accent-foreground: var(--tf-surface);
+  --sidebar-border: #2e2758;
+  --sidebar-ring: var(--tf-iris);
+
+  /* Stavy jako teplotní škála. Nahrazuje natvrdo psané
+     text-emerald-700 / text-amber-700 / text-rose-700. */
+  --status-overdue-fg: #a52630;
+  --status-overdue-bg: var(--tf-hot-wash);
+  --status-overdue-line: var(--tf-hot);
+
+  --status-due-fg: #8f5308;
+  --status-due-bg: var(--tf-warm-wash);
+  --status-due-line: var(--tf-warm);
+
+  --status-upcoming-fg: var(--tf-iris-strong);
+  --status-upcoming-bg: var(--tf-cool-wash);
+  --status-upcoming-line: var(--tf-cool);
+
+  --status-settled-fg: #176548;
+  --status-settled-bg: var(--tf-done-wash);
+  --status-settled-line: var(--tf-done);
+
+  /* Vrstvy — promováno na sémantickou úroveň, komponenty čtou jen tyhle. */
+  --layer-dropdown: var(--tf-layer-dropdown);
+  --layer-overlay: var(--tf-layer-overlay);
+  --layer-dialog: var(--tf-layer-dialog);
+  --layer-toast: var(--tf-layer-toast);
+
+  /* Šířky shellu — promováno na sémantickou úroveň ze stejného důvodu. */
+  --sidebar-width: var(--tf-sidebar-w);
+  --sidebar-width-collapsed: var(--tf-sidebar-w-collapsed);
+}

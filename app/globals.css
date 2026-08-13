@@ -1,101 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
-@custom-variant dark (&:is(.dark *));
-
-/* Joober — violet & lavender (light theme). Tyto proměnné čte druhý @theme
-   blok níže (--color-*: var(--*)). */
-:root {
-  --background: #e8e8f3;
-  --foreground: #1b1731;
-  --card: #ffffff;
-  --card-foreground: #1b1731;
-  --popover: #ffffff;
-  --popover-foreground: #1b1731;
-  --primary: #7c3aed;
-  --primary-foreground: #ffffff;
-  --secondary: #ede8fd;
-  --secondary-foreground: #5b21b6;
-  --muted: #ecedf4;
-  --muted-foreground: #6b6b7d;
-  --accent: #ede8fd;
-  --accent-foreground: #5b21b6;
-  --destructive: #e5484d;
-  --destructive-foreground: #ffffff;
-  --border: #e0e0ee;
-  --input: #d5d3e6;
-  --ring: #7c3aed;
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  /* Světlejší popover pro lepší čitelnost v dark mode */
-  --popover: oklch(0.25 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
-}
+@import "../styles/tokens.css";
+@import "../styles/semantic.css";
 
 @theme inline {
-  /* Inter = tělo, Poppins = displejové nadpisy (třída font-serif). */
   --font-sans: var(--font-body), system-ui, sans-serif;
-  --font-mono: "Geist Mono", monospace;
-  --font-serif: var(--font-display), var(--font-body), system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-body), system-ui, sans-serif;
+  --font-ident: var(--font-ident-face), ui-monospace, monospace;
 
-  /* Joober — violet & lavender */
-  --color-background: #f1f1f8;
-  --color-foreground: #1b1731;
-  --color-card: #ffffff;
-  --color-card-foreground: #1b1731;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #1b1731;
-  --color-primary: #7c3aed;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #ede8fd;
-  --color-secondary-foreground: #5b21b6;
-  --color-muted: #ecedf4;
-  --color-muted-foreground: #6b6b7d;
-  --color-accent: #ede8fd;
-  --color-accent-foreground: #5b21b6;
-  --color-destructive: #e5484d;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e6e6f0;
-  --color-input: #e0e0ec;
-  --color-ring: #7c3aed;
-  /* Oranžový akcent (eyebrow tečka, ikony) — mimo shadcn tokeny. */
-  --color-highlight: #f97316;
-  --color-highlight-foreground: #ffffff;
-  --radius: 0.9rem;
-}
-
-@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -115,23 +27,30 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-status-overdue-fg: var(--status-overdue-fg);
+  --color-status-overdue-bg: var(--status-overdue-bg);
+  --color-status-overdue-line: var(--status-overdue-line);
+  --color-status-due-fg: var(--status-due-fg);
+  --color-status-due-bg: var(--status-due-bg);
+  --color-status-due-line: var(--status-due-line);
+  --color-status-upcoming-fg: var(--status-upcoming-fg);
+  --color-status-upcoming-bg: var(--status-upcoming-bg);
+  --color-status-upcoming-line: var(--status-upcoming-line);
+  --color-status-settled-fg: var(--status-settled-fg);
+  --color-status-settled-bg: var(--status-settled-bg);
+  --color-status-settled-line: var(--status-settled-line);
+
+  --radius-sm: var(--tf-radius-sm);
+  --radius-md: var(--tf-radius-md);
+  --radius-lg: var(--tf-radius-lg);
 }
 
 @layer base {
@@ -139,63 +58,19 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply text-foreground;
-    background-color: var(--background);
-    /* Jemné světelné přechody pro hloubku místo ploché barvy. */
-    background-image:
-      radial-gradient(60rem 42rem at 10% -10%, rgba(124, 58, 237, 0.1), transparent 60%),
-      radial-gradient(52rem 38rem at 100% -4%, rgba(249, 115, 22, 0.05), transparent 55%),
-      radial-gradient(48rem 40rem at 88% 108%, rgba(124, 58, 237, 0.06), transparent 60%);
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+    @apply bg-background text-foreground;
   }
-  /* Ještě světlejší placeholdery pro lepší rozlišení */
   input::placeholder,
   textarea::placeholder {
-    @apply text-muted-foreground/30;
+    @apply text-muted-foreground/50;
   }
-
-  /* Explicitní solidní pozadí pro všechny dialogy a popovery s nejvyšší prioritou */
-  [data-slot="dialog-content"] {
-    background-color: #ffffff !important;
-    opacity: 1 !important;
-    z-index: 301 !important;
-  }
-
-  [data-slot="dialog-overlay"] {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-    z-index: 300 !important;
-  }
-
-  [data-slot="popover-content"],
-  [data-radix-popper-content-wrapper] {
-    background-color: #ffffff !important;
-    opacity: 1 !important;
-    z-index: 302 !important;
-  }
-
-  /* Přidáno explicitní pozadí pro Sheet komponenty */
-  [data-slot="sheet-content"] {
-    background-color: #ffffff !important;
-    opacity: 1 !important;
-    z-index: 501 !important;
-  }
-
-  [data-slot="sheet-overlay"] {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-    z-index: 500 !important;
-  }
-
-  .dark [data-slot="dialog-content"] {
-    background-color: oklch(0.25 0 0) !important;
-  }
-
-  .dark [data-slot="popover-content"],
-  .dark [data-radix-popper-content-wrapper] {
-    background-color: oklch(0.25 0 0) !important;
-  }
-
-  .dark [data-slot="sheet-content"] {
-    background-color: oklch(0.25 0 0) !important;
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
