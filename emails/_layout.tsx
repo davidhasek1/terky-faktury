@@ -53,12 +53,12 @@ export function BrandShell({
           <Preview>{preview}</Preview>
           <Container className="mx-auto max-w-[600px] p-6">
             <Section className="pb-6">
-              <Text className="m-0 text-[22px] font-bold text-violet">Terky</Text>
+              <Text className="m-0 text-[22px] font-bold text-violet">T&amp;G Property Care</Text>
             </Section>
             <Section className="rounded-[24px] bg-white p-10">{children}</Section>
             <Section className="pt-6 text-center">
               <Text className="m-0 text-[12px] text-muted">
-                Terky &middot; fakturační udělátko
+                T&amp;G Property Care
               </Text>
             </Section>
           </Container>
