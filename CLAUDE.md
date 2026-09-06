@@ -74,6 +74,28 @@ New public routes go into the single `PUBLIC_PATH_PREFIXES` list in
 user, and the middleware redirect carries `redirect_to` so the user comes back
 after logging in.
 
+### Auth emails (signup confirmation, password reset)
+
+These are sent by **Supabase Auth**, not by this app — the app only supplies the
+return URL. That URL comes from `lib/auth/redirect.ts`, which derives it from
+`NEXT_PUBLIC_SITE_URL` and nothing else. Don't reintroduce a second source of
+truth: the previous `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` override held a v0
+scaffold leftover in production, Supabase rejected it as a non-allowlisted
+redirect, and the emailed link fell back to Site URL — which was localhost.
+
+Supabase's own side of this — Site URL, the redirect allow-list, Resend SMTP
+and the email templates — lives in the Supabase dashboard, deliberately **not**
+in `supabase/config.toml`; nothing in this repo runs `supabase config push`, and
+that command would push the whole merged config rather than just an auth block.
+The step-by-step is the "Auth e-maily" section of `DEPLOYMENT.md`.
+
+Supabase Auth authenticates to Resend over SMTP with its **own** Resend API key,
+separate from `RESEND_API_KEY` (which the app uses for invoice emails). That key
+exists only in the Supabase dashboard — don't add it to `.env` or Vercel.
+
+Template HTML in `supabase/templates/*.html` is generated — edit `emails/*.tsx`
+and re-run `pnpm email:export`, then copy the output across.
+
 ### Supabase clients — pick the right one
 
 There are four entry points in `lib/supabase/` and they are not interchangeable:

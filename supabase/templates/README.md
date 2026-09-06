@@ -21,41 +21,34 @@ a `emails/out/auth-reset-password.html` → `reset-password.html` (tady vedle).
 > Faktura se renderuje za běhu v `app/api/invoices/[id]/send-email` (Resend
 > vezme React komponentu přímo), export faktury slouží jen k náhledu.
 
-## ⚠️ Proč nechodí ověřovací a reset e-maily (a jak to spravit)
+## Kam se šablony nahrávají
 
-Ověření e-mailu po registraci a reset hesla **neposílá tahle aplikace** — posílá je
-**Supabase Auth**. Ve výchozím stavu Supabase používá vlastní testovací SMTP s tvrdým
-limitem (~2–3 e-maily/hodinu), takže se e-maily reálně neodešlou. Řešení = vlastní SMTP.
+Ručně do Supabase dashboardu → **Authentication → Email Templates**:
 
-### 1) Nastavit vlastní SMTP (přes Resend)
+```bash
+pbcopy < supabase/templates/reset-password.html   # -> Reset password
+pbcopy < supabase/templates/confirm-signup.html   # -> Confirm signup
+```
 
-Supabase dashboard → **Authentication → Emails → SMTP Settings** → Enable custom SMTP:
+Po každé úpravě `emails/*.tsx` je tedy potřeba `pnpm email:export`, zkopírovat
+sem a znovu vložit v dashboardu. Šablony obsahují `{{ .ConfirmationURL }}`,
+kterou Supabase sám doplní.
 
-| Pole | Hodnota |
-| --- | --- |
-| Host | `smtp.resend.com` |
-| Port | `465` |
-| Username | `resend` |
-| Password | Resend API klíč (`re_…`) |
-| Sender email | adresa na **ověřené doméně** v Resendu (stejná jako `SENDER_EMAIL`) |
-| Sender name | např. `Terky` |
+Zbytek nastavení (SMTP přes Resend, Site URL, allow-list redirectů) je taky
+v dashboardu — postup krok za krokem je v `DEPLOYMENT.md`, sekce „Auth e-maily".
 
-(Doména musí být v Resendu ověřená — SPF/DKIM. Bez ověřené domény Resend odmítne odeslání.)
+## Proč e-maily chodily s odkazem na localhost
 
-### 2) Nahrát šablony
+Odkaz v e-mailu skládá Supabase ze dvou věcí: z `redirectTo`, které pošle
+aplikace, a ze **Site URL**, na kterou spadne, když `redirectTo` není
+v allow-listu. Rozbité to bylo na obou koncích naráz:
 
-Supabase dashboard → **Authentication → Email Templates**:
-- **Confirm signup** → vložit obsah `confirm-signup.html`
-- **Reset password** → vložit obsah `reset-password.html`
+1. V produkci byla na Vercelu proměnná `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL`
+   se zbytkem po v0 scaffoldu (`https://v0.app/chat/api/supabase/redirect/…`).
+   Kód z ní skládal `redirectTo`, Supabase ho zahodil jako nepovolený.
+2. Site URL v Supabase byla pořád `http://localhost:3000`, takže fallback
+   poslal uživatele na localhost.
 
-Šablony obsahují proměnnou `{{ .ConfirmationURL }}`, kterou Supabase sám doplní.
-
-### 3) Zkontrolovat redirect URL
-
-Supabase dashboard → **Authentication → URL Configuration**:
-- **Site URL** = produkční origin (stejný jako `NEXT_PUBLIC_SITE_URL`)
-- **Redirect URLs** přidat: `.../` , `.../auth/reset-password`
-
-Kód posílá `emailRedirectTo` / `redirectTo` z `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL`
-nebo `window.location.origin` (viz `app/auth/sign-up` a `app/auth/forgot-password`).
-V produkci musí origin sedět s tím, co je povolené v URL Configuration výše.
+Oprava: proměnná je pryč (z kódu i z Vercelu), redirect base se bere
+z `NEXT_PUBLIC_SITE_URL` (`lib/auth/redirect.ts`) a Site URL i allow-list jsou
+v `config.toml`.

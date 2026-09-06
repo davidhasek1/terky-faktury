@@ -9,11 +9,10 @@ environment (Production, Preview, Development) or the build/runtime will fail.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase anon (public) key |
-| `NEXT_PUBLIC_SITE_URL` | yes | Deployed origin, used in invoice email links |
+| `NEXT_PUBLIC_SITE_URL` | yes | Deployed origin. Invoice email links, OAuth issuer/resource, **and** the Supabase auth redirect base |
 | `RESEND_API_KEY` | yes | Resend API key |
 | `SENDER_EMAIL` | yes | Verified sender on your Resend domain |
 | `SENDER_NAME` | no | Display name in `From`. Defaults to `Faktury` |
-| `NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` | no | Override auth redirect base; otherwise uses `window.location.origin` |
 | `MCP_TOKEN_SECRET` | yes | Signs MCP access tokens. Min 32 chars (`openssl rand -base64 48`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-only key for the OAuth store, the public invoice download, and minting user sessions for MCP |
 
@@ -78,6 +77,82 @@ belong to an account with access to it. Stale values fail the deploy.
 Run the files in `supabase/migrations/` **in numeric order** via the Supabase SQL
 editor or `psql`, or link the project and run `supabase db push`.
 
+## Auth e-maily (potvrzení registrace, obnova hesla)
+
+Tyhle dva e-maily **neposílá aplikace** — posílá je Supabase Auth. Nastavuje se
+to v dashboardu projektu `jgoiiqvugfyjoqzegwjp` a jsou to **dva nezávislé
+problémy**, které se řeší na dvou různých obrazovkách:
+
+- **SMTP** rozhoduje, jestli se e-mail vůbec odešle.
+- **Site URL** rozhoduje, kam vede odkaz uvnitř e-mailu.
+
+Kdo udělá jen první, dostane spolehlivě doručené e-maily s odkazem na localhost.
+
+### 1) Authentication → Emails → SMTP Settings
+
+Bez vlastního SMTP jede Supabase přes sdílený testovací server s limitem
+~2 e-maily/hodinu, takže se resety hesla reálně neodešlou.
+
+| Pole | Hodnota |
+| --- | --- |
+| Sender email | `noreply@tgpropertycare.com` |
+| Sender name | `T&G Property Care` |
+| Host | `smtp.resend.com` |
+| Port | `465` |
+| Username | `resend` |
+| Password | **samostatný** Resend API klíč vydaný pro auth (`re_…`) |
+
+Ten klíč je záměrně jiný než `RESEND_API_KEY`, kterým aplikace posílá faktury —
+oddělené logy v Resendu a možnost rotovat jeden bez shození druhého. Žije jen
+v Supabase dashboardu, nepatří do `.env` ani na Vercel.
+
+Doména `tgpropertycare.com` musí být v Resendu ověřená (SPF + DKIM), jinak
+Resend odeslání odmítne.
+
+### 2) Authentication → Rate Limits
+
+„Rate limit for sending emails" z `2` na `30`. Výchozí dvojka je limit pro
+sdílené SMTP; s vlastním serverem jen tiše zahazuje resety hesla.
+
+### 3) Authentication → URL Configuration ← oprava localhost odkazů
+
+- **Site URL**: `https://invoice.tgpropertycare.com`
+- **Redirect URLs**: `https://invoice.tgpropertycare.com/**` a `http://localhost:3000/**`
+
+Site URL je fallback pro odkazy v e-mailech. Redirect URLs jsou allow-list pro
+`redirectTo` — co v něm není, Supabase zahodí a spadne na Site URL.
+
+### 4) Authentication → Email Templates
+
+Do **Reset password** a **Confirm signup** vložit obsah:
+
+```bash
+pbcopy < supabase/templates/reset-password.html
+pbcopy < supabase/templates/confirm-signup.html
+```
+
+Šablony jsou generované z `emails/*.tsx` (`pnpm email:export`), obsahují
+`{{ .ConfirmationURL }}`, kterou Supabase sám doplní. Po každé úpravě je nutné
+znovu exportovat, zkopírovat do `supabase/templates/` a vložit do dashboardu.
+
+### Kde vzniká `redirectTo`
+
+`lib/auth/redirect.ts` skládá návratovou adresu z `NEXT_PUBLIC_SITE_URL`.
+Používá ji `app/auth/sign-up` (`emailRedirectTo`) a `app/auth/forgot-password`
+(`redirectTo`). Origin proto musí být v Redirect URLs v kroku 3.
+
+Protože `NEXT_PUBLIC_SITE_URL` je `NEXT_PUBLIC_*`, zapéká se do bundlu při
+buildu — po změně té proměnné je vždy potřeba **redeploy**, samotná změna na
+Vercelu se do už nasazeného buildu nepromítne.
+
+### Proč to bylo rozbité
+
+Sešly se dvě věci: na Vercelu byla v Production proměnná
+`NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL` se zbytkem po v0 scaffoldu
+(`https://v0.app/chat/api/supabase/redirect/…`), kterou Supabase zahodil jako
+nepovolený redirect, a Site URL byla pořád `http://localhost:3000`, takže na ni
+odkaz spadl. Proměnná je pryč z kódu i z Vercelu.
+
 ## Build & runtime
 
 - Node: 24.x (see `.nvmrc` and `engines` in `package.json`)
@@ -135,6 +210,11 @@ project at the same repo.
 ## Smoke test checklist
 
 - [ ] `/auth/login` renders and you can sign in
+- [ ] `/auth/forgot-password` sends a reset email and the link points at
+      `https://invoice.tgpropertycare.com/auth/reset-password` — **not** localhost
+- [ ] The reset email arrives from `noreply@tgpropertycare.com` (Resend SMTP, not
+      Supabase's shared sender) and lands in the inbox, not spam
+- [ ] Signup confirmation email uses the T&G Property Care template
 - [ ] `/invoices` lists invoices for the signed-in user
 - [ ] `/invoices/new` saves an invoice
 - [ ] `/api/invoices/[id]/pdf` downloads a PDF
