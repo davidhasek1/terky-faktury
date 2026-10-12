@@ -7,7 +7,7 @@ import { PageShell } from "@/components/patterns/page-shell"
 import { StatTile } from "@/components/patterns/stat-tile"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, invoiceCount } from "@/lib/utils"
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -64,7 +64,7 @@ export default async function HomePage() {
           <StatTile
             label="Zaplaceno celkem"
             value={formatCurrency(paid.reduce((s, r) => s + r.total, 0))}
-            meta={`${paid.length} faktur`}
+            meta={invoiceCount(paid.length)}
             tone="settled"
           />
           <StatTile label="Faktur celkem" value={String(rows.length)} />

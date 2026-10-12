@@ -1,7 +1,7 @@
 import { DataTable, Dash, TableCell, TableHead } from "@/components/patterns/data-table"
 import { formatScaled, toDecimal } from "@/lib/money"
 import type { PeriodTotals, ReportExpense } from "@/lib/services/period-report"
-import { formatDate } from "@/lib/utils"
+import { expenseCount, formatDate } from "@/lib/utils"
 
 import { EXPENSE_CATEGORY_LABELS } from "./category-labels"
 import { ExpenseRowActions } from "./expense-row-actions"
@@ -60,7 +60,7 @@ export function ExpenseTable({
       ))}
       <tr className="bg-muted/40">
         <TableCell className="font-medium">Celkem</TableCell>
-        <TableCell className="text-muted-foreground">{totals.count} nákladů</TableCell>
+        <TableCell className="text-muted-foreground">{expenseCount(totals.count)}</TableCell>
         <TableCell>{null}</TableCell>
         <TableCell align="right" className="font-semibold tabular-nums">{formatScaled(totals.subtotal)}</TableCell>
         <TableCell align="right" className="font-semibold tabular-nums">{formatScaled(totals.tax)}</TableCell>
