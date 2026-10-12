@@ -33,21 +33,27 @@ beforeEach(() => {
 function input(overrides: Record<string, unknown> = {}) {
   return expenseInputSchema.parse({
     expense_date: "2026-03-05",
-    description: "Benzín",
-    supplier: "Repsol",
-    category: "transport",
-    subtotal: "50",
-    tax_rate: "21",
+    description: "Nákup",
+    supplier: "Mercadona",
+    category: "material",
+    items: [
+      { subtotal: "23,50", tax_rate: "10" },
+      { subtotal: "12", tax_rate: "21" },
+    ],
     ...overrides,
   })
 }
 
 describe("validace vstupu", () => {
-  it("odmítne prázdný popis a zápornou částku", () => {
+  it("odmítne prázdný popis, doklad bez položek a zápornou částku", () => {
     expect(expenseInputSchema.safeParse({ ...input(), description: "  " }).success).toBe(false)
+    expect(expenseInputSchema.safeParse({ ...input(), items: [] }).success).toBe(false)
     expect(
-      expenseInputSchema.safeParse({ expense_date: "2026-03-05", description: "x", subtotal: "-1", tax_rate: "21" })
-        .success,
+      expenseInputSchema.safeParse({
+        expense_date: "2026-03-05",
+        description: "x",
+        items: [{ subtotal: "-1", tax_rate: "21" }],
+      }).success,
     ).toBe(false)
   })
 
@@ -56,56 +62,80 @@ describe("validace vstupu", () => {
       expense_date: "2026-03-05",
       description: "Káva pro klienta",
       supplier: "",
-      subtotal: "3,50",
-      tax_rate: "10",
+      items: [{ subtotal: "3,50", tax_rate: "10" }],
     })
-    expect(parsed).toMatchObject({ supplier: null, note: null, category: "other", subtotal: 350 })
+    expect(parsed).toMatchObject({ supplier: null, note: null, category: "other" })
+    expect(parsed.items).toEqual([{ subtotal: 350, tax_rate: 1000 }])
   })
 })
 
 describe("createExpense", () => {
-  it("uloží náklad s dopočítanou IVA", async () => {
+  it("uloží doklad se součty a položky po sazbách", async () => {
     const expense = await createExpense(owner, input())
 
     expect(expense).toMatchObject({
       user_id: OWNER,
-      description: "Benzín",
-      subtotal: 50,
-      tax_rate: 21,
-      tax_amount: 10.5,
-      total: 60.5,
+      subtotal: 35.5,
+      tax_amount: 4.87,
+      total: 40.37,
     })
-    expect(db.expenses).toHaveLength(1)
+    expect(expense.items).toMatchObject([
+      { position: 0, subtotal: 23.5, tax_rate: 10, tax_amount: 2.35, total: 25.85 },
+      { position: 1, subtotal: 12, tax_rate: 21, tax_amount: 2.52, total: 14.52 },
+    ])
+    expect(db.expenses[0]).not.toHaveProperty("tax_rate")
+  })
+
+  it("když se položky nezapíšou, doklad nenechá viset", async () => {
+    const failing = createFakeSupabaseClient(db, OWNER)
+    const from = failing.from.bind(failing)
+    failing.from = ((table: string) =>
+      table === "expense_items"
+        ? { insert: () => Promise.resolve({ data: null, error: { message: "boom" } }) }
+        : from(table)) as typeof failing.from
+
+    await expect(createExpense({ supabase: failing, userId: OWNER }, input())).rejects.toMatchObject({
+      code: "DATABASE_ERROR",
+    })
+    expect(db.expenses).toHaveLength(0)
   })
 })
 
 describe("updateExpense", () => {
-  it("přepíše náklad a znovu dopočte IVA", async () => {
+  it("nahradí položky a přepočte součty", async () => {
     const id = seedExpense(db, OWNER)
-    const updated = await updateExpense(owner, id, input({ subtotal: "100", tax_rate: "4" }))
+    const updated = await updateExpense(owner, id, input({ items: [{ subtotal: "100", tax_rate: "4" }] }))
 
     expect(updated).toMatchObject({ subtotal: 100, tax_amount: 4, total: 104 })
+    expect(updated.items).toHaveLength(1)
+    expect(db.expense_items).toHaveLength(1)
   })
 
-  it("cizí náklad neupraví", async () => {
+  it("cizí náklad neupraví ani mu nesmaže položky", async () => {
     const id = seedExpense(db, OTHER)
     await expect(updateExpense(owner, id, input())).rejects.toMatchObject({
       code: "EXPENSE_NOT_FOUND",
     })
     expect(db.expenses[0].description).toBe("Čisticí prostředky")
+    expect(db.expense_items).toHaveLength(1)
   })
 })
 
 describe("čtení", () => {
-  it("vrátí vlastní náklady v období, nejnovější první", async () => {
+  it("vrátí vlastní náklady v období s položkami, nejnovější první", async () => {
     seedExpense(db, OWNER, { expense_date: "2026-01-31" })
     seedExpense(db, OWNER, { expense_date: "2026-02-01", description: "První v únoru" })
-    seedExpense(db, OWNER, { expense_date: "2026-02-28", description: "Poslední v únoru" })
+    seedExpense(db, OWNER, { expense_date: "2026-02-28", description: "Poslední v únoru" }, [
+      { subtotal: 10, tax_rate: 10, tax_amount: 1, total: 11 },
+      { subtotal: 10, tax_rate: 21, tax_amount: 2.1, total: 12.1 },
+    ])
     seedExpense(db, OTHER, { expense_date: "2026-02-10" })
 
     const rows = await listExpenses(owner, { date_from: "2026-02-01", date_to: "2026-02-28" })
 
     expect(rows.map((row) => row.description)).toEqual(["Poslední v únoru", "První v únoru"])
+    expect(rows[0].items.map((item) => item.tax_rate)).toEqual([10, 21])
+    expect(rows[1].items).toHaveLength(1)
   })
 
   it("cizí náklad nenajde", async () => {
@@ -115,7 +145,7 @@ describe("čtení", () => {
 })
 
 describe("deleteExpense", () => {
-  it("smaže vlastní, cizí nechá být", async () => {
+  it("smaže vlastní doklad i s položkami, cizí nechá být", async () => {
     const mine = seedExpense(db, OWNER)
     const theirs = seedExpense(db, OTHER)
 
@@ -123,5 +153,6 @@ describe("deleteExpense", () => {
     await deleteExpense(owner, theirs)
 
     expect(db.expenses.map((row) => row.id)).toEqual([theirs])
+    expect(db.expense_items.map((item) => item.expense_id)).toEqual([theirs])
   })
 })

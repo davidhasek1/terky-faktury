@@ -1,15 +1,22 @@
 import { toDecimal } from "@/lib/money"
-import type { Expense } from "@/lib/types"
+import type { Expense, ExpenseItem } from "@/lib/types"
 import type { ExpenseInput, ExpenseListFilters } from "@/lib/validation/expenses"
 
 import type { ServiceContext } from "./context"
 import { ServiceError, toServiceError } from "./errors"
 import { calculateExpenseTotals } from "./expense-totals"
 
-/** Náklady podnikání — co, kdy a za kolik uživatelka zaplatila. */
+/**
+ * Náklady podnikání — doklad (co, kdy, od koho) a jeho položky po sazbách IVA.
+ * Doklad drží součty položek, aby výkaz za období nemusel sčítat položky.
+ */
 
 const EXPENSE_COLUMNS =
-  "id, user_id, expense_date, description, supplier, category, subtotal, tax_rate, tax_amount, total, note, created_at, updated_at"
+  "id, user_id, expense_date, description, supplier, category, subtotal, tax_amount, total, note, created_at, updated_at"
+
+const ITEM_COLUMNS = "id, expense_id, position, subtotal, tax_rate, tax_amount, total"
+
+type ExpenseRow = Omit<Expense, "items">
 
 export async function listExpenses(
   ctx: ServiceContext,
@@ -29,9 +36,9 @@ export async function listExpenses(
     query = query.range(offset, offset + filters.limit - 1)
   }
 
-  const { data, error } = await query.returns<Expense[]>()
+  const { data, error } = await query.returns<ExpenseRow[]>()
   if (error) throw toServiceError(error, "Nepodařilo se načíst náklady")
-  return data ?? []
+  return withItems(ctx, data ?? [])
 }
 
 export async function getExpense(ctx: ServiceContext, expenseId: string): Promise<Expense> {
@@ -39,22 +46,35 @@ export async function getExpense(ctx: ServiceContext, expenseId: string): Promis
     .from("expenses")
     .select(EXPENSE_COLUMNS)
     .eq("id", expenseId)
-    .maybeSingle<Expense>()
+    .maybeSingle<ExpenseRow>()
 
   if (error) throw toServiceError(error, "Nepodařilo se načíst náklad")
   if (!data) throw new ServiceError("EXPENSE_NOT_FOUND", "Náklad nebyl nalezen.")
-  return data
+  const [expense] = await withItems(ctx, [data])
+  return expense
 }
 
 export async function createExpense(ctx: ServiceContext, input: ExpenseInput): Promise<Expense> {
-  const { data, error } = await ctx.supabase
+  const totals = calculateExpenseTotals(input)
+  const { data: expense, error } = await ctx.supabase
     .from("expenses")
-    .insert({ user_id: ctx.userId, ...expenseRow(input) })
+    .insert({ user_id: ctx.userId, ...expenseRow(input, totals) })
     .select(EXPENSE_COLUMNS)
-    .single<Expense>()
+    .single<ExpenseRow>()
 
   if (error) throw toServiceError(error, "Nepodařilo se uložit náklad")
-  return data
+
+  const { error: itemsError } = await ctx.supabase
+    .from("expense_items")
+    .insert(itemRows(expense.id, totals))
+
+  if (itemsError) {
+    // Doklad bez položek by ve výkazu nesouhlasil s rozpadem po sazbách.
+    await ctx.supabase.from("expenses").delete().eq("id", expense.id)
+    throw toServiceError(itemsError, "Nepodařilo se uložit položky nákladu")
+  }
+
+  return getExpense(ctx, expense.id)
 }
 
 export async function updateExpense(
@@ -62,35 +82,89 @@ export async function updateExpense(
   expenseId: string,
   input: ExpenseInput,
 ): Promise<Expense> {
+  const totals = calculateExpenseTotals(input)
   const { data, error } = await ctx.supabase
     .from("expenses")
-    .update({ ...expenseRow(input), updated_at: new Date().toISOString() })
+    .update({ ...expenseRow(input, totals), updated_at: new Date().toISOString() })
     .eq("id", expenseId)
     .select(EXPENSE_COLUMNS)
-    .maybeSingle<Expense>()
+    .maybeSingle<ExpenseRow>()
 
   if (error) throw toServiceError(error, "Nepodařilo se uložit náklad")
   if (!data) throw new ServiceError("EXPENSE_NOT_FOUND", "Náklad nebyl nalezen.")
-  return data
+
+  const { error: deleteError } = await ctx.supabase
+    .from("expense_items")
+    .delete()
+    .eq("expense_id", expenseId)
+
+  if (deleteError) throw toServiceError(deleteError, "Nepodařilo se aktualizovat položky nákladu")
+
+  const { error: insertError } = await ctx.supabase
+    .from("expense_items")
+    .insert(itemRows(expenseId, totals))
+
+  if (insertError) throw toServiceError(insertError, "Nepodařilo se uložit položky nákladu")
+
+  return getExpense(ctx, expenseId)
 }
 
 export async function deleteExpense(ctx: ServiceContext, expenseId: string): Promise<void> {
+  // Položky smaže kaskáda v databázi.
   const { error } = await ctx.supabase.from("expenses").delete().eq("id", expenseId)
   if (error) throw toServiceError(error, "Nepodařilo se smazat náklad")
 }
 
-/** DB řádek z validovaného vstupu; IVA a celkem se vždy dopočítají tady. */
-function expenseRow(input: ExpenseInput) {
-  const totals = calculateExpenseTotals(input)
+/** Dotáhne položky k dokladům jedním dotazem. */
+async function withItems(ctx: ServiceContext, rows: ExpenseRow[]): Promise<Expense[]> {
+  if (rows.length === 0) return []
+
+  const { data, error } = await ctx.supabase
+    .from("expense_items")
+    .select(ITEM_COLUMNS)
+    .in(
+      "expense_id",
+      rows.map((row) => row.id),
+    )
+    .order("position", { ascending: true })
+    .returns<ExpenseItem[]>()
+
+  if (error) throw toServiceError(error, "Nepodařilo se načíst položky nákladů")
+
+  const byExpense = new Map<string, ExpenseItem[]>()
+  for (const item of data ?? []) {
+    const list = byExpense.get(String(item.expense_id)) ?? []
+    list.push(item)
+    byExpense.set(String(item.expense_id), list)
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    items: (byExpense.get(row.id) ?? []).sort((a, b) => a.position - b.position),
+  }))
+}
+
+/** Hlavička dokladu: součty se vždy dopočítají tady, nikdy nepřichází ze vstupu. */
+function expenseRow(input: ExpenseInput, totals: ReturnType<typeof calculateExpenseTotals>) {
   return {
     expense_date: input.expense_date,
     description: input.description,
     supplier: input.supplier,
     category: input.category,
-    subtotal: toDecimal(input.subtotal),
-    tax_rate: toDecimal(input.tax_rate),
+    subtotal: toDecimal(totals.subtotal),
     tax_amount: toDecimal(totals.taxAmount),
     total: toDecimal(totals.total),
     note: input.note,
   }
+}
+
+function itemRows(expenseId: string, totals: ReturnType<typeof calculateExpenseTotals>) {
+  return totals.items.map((item, position) => ({
+    expense_id: expenseId,
+    position,
+    subtotal: toDecimal(item.subtotal),
+    tax_rate: toDecimal(item.taxRate),
+    tax_amount: toDecimal(item.taxAmount),
+    total: toDecimal(item.total),
+  }))
 }
