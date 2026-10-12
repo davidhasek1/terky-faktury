@@ -6,15 +6,21 @@ import { createServerServiceContext, serviceErrorStatus } from "@/lib/services/s
 import { firstIssueMessage } from "@/lib/validation/common"
 import { reportPeriodSchema } from "@/lib/validation/report"
 
+export interface ExportFormat {
+  filePrefix: string
+  extension: "csv" | "xlsx"
+  contentType: string
+  render: (report: PeriodReport) => string | Uint8Array | Promise<string | Uint8Array>
+}
+
+export const CSV = "text/csv; charset=utf-8"
+export const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
 /**
- * Společná obsluha CSV exportů výkazu. Za přihlášením (cookie session) —
- * cesta není v PUBLIC_PATH_PREFIXES a data se čtou pod RLS.
+ * Společná obsluha exportů výkazu (CSV, Excel). Za přihlášením (cookie
+ * session) — cesta není v PUBLIC_PATH_PREFIXES a data se čtou pod RLS.
  */
-export async function csvResponse(
-  request: Request,
-  filePrefix: string,
-  render: (report: PeriodReport) => string,
-): Promise<Response> {
+export async function exportResponse(request: Request, format: ExportFormat): Promise<Response> {
   const url = new URL(request.url)
   const parsed = reportPeriodSchema.safeParse({
     from: url.searchParams.get("from") ?? undefined,
@@ -30,10 +36,12 @@ export async function csvResponse(
     const report = await getPeriodReport(ctx, parsed.data)
     const { from, to } = parsed.data
 
-    return new NextResponse(render(report), {
+    const body = await format.render(report)
+
+    return new NextResponse(body as BodyInit, {
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filePrefix}-${from}-${to}.csv"`,
+        "Content-Type": format.contentType,
+        "Content-Disposition": `attachment; filename="${format.filePrefix}-${from}-${to}.${format.extension}"`,
         "Cache-Control": "no-store",
       },
     })
@@ -42,7 +50,7 @@ export async function csvResponse(
       return NextResponse.json({ error: error.message }, { status: serviceErrorStatus(error.code) })
     }
 
-    console.error("[report-csv] Nepodařilo se vytvořit export:", error)
+    console.error("[report-export] Nepodařilo se vytvořit export:", error)
     return NextResponse.json({ error: "Nepodařilo se vytvořit export" }, { status: 500 })
   }
 }
