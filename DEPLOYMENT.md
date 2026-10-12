@@ -223,7 +223,9 @@ project at the same repo.
       preview matches what is stored
 - [ ] `/report` opens on the current quarter, the arrows move between quarters,
       the Excel button downloads a workbook with Souhrn / Faktury / Náklady
-      sheets, and both CSV buttons download a file that opens correctly in Excel
+      sheets, „Faktury (PDF)“ and „Náklady (PDF)“ download tables with Czech
+      diacritics intact, and
+      both CSV buttons download a file that opens correctly in Excel
 - [ ] The link in the email opens `/invoices/download/[publicId]` without auth
 - [ ] `/api/invoices/download/[publicId]` returns the PDF without auth
 - [ ] `/.well-known/oauth-protected-resource` returns JSON with the right origin

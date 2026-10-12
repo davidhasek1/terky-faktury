@@ -26,3 +26,12 @@ export function formatDateTime(date: string): string {
     hour12: false,
   }).format(new Date(date))
 }
+
+/** Počet s českým tvarem: 1 faktura, 2–4 faktury, 0 a 5+ faktur. */
+export function countCs(count: number, one: string, few: string, many: string): string {
+  const word = count === 1 ? one : count >= 2 && count <= 4 ? few : many
+  return `${count} ${word}`
+}
+
+export const invoiceCount = (count: number) => countCs(count, "faktura", "faktury", "faktur")
+export const expenseCount = (count: number) => countCs(count, "náklad", "náklady", "nákladů")

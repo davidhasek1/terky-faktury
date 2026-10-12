@@ -4,7 +4,7 @@ import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge"
 import { DataTable, Dash, TableCell, TableHead } from "@/components/patterns/data-table"
 import { formatScaled, toDecimal } from "@/lib/money"
 import type { PeriodTotals, ReportInvoice } from "@/lib/services/period-report"
-import { formatDate } from "@/lib/utils"
+import { formatDate, invoiceCount } from "@/lib/utils"
 
 /** Vystavené faktury za období s rozpadem na základ, IVA a retención. */
 export function ReportInvoiceTable({
@@ -63,7 +63,7 @@ export function ReportInvoiceTable({
       ))}
       <tr className="bg-muted/40">
         <TableCell className="font-medium">Celkem</TableCell>
-        <TableCell className="text-muted-foreground">{totals.count} faktur</TableCell>
+        <TableCell className="text-muted-foreground">{invoiceCount(totals.count)}</TableCell>
         <TableCell>{null}</TableCell>
         <TableCell align="right" className="font-semibold tabular-nums">{formatScaled(totals.subtotal)}</TableCell>
         <TableCell align="right" className="font-semibold tabular-nums">{formatScaled(totals.tax)}</TableCell>

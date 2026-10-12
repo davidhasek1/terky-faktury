@@ -302,7 +302,7 @@ musí token mít.
 | **Mazání aktivity** | destruktivní operace nízké hodnoty; zůstává v aplikaci |
 | Zápis do firemního profilu | mění fakturační identitu na všech budoucích dokladech |
 | Surové PDF | velký binární výstup; místo něj se vrací odkaz |
-| CSV a Excel export výkazu (`/api/report/*`) | stažení souboru pro člověka (účetní); model dostane stejná data strukturovaně z `get_period_report` |
+| CSV, Excel a PDF export výkazu (`/api/report/*`) | stažení souboru pro člověka (účetní); model dostane stejná data strukturovaně z `get_period_report` |
 
 ---
 

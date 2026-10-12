@@ -117,7 +117,7 @@ tokens or configuration leave the server.
 | Deleting a diary entry | destructive, low value in a conversation |
 | Writing the issuer profile | changes the billing identity on every future document |
 | Raw PDF bytes | large binary into a model's context; a link is returned instead |
-| Period report CSV / Excel export | a file download for a human (the accountant); the same data reaches the model as structure through `get_period_report` |
+| Period report CSV / Excel / PDF export | a file download for a human (the accountant); the same data reaches the model as structure through `get_period_report` |
 
 ## Success criteria
 

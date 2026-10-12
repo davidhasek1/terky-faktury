@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import type { ServiceContext } from "@/lib/services/context"
 import { isServiceError } from "@/lib/services/errors"
 import { getPeriodReport, type PeriodReport } from "@/lib/services/period-report"
 import { createServerServiceContext, serviceErrorStatus } from "@/lib/services/server-context"
@@ -8,16 +9,20 @@ import { reportPeriodSchema } from "@/lib/validation/report"
 
 export interface ExportFormat {
   filePrefix: string
-  extension: "csv" | "xlsx"
+  extension: "csv" | "xlsx" | "pdf"
   contentType: string
-  render: (report: PeriodReport) => string | Uint8Array | Promise<string | Uint8Array>
+  render: (
+    report: PeriodReport,
+    ctx: ServiceContext,
+  ) => string | Uint8Array | Promise<string | Uint8Array>
 }
 
 export const CSV = "text/csv; charset=utf-8"
 export const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+export const PDF = "application/pdf"
 
 /**
- * Společná obsluha exportů výkazu (CSV, Excel). Za přihlášením (cookie
+ * Společná obsluha exportů výkazu (CSV, Excel, PDF). Za přihlášením (cookie
  * session) — cesta není v PUBLIC_PATH_PREFIXES a data se čtou pod RLS.
  */
 export async function exportResponse(request: Request, format: ExportFormat): Promise<Response> {
@@ -36,7 +41,7 @@ export async function exportResponse(request: Request, format: ExportFormat): Pr
     const report = await getPeriodReport(ctx, parsed.data)
     const { from, to } = parsed.data
 
-    const body = await format.render(report)
+    const body = await format.render(report, ctx)
 
     return new NextResponse(body as BodyInit, {
       headers: {

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Download, FileSpreadsheet, FileText, Plus, Receipt } from "lucide-react"
+import { FileText, Plus, Receipt } from "lucide-react"
 
 import { Topbar } from "@/components/app-shell/topbar"
 import { EXPENSE_CATEGORY_LABELS } from "@/components/expenses/category-labels"
@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/patterns/page-header"
 import { PageShell } from "@/components/patterns/page-shell"
 import { SectionLabel } from "@/components/patterns/section-label"
 import { StatTile } from "@/components/patterns/stat-tile"
+import { ExportMenu } from "@/components/report/export-menu"
 import { PeriodPicker } from "@/components/report/period-picker"
 import { ReportInvoiceTable } from "@/components/report/report-invoice-table"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ import { formatScaled, toDecimal, type Scaled } from "@/lib/money"
 import { getPeriodReport, type PeriodTotals } from "@/lib/services/period-report"
 import { localToday, periodLabel, resolvePeriod } from "@/lib/services/report-period"
 import { createServerServiceContext } from "@/lib/services/server-context"
+import { expenseCount, invoiceCount } from "@/lib/utils"
 
 export default async function ReportPage({
   searchParams,
@@ -37,28 +39,7 @@ export default async function ReportPage({
           eyebrow={periodLabel(period)}
           title="Výkaz za období"
           description="Vystavené faktury podle data vystavení, náklady a souhrn pro přiznání IVA a IRPF."
-          actions={
-            <>
-              <Button asChild size="sm">
-                <a href={`/api/report/xlsx?${query}`} download>
-                  <FileSpreadsheet className="size-4" />
-                  Excel
-                </a>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <a href={`/api/report/invoices?${query}`} download>
-                  <Download className="size-4" />
-                  Faktury (CSV)
-                </a>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <a href={`/api/report/expenses?${query}`} download>
-                  <Download className="size-4" />
-                  Náklady (CSV)
-                </a>
-              </Button>
-            </>
-          }
+          actions={<ExportMenu query={query} />}
         />
 
         <div className="mb-6">
@@ -69,12 +50,12 @@ export default async function ReportPage({
           <StatTile
             label="Příjmy bez IVA"
             value={formatScaled(totals.income.subtotal)}
-            meta={`${totals.income.count} faktur`}
+            meta={invoiceCount(totals.income.count)}
           />
           <StatTile
             label="Náklady bez IVA"
             value={formatScaled(totals.expenses.subtotal)}
-            meta={`${totals.expenses.count} nákladů`}
+            meta={expenseCount(totals.expenses.count)}
           />
           <StatTile
             label="Zisk"
