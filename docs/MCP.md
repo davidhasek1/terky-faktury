@@ -237,7 +237,7 @@ curl -s -X POST https://<doména>/mcp \
 
 ## Dostupné nástroje
 
-Všech 19 nástrojů vyžaduje platný token. Sloupec *Oprávnění* říká, jaký scope
+Všech 25 nástrojů vyžaduje platný token. Sloupec *Oprávnění* říká, jaký scope
 musí token mít.
 
 ### Zákazníci
@@ -245,7 +245,7 @@ musí token mít.
 | Nástroj | Typ | Oprávnění | Účel |
 | --- | --- | --- | --- |
 | `search_customers` | čtení | `invoices:read` | Najde kandidáty podle jména, e-mailu, NIE nebo NIF. Vrací seznam, nikdy nevybírá sám. |
-| — | — | — | *`list_invoices`, `get_invoice_summary` a `get_company_profile` vracejí navíc `account.email` — u prázdné odpovědi je z ní pak poznat, že je konektor připojený k jinému účtu.* |
+| — | — | — | *`list_invoices`, `get_invoice_summary`, `list_expenses`, `get_period_report` a `get_company_profile` vracejí navíc `account.email` — u prázdné odpovědi je z ní pak poznat, že je konektor připojený k jinému účtu.* |
 | `get_customer` | čtení | `invoices:read` | Úplné údaje jednoho zákazníka. |
 | `create_customer` | zápis | `invoices:write` | Založí zákazníka. Dvoufázový. |
 | `update_customer` | zápis | `invoices:write` | Přepíše údaje zákazníka. Dvoufázový. |
@@ -274,6 +274,17 @@ musí token mít.
 | `update_activity` | zápis | `invoices:write` | Přepíše aktivitu včetně služeb. Dvoufázový. |
 | `set_activity_status` | zápis | `invoices:write` | Označí aktivitu zaplacenou / nezaplacenou. Dvoufázový. |
 
+### Náklady a výkaz
+
+| Nástroj | Typ | Oprávnění | Účel |
+| --- | --- | --- | --- |
+| `list_expenses` | čtení | `invoices:read` | Náklady s filtrem období a kategorie. |
+| `get_expense` | čtení | `invoices:read` | Detail nákladu. |
+| `get_period_report` | čtení | `invoices:read` | Výkaz za období: faktury podle data vystavení s rozpadem na základ / IVA / retención, náklady, IVA k odvodu, zisk a náklady podle kategorií. |
+| `create_expense` | zápis | `invoices:write` | Zaeviduje náklad; IVA a celkem dopočítá. Dvoufázový. |
+| `update_expense` | zápis | `invoices:write` | Upraví náklad. Neuvedená pole zůstávají. Dvoufázový. |
+| `delete_expense` | **destruktivní** | `invoices:write` | Trvale smaže náklad. Dvoufázový. |
+
 ### Firma
 
 | Nástroj | Typ | Oprávnění | Účel |
@@ -291,6 +302,7 @@ musí token mít.
 | **Mazání aktivity** | destruktivní operace nízké hodnoty; zůstává v aplikaci |
 | Zápis do firemního profilu | mění fakturační identitu na všech budoucích dokladech |
 | Surové PDF | velký binární výstup; místo něj se vrací odkaz |
+| CSV export výkazu (`/api/report/*`) | stažení souboru pro člověka (účetní); model dostane stejná data strukturovaně z `get_period_report` |
 
 ---
 

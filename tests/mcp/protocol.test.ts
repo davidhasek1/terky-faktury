@@ -54,6 +54,12 @@ describe("MCP endpoint /mcp", () => {
         "create_activity",
         "update_activity",
         "set_activity_status",
+        "list_expenses",
+        "get_expense",
+        "get_period_report",
+        "create_expense",
+        "update_expense",
+        "delete_expense",
         "get_company_profile",
       ].sort(),
     )
@@ -76,6 +82,8 @@ describe("MCP endpoint /mcp", () => {
 
     expect(byName.get("create_invoice")?.readOnlyHint).toBe(false)
     expect(byName.get("delete_invoice")?.destructiveHint).toBe(true)
+    expect(byName.get("get_period_report")?.readOnlyHint).toBe(true)
+    expect(byName.get("delete_expense")?.destructiveHint).toBe(true)
     expect(byName.get("send_invoice_email")?.destructiveHint).toBe(true)
     expect(byName.get("send_invoice_email")?.openWorldHint).toBe(true)
   })

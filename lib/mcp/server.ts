@@ -17,6 +17,14 @@ import {
   updateCustomerTool,
 } from "./tools/customers"
 import {
+  createExpenseTool,
+  deleteExpenseTool,
+  getExpenseTool,
+  getPeriodReportTool,
+  listExpensesTool,
+  updateExpenseTool,
+} from "./tools/expenses"
+import {
   createInvoiceTool,
   deleteInvoiceTool,
   getInvoiceDownloadLinkTool,
@@ -91,6 +99,14 @@ export function createMcpServer(ctx: McpContext): McpServer {
   registerTool(server, ctx, createActivityTool)
   registerTool(server, ctx, updateActivityTool)
   registerTool(server, ctx, setActivityStatusTool)
+
+  // Náklady a výkaz za období
+  registerTool(server, ctx, listExpensesTool)
+  registerTool(server, ctx, getExpenseTool)
+  registerTool(server, ctx, getPeriodReportTool)
+  registerTool(server, ctx, createExpenseTool)
+  registerTool(server, ctx, updateExpenseTool)
+  registerTool(server, ctx, deleteExpenseTool)
 
   // Firemní profil
   registerTool(server, ctx, getCompanyProfileTool)

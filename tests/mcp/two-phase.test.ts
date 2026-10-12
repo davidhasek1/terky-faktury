@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 
 import { createFakeDatabase, type FakeDatabase } from "../helpers/fake-supabase"
 import { callTool, tokenFor, type ToolEnvelopeResult } from "../helpers/mcp-client"
-import { seedActivity, seedCustomer, seedInvoice } from "../helpers/seed"
+import { seedActivity, seedCustomer, seedExpense, seedInvoice } from "../helpers/seed"
 
 /**
  * Dvoufázový zápis: tentýž nástroj, tytéž argumenty, podruhé navíc token.
@@ -40,6 +40,7 @@ describe("první fáze nic neuloží", () => {
   it.each([
     ["create_customer", { name: "Jan Novák" }],
     ["create_activity", { customer_id: "", activity_date: "2026-05-05", services: [{ service_type: "cleaning", price: "30" }] }],
+    ["create_expense", { expense_date: "2026-05-05", description: "Mop", subtotal: "10", tax_rate: "21" }],
   ])("%s vrátí návrh a nezapíše", async (tool, rawArgs) => {
     const customerId = seedCustomer(db, OWNER)
     const args = "customer_id" in rawArgs ? { ...rawArgs, customer_id: customerId } : rawArgs
@@ -53,6 +54,7 @@ describe("první fáze nic neuloží", () => {
     expect(prepared.data?.confirmation_token).toBeTruthy()
     expect(db.customers.filter((c) => c.name === "Jan Novák")).toHaveLength(0)
     expect(db.activities).toHaveLength(0)
+    expect(db.expenses).toHaveLength(0)
   })
 })
 
@@ -207,5 +209,95 @@ describe("aktivita", () => {
 
     expect(done.success).toBe(true)
     expect(db.activities[0].status).toBe("paid")
+  })
+})
+
+describe("náklad", () => {
+  it("zápis ukáže dopočtenou IVA a po potvrzení uloží", async () => {
+    const args = {
+      expense_date: "2026-05-05",
+      description: "Čisticí prostředky",
+      supplier: "Mercadona",
+      category: "material",
+      subtotal: "40",
+      tax_rate: "21",
+    }
+
+    const prepared = await draft("create_expense", args)
+    const summary = prepared.data?.summary as Record<string, unknown>
+    expect(summary.tax_amount).toMatchObject({ amount: "8.40" })
+    expect(summary.total).toMatchObject({ amount: "48.40" })
+
+    const created = await confirm("create_expense", args, prepared)
+
+    expect(created.success).toBe(true)
+    expect(db.expenses).toHaveLength(1)
+    expect(db.expenses[0]).toMatchObject({ user_id: OWNER, subtotal: 40, tax_amount: 8.4, total: 48.4 })
+  })
+
+  it("úprava jednoho pole nechá zbytek nákladu být", async () => {
+    const args = { expense_id: seedExpense(db, OWNER), subtotal: "100" }
+
+    const prepared = await draft("update_expense", args)
+    const summary = prepared.data?.summary as Record<string, unknown>
+    expect(summary.description).toBe("Čisticí prostředky")
+    expect(summary.total).toMatchObject({ amount: "121.00" })
+    expect(db.expenses[0].subtotal).toBe(40)
+
+    const updated = await confirm("update_expense", args, prepared)
+
+    expect(updated.success).toBe(true)
+    expect(db.expenses[0]).toMatchObject({
+      description: "Čisticí prostředky",
+      category: "material",
+      subtotal: 100,
+      tax_amount: 21,
+      total: 121,
+    })
+  })
+
+  it("smazání chce jen expense_id", async () => {
+    const args = { expense_id: seedExpense(db, OWNER) }
+
+    const prepared = await draft("delete_expense", args)
+    expect(prepared.data?.saved).toBe(false)
+    expect(db.expenses).toHaveLength(1)
+
+    const deleted = await confirm("delete_expense", args, prepared)
+
+    expect(deleted.success).toBe(true)
+    expect(db.expenses).toHaveLength(0)
+  })
+})
+
+describe("výkaz za období", () => {
+  it("vrátí faktury, náklady a IVA k odvodu", async () => {
+    const customerId = seedCustomer(db, OWNER)
+    seedInvoice(db, OWNER, customerId, { issue_date: "2026-08-10" })
+    seedExpense(db, OWNER, { expense_date: "2026-09-01" })
+    seedExpense(db, OWNER, { expense_date: "2026-10-01" })
+
+    const result = await callTool(db, token, "get_period_report", {
+      from: "2026-07-01",
+      to: "2026-09-30",
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.data?.period).toMatchObject({ label: "3. čtvrtletí 2026" })
+    expect(result.data?.invoices).toHaveLength(1)
+    expect(result.data?.expenses).toHaveLength(1)
+    const totals = result.data?.totals as Record<string, unknown>
+    expect(totals.vat_balance).toMatchObject({ amount: "12.60" })
+    expect(totals.profit).toMatchObject({ amount: "60.00" })
+  })
+
+  it("odmítne obrácené období", async () => {
+    const result = await callTool(db, token, "get_period_report", {
+      from: "2026-09-30",
+      to: "2026-07-01",
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION_ERROR")
   })
 })
