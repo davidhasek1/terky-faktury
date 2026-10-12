@@ -219,7 +219,8 @@ project at the same repo.
 - [ ] `/invoices/new` saves an invoice
 - [ ] `/api/invoices/[id]/pdf` downloads a PDF
 - [ ] `/api/invoices/[id]/send-email` sends an email and stamps `email_sent_at`
-- [ ] `/expenses/new` saves an expense and the VAT / total preview matches what is stored
+- [ ] `/expenses/new` saves an expense with two items (10 % and 21 %) and the VAT / total
+      preview matches what is stored
 - [ ] `/report` opens on the current quarter, the arrows move between quarters,
       the Excel button downloads a workbook with Souhrn / Faktury / Náklady
       sheets, and both CSV buttons download a file that opens correctly in Excel

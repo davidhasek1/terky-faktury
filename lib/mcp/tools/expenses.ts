@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { EXPENSE_CATEGORY_LABELS } from "@/components/expenses/category-labels"
 import { fromDecimal, parseDecimal } from "@/lib/money"
-import { calculateExpenseTotals } from "@/lib/services/expense-totals"
+import { calculateExpenseTotals, type RateTotal } from "@/lib/services/expense-totals"
 import {
   createExpense,
   deleteExpense,
@@ -13,7 +13,7 @@ import {
 import { getPeriodReport } from "@/lib/services/period-report"
 import { periodLabel } from "@/lib/services/report-period"
 import { idempotencyKeySchema } from "@/lib/validation/common"
-import { EXPENSE_CATEGORIES, expenseInputSchema } from "@/lib/validation/expenses"
+import { EXPENSE_CATEGORIES, MAX_EXPENSE_ITEMS, expenseInputSchema } from "@/lib/validation/expenses"
 import { reportPeriodSchema } from "@/lib/validation/report"
 import type { Expense } from "@/lib/types"
 
@@ -36,10 +36,21 @@ const expenseFieldShapes = {
   description: z.string().trim().min(1).max(500).describe("Co bylo pořízeno, např. „Čisticí prostředky“."),
   supplier: z.string().trim().max(200).nullish().describe("Dodavatel, např. „Mercadona“."),
   category: z.enum(EXPENSE_CATEGORIES).describe(categoryDescription),
-  subtotal: z.union([z.string(), z.number()]).describe("Základ BEZ IVA v EUR, např. \"40\"."),
-  tax_rate: z
-    .union([z.string(), z.number()])
-    .describe("Sazba IVA v procentech: 21, 10, 4 nebo 0. Když ji uživatel neuvede, zeptej se."),
+  items: z
+    .array(
+      z.object({
+        subtotal: z.union([z.string(), z.number()]).describe("Základ BEZ IVA v EUR, např. \"40\"."),
+        tax_rate: z
+          .union([z.string(), z.number()])
+          .describe("Sazba IVA v procentech: 21, 10, 4 nebo 0. Když ji uživatel neuvede, zeptej se."),
+      }),
+    )
+    .min(1)
+    .max(MAX_EXPENSE_ITEMS)
+    .describe(
+      "Položky dokladu — typicky jedna za každou sazbu IVA na účtence (např. zboží 10 % a " +
+        "drogerie 21 %). IVA a celkem se dopočtou po položkách.",
+    ),
   note: z.string().trim().max(2000).nullish().describe("Volitelná poznámka."),
 }
 
@@ -48,8 +59,7 @@ type ExpenseArgs = {
   description: string
   supplier?: string | null
   category: (typeof EXPENSE_CATEGORIES)[number]
-  subtotal: string | number
-  tax_rate: string | number
+  items: { subtotal: string | number; tax_rate: string | number }[]
   note?: string | null
 }
 
@@ -65,8 +75,10 @@ function canonicalParams(args: ExpenseArgs, expenseId: string | null) {
     description: input.description,
     supplier: input.supplier,
     category: input.category,
-    subtotal: amount(input.subtotal),
-    tax_rate: amount(input.tax_rate),
+    items: input.items.map((item) => ({
+      subtotal: amount(item.subtotal),
+      tax_rate: amount(item.tax_rate),
+    })),
     note: input.note,
   }
 }
@@ -81,8 +93,18 @@ function expenseSummary(args: ExpenseArgs) {
     supplier: safeText(input.supplier, 200),
     category: input.category,
     category_label: EXPENSE_CATEGORY_LABELS[input.category],
-    tax_rate_percent: amount(input.tax_rate),
-    subtotal: amountFields(input.subtotal),
+    items: totals.items.map((item) => ({
+      tax_rate_percent: amount(item.taxRate),
+      subtotal: amountFields(item.subtotal),
+      tax_amount: amountFields(item.taxAmount),
+      total: amountFields(item.total),
+    })),
+    vat_by_rate: totals.byRate.map((bucket) => ({
+      tax_rate_percent: amount(bucket.taxRate),
+      subtotal: amountFields(bucket.subtotal),
+      tax_amount: amountFields(bucket.taxAmount),
+    })),
+    subtotal: amountFields(totals.subtotal),
     tax_amount: amountFields(totals.taxAmount),
     total: amountFields(totals.total),
     note: safeText(input.note, 2000),
@@ -96,8 +118,10 @@ function argsFromExpense(expense: Expense): ExpenseArgs {
     description: expense.description,
     supplier: expense.supplier ?? null,
     category: expense.category,
-    subtotal: amount(fromDecimal(expense.subtotal)),
-    tax_rate: amount(fromDecimal(expense.tax_rate)),
+    items: expense.items.map((item) => ({
+      subtotal: amount(fromDecimal(item.subtotal)),
+      tax_rate: amount(fromDecimal(item.tax_rate)),
+    })),
     note: expense.note ?? null,
   }
 }
@@ -152,6 +176,14 @@ export const getExpenseTool = defineTool({
   },
 })
 
+function presentRate(bucket: RateTotal) {
+  return {
+    tax_rate_percent: amount(bucket.taxRate),
+    subtotal: amountFields(bucket.subtotal),
+    vat: amountFields(bucket.taxAmount),
+  }
+}
+
 /** Ochrana proti obří odpovědi u ročního výkazu; souhrn se počítá vždy ze všeho. */
 const REPORT_ROW_LIMIT = 200
 
@@ -161,7 +193,7 @@ export const getPeriodReportTool = defineTool({
   description:
     "Výkaz za období pro přehled a podklad k přiznání IVA/IRPF: vystavené faktury (podle data " +
     "vystavení, i nezaplacené) s rozpadem na základ, IVA a retención, náklady s rozpadem na " +
-    "základ a IVA, a souhrn — IVA vybraná, IVA z nákladů, IVA k odvodu (záporná = nárok na " +
+    "základ a IVA, a souhrn — IVA vybraná a IVA z nákladů (i rozepsané podle sazby, jak je chce modelo 303), IVA k odvodu (záporná = nárok na " +
     "vrácení), retención celkem a zisk (příjmy bez IVA − náklady bez IVA). Čtvrtletí jsou " +
     "leden–březen, duben–červen, červenec–září a říjen–prosinec.",
   inputSchema: {
@@ -187,12 +219,14 @@ export const getPeriodReportTool = defineTool({
             vat: amountFields(totals.income.tax),
             retention: amountFields(totals.income.retention),
             total: amountFields(totals.income.total),
+            vat_by_rate: totals.income.byRate.map(presentRate),
           },
           expenses: {
             expense_count: totals.expenses.count,
             subtotal: amountFields(totals.expenses.subtotal),
             vat: amountFields(totals.expenses.tax),
             total: amountFields(totals.expenses.total),
+            vat_by_rate: totals.expenses.byRate.map(presentRate),
           },
           vat_balance: amountFields(totals.vatBalance),
           profit: amountFields(totals.profit),
@@ -222,6 +256,7 @@ export const getPeriodReportTool = defineTool({
           expense_date: expense.expense_date,
           description: safeText(expense.description, 500),
           category: expense.category,
+          tax_rates_percent: [...new Set(expense.items.map((item) => amount(item.tax_rate)))],
           subtotal: amountFields(expense.subtotal),
           vat: amountFields(expense.tax),
           total: amountFields(expense.total),
@@ -237,7 +272,8 @@ export const createExpenseTool = defineTool({
   name: "create_expense",
   title: "Zapsat náklad",
   description:
-    "Zaeviduje náklad. IVA a celkem se dopočtou ze základu a sazby. Dvoufázové: nejdřív " +
+    "Zaeviduje náklad (doklad) s jednou nebo více položkami — jednou za každou sazbu IVA " +
+    "na účtence. IVA a celkem se dopočtou po položkách. Dvoufázové: nejdřív " +
     "zavolej BEZ confirmation_token pro návrh, ukaž ho uživateli a po souhlasu zavolej znovu " +
     "se stejnými argumenty a s tokenem. Když má uživatel jen částku s IVA, přepočti základ " +
     "(částka / (1 + sazba)) a v návrhu mu to ukaž.",
@@ -289,7 +325,8 @@ export const updateExpenseTool = defineTool({
   name: "update_expense",
   title: "Upravit náklad",
   description:
-    "Upraví náklad. Neuvedená pole zůstávají, jak jsou — pošli jen to, co se mění. IVA a celkem " +
+    "Upraví náklad. Neuvedená pole zůstávají, jak jsou — pošli jen to, co se mění; `items` " +
+    "nahrazuje všechny položky. IVA a celkem " +
     "se dopočtou znovu. Dvoufázové: nejdřív bez confirmation_token pro návrh, po souhlasu " +
     "uživatele znovu se stejnými argumenty a s tokenem.",
   inputSchema: {
@@ -298,8 +335,9 @@ export const updateExpenseTool = defineTool({
     description: expenseFieldShapes.description.optional(),
     supplier: expenseFieldShapes.supplier,
     category: expenseFieldShapes.category.optional(),
-    subtotal: expenseFieldShapes.subtotal.optional(),
-    tax_rate: expenseFieldShapes.tax_rate.optional(),
+    items: expenseFieldShapes.items
+      .optional()
+      .describe("Když je uvedeš, nahradí VŠECHNY položky dokladu. Jinak položky zůstanou."),
     note: expenseFieldShapes.note,
     confirmation_token: z.string().min(1).optional().describe(CONFIRMATION_TOKEN_HINT),
   },
