@@ -221,7 +221,8 @@ project at the same repo.
 - [ ] `/api/invoices/[id]/send-email` sends an email and stamps `email_sent_at`
 - [ ] `/expenses/new` saves an expense and the VAT / total preview matches what is stored
 - [ ] `/report` opens on the current quarter, the arrows move between quarters,
-      and both CSV buttons download a file that opens correctly in Excel
+      the Excel button downloads a workbook with Souhrn / Faktury / Náklady
+      sheets, and both CSV buttons download a file that opens correctly in Excel
 - [ ] The link in the email opens `/invoices/download/[publicId]` without auth
 - [ ] `/api/invoices/download/[publicId]` returns the PDF without auth
 - [ ] `/.well-known/oauth-protected-resource` returns JSON with the right origin
