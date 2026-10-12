@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ChartColumn, Plus, Receipt } from "lucide-react"
+import { ChartColumn, Download, Plus, Receipt } from "lucide-react"
 
 import { Topbar } from "@/components/app-shell/topbar"
 import { ExpenseTable } from "@/components/expenses/expense-table"
@@ -46,12 +46,20 @@ export default async function ExpensesPage({
           title="Náklady"
           description="Co, kdy a za kolik jsi zaplatila. Náklady se promítají do výkazu za období."
           actions={
-            <Button asChild variant="outline">
-              <Link href={`/report?from=${period.from}&to=${period.to}`}>
-                <ChartColumn className="size-4" />
-                Výkaz za období
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <a href={`/api/report/expenses-pdf?from=${period.from}&to=${period.to}`} download>
+                  <Download className="size-4" />
+                  PDF
+                </a>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/report?from=${period.from}&to=${period.to}`}>
+                  <ChartColumn className="size-4" />
+                  Výkaz za období
+                </Link>
+              </Button>
+            </>
           }
         />
 
