@@ -1,5 +1,5 @@
 import { DataTable, Dash, TableCell, TableHead } from "@/components/patterns/data-table"
-import { formatScaled } from "@/lib/money"
+import { formatScaled, toDecimal } from "@/lib/money"
 import type { PeriodTotals, ReportExpense } from "@/lib/services/period-report"
 import { formatDate } from "@/lib/utils"
 
@@ -46,6 +46,7 @@ export function ExpenseTable({
           <TableCell align="right" className="tabular-nums">{formatScaled(expense.subtotal)}</TableCell>
           <TableCell align="right" className="whitespace-nowrap tabular-nums">
             {expense.tax === 0 ? <Dash /> : formatScaled(expense.tax)}
+            <span className="block text-xs text-muted-foreground">{rateList(expense)}</span>
           </TableCell>
           <TableCell align="right" className="font-display font-semibold tabular-nums">
             {formatScaled(expense.total)}
@@ -70,4 +71,10 @@ export function ExpenseTable({
       </tr>
     </DataTable>
   )
+}
+
+/** Použité sazby IVA, např. „10 % · 21 %“. */
+function rateList(expense: ReportExpense): string {
+  const rates = [...new Set(expense.items.map((item) => item.tax_rate))].sort((a, b) => a - b)
+  return rates.map((rate) => `${toDecimal(rate)} %`).join(" · ")
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Save, X } from "lucide-react"
+import { Plus, Save, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -27,7 +27,7 @@ import {
 import { createExpense, updateExpense } from "@/lib/services/expenses"
 import { localToday, periodContaining } from "@/lib/services/report-period"
 import { firstIssueMessage } from "@/lib/validation/common"
-import { expenseInputSchema } from "@/lib/validation/expenses"
+import { MAX_EXPENSE_ITEMS, expenseInputSchema } from "@/lib/validation/expenses"
 import type { Expense, ExpenseCategory } from "@/lib/types"
 
 import { EXPENSE_CATEGORY_OPTIONS } from "./category-labels"
@@ -43,6 +43,14 @@ const parseScaled = (value: string): Scaled => {
 
 const rateValue = (scaled: Scaled) => String(toDecimal(scaled))
 
+type ItemRow = { subtotal: string; taxRate: string }
+
+/** Nová položka dostane první nabízenou sazbu, která na dokladu ještě není. */
+function nextRate(rows: ItemRow[]): string {
+  const used = new Set(rows.map((row) => row.taxRate))
+  return EXPENSE_TAX_RATES.map(rateValue).find((rate) => !used.has(rate)) ?? rateValue(DEFAULT_EXPENSE_TAX_RATE)
+}
+
 export function ExpenseForm({ expense }: { expense?: Expense }) {
   const router = useRouter()
   const isEdit = !!expense
@@ -51,19 +59,31 @@ export function ExpenseForm({ expense }: { expense?: Expense }) {
   const [description, setDescription] = useState(expense?.description ?? "")
   const [supplier, setSupplier] = useState(expense?.supplier ?? "")
   const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? "material")
-  const [subtotal, setSubtotal] = useState(expense ? String(expense.subtotal) : "")
-  const [taxRate, setTaxRate] = useState(
-    rateValue(expense ? fromDecimal(expense.tax_rate) : DEFAULT_EXPENSE_TAX_RATE),
+  const [items, setItems] = useState<ItemRow[]>(
+    expense && expense.items.length > 0
+      ? expense.items.map((item) => ({
+          subtotal: String(item.subtotal),
+          taxRate: rateValue(fromDecimal(item.tax_rate)),
+        }))
+      : [{ subtotal: "", taxRate: rateValue(DEFAULT_EXPENSE_TAX_RATE) }],
   )
   const [note, setNote] = useState(expense?.note ?? "")
 
+  const addItem = () => setItems((rows) => [...rows, { subtotal: "", taxRate: nextRate(rows) }])
+  const removeItem = (index: number) =>
+    setItems((rows) => (rows.length === 1 ? rows : rows.filter((_, i) => i !== index)))
+  const updateItem = (index: number, patch: Partial<ItemRow>) =>
+    setItems((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+
   // Sazba mimo nabídku (např. zadaná přes ChatGPT) musí jít uložit beze změny.
   const rateOptions = EXPENSE_TAX_RATES.map(rateValue)
-  if (!rateOptions.includes(taxRate)) rateOptions.push(taxRate)
+  for (const item of items) if (!rateOptions.includes(item.taxRate)) rateOptions.push(item.taxRate)
 
   const totals = calculateExpenseTotals({
-    subtotal: parseScaled(subtotal),
-    tax_rate: parseScaled(taxRate),
+    items: items.map((item) => ({
+      subtotal: parseScaled(item.subtotal),
+      tax_rate: parseScaled(item.taxRate),
+    })),
   })
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -77,8 +97,7 @@ export function ExpenseForm({ expense }: { expense?: Expense }) {
         description,
         supplier,
         category,
-        subtotal,
-        tax_rate: taxRate,
+        items: items.map((item) => ({ subtotal: item.subtotal, tax_rate: item.taxRate })),
         note,
       })
 
@@ -169,43 +188,78 @@ export function ExpenseForm({ expense }: { expense?: Expense }) {
           </FormField>
         </FormSection>
 
-        <FormSection title="Částka" hint="Základ bez IVA a sazba z účtenky. IVA a celkem se dopočítají.">
-          <FormRow>
-            <FormField id="subtotal" label="Základ bez IVA (€)" required>
-              <Input
-                id="subtotal"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                placeholder="0,00"
-                value={subtotal}
-                onChange={(e) => setSubtotal(e.target.value)}
-                className="tabular-nums"
-                required
-              />
-            </FormField>
-            <FormField id="tax_rate" label="Sazba IVA">
-              <Select value={taxRate} onValueChange={setTaxRate}>
-                <SelectTrigger id="tax_rate" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {rateOptions.map((rate) => (
-                    <SelectItem key={rate} value={rate}>
-                      {rate} %
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-          </FormRow>
+        <FormSection
+          title="Položky"
+          hint="Základ bez IVA za každou sazbu z účtenky — např. zboží 10 % a drogerie 21 %."
+        >
+          <div className="space-y-3">
+            <div className="grid grid-cols-[1fr_120px_2.5rem] gap-3 text-sm font-medium text-foreground">
+              <span>Základ bez IVA (€)</span>
+              <span>Sazba IVA</span>
+            </div>
+            {items.map((item, index) => (
+              <div key={index} className="grid grid-cols-[1fr_120px_2.5rem] items-center gap-3">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  value={item.subtotal}
+                  onChange={(e) => updateItem(index, { subtotal: e.target.value })}
+                  className="tabular-nums"
+                  aria-label={`Základ ${index + 1}. položky`}
+                  required
+                />
+                <Select value={item.taxRate} onValueChange={(value) => updateItem(index, { taxRate: value })}>
+                  <SelectTrigger className="w-full" aria-label={`Sazba IVA ${index + 1}. položky`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rateOptions.map((rate) => (
+                      <SelectItem key={rate} value={rate}>
+                        {rate} %
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeItem(index)}
+                  disabled={items.length === 1}
+                  aria-label={`Odebrat ${index + 1}. položku`}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addItem}
+              disabled={items.length >= MAX_EXPENSE_ITEMS}
+              className="w-full border-dashed"
+            >
+              <Plus />
+              Přidat položku
+            </Button>
+          </div>
 
           <dl className="space-y-2 border-t border-border pt-5 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">IVA</dt>
-              <dd className="tabular-nums text-foreground">{formatScaled(totals.taxAmount)}</dd>
+              <dt className="text-muted-foreground">Základ bez IVA</dt>
+              <dd className="tabular-nums text-foreground">{formatScaled(totals.subtotal)}</dd>
             </div>
+            {totals.byRate.map((bucket) => (
+              <div key={bucket.taxRate} className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">IVA {toDecimal(bucket.taxRate)} %</dt>
+                <dd className="tabular-nums text-foreground">{formatScaled(bucket.taxAmount)}</dd>
+              </div>
+            ))}
             <div className="flex items-baseline justify-between gap-4">
               <dt className="text-muted-foreground">Celkem</dt>
               <dd className="font-display text-3xl font-semibold text-foreground tabular-nums">
