@@ -203,3 +203,38 @@ o tabulku `expenses` a operátory, které služba použije.
 - `docs/prd/mcp-integration.md` — zmínka o nových nástrojích a nevystaveném CSV.
 - `DEPLOYMENT.md` — smoke test: založit náklad, otevřít výkaz za čtvrtletí,
   stáhnout CSV.
+
+## Dodatek 2026-10-13: položky nákladu
+
+Jeden náklad = jeden doklad (např. účtenka z Mercadony). Na účtence bývá víc
+sazeb IVA, proto se doklad rozpadá na **položky**.
+
+Rozhodnuto:
+
+- **Položka = základ + sazba IVA**, bez popisu. Typicky jedna za sazbu.
+- **Kategorie zůstává u dokladu**, ne u položky.
+- Doklad má 1–20 položek. IVA se počítá **po položkách** a sčítá
+  (`calculateExpenseTotals`), stejně jako na účtence.
+
+Data — migrace `018_create_expense_items.sql`:
+
+- tabulka `expense_items` (`expense_id` s kaskádou, `position`, `subtotal`,
+  `tax_rate`, `tax_amount`, `total`), RLS odvozená od dokladu jako
+  u `activity_services`,
+- každý dosavadní náklad dostane jednu položku ze svého základu a sazby,
+- `expenses.subtotal / tax_amount / total` jsou součty položek,
+- `expenses.tax_rate` se jen uvolní (NULL povolen) a kód ho nečte; odstraní
+  se v další migraci, aby kód nasazený před migrací 018 dál fungoval.
+
+Zápis: doklad → položky; když položky selžou, doklad se smaže. Úprava
+nahradí všechny položky.
+
+Výkaz a exporty:
+
+- `totals.income.byRate` a `totals.expenses.byRate` — základ a IVA podle
+  sazby (modelo 303). Ve výkazu tabulka „IVA podle sazeb“, v Excelu na
+  listu Souhrn, v MCP `vat_by_rate`.
+- CSV i Excel náklady: **jeden řádek za položku**.
+
+MCP: `create_expense` / `update_expense` berou `items: [{ subtotal, tax_rate }]`;
+u úpravy `items` nahrazuje všechny položky, jinak zůstanou.

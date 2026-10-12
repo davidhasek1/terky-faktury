@@ -280,9 +280,9 @@ musí token mít.
 | --- | --- | --- | --- |
 | `list_expenses` | čtení | `invoices:read` | Náklady s filtrem období a kategorie. |
 | `get_expense` | čtení | `invoices:read` | Detail nákladu. |
-| `get_period_report` | čtení | `invoices:read` | Výkaz za období: faktury podle data vystavení s rozpadem na základ / IVA / retención, náklady, IVA k odvodu, zisk a náklady podle kategorií. |
-| `create_expense` | zápis | `invoices:write` | Zaeviduje náklad; IVA a celkem dopočítá. Dvoufázový. |
-| `update_expense` | zápis | `invoices:write` | Upraví náklad. Neuvedená pole zůstávají. Dvoufázový. |
+| `get_period_report` | čtení | `invoices:read` | Výkaz za období: faktury podle data vystavení s rozpadem na základ / IVA / retención, náklady, IVA podle sazeb (modelo 303), IVA k odvodu, zisk a náklady podle kategorií. |
+| `create_expense` | zápis | `invoices:write` | Zaeviduje náklad (doklad) s položkami `items` — jedna za každou sazbu IVA na účtence; IVA a celkem dopočítá. Dvoufázový. |
+| `update_expense` | zápis | `invoices:write` | Upraví náklad. Neuvedená pole zůstávají; `items` nahrazuje všechny položky. Dvoufázový. |
 | `delete_expense` | **destruktivní** | `invoices:write` | Trvale smaže náklad. Dvoufázový. |
 
 ### Firma

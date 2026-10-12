@@ -40,7 +40,7 @@ describe("první fáze nic neuloží", () => {
   it.each([
     ["create_customer", { name: "Jan Novák" }],
     ["create_activity", { customer_id: "", activity_date: "2026-05-05", services: [{ service_type: "cleaning", price: "30" }] }],
-    ["create_expense", { expense_date: "2026-05-05", description: "Mop", subtotal: "10", tax_rate: "21" }],
+    ["create_expense", { expense_date: "2026-05-05", description: "Mop", items: [{ subtotal: "10", tax_rate: "21" }] }],
   ])("%s vrátí návrh a nezapíše", async (tool, rawArgs) => {
     const customerId = seedCustomer(db, OWNER)
     const args = "customer_id" in rawArgs ? { ...rawArgs, customer_id: customerId } : rawArgs
@@ -213,47 +213,64 @@ describe("aktivita", () => {
 })
 
 describe("náklad", () => {
-  it("zápis ukáže dopočtenou IVA a po potvrzení uloží", async () => {
+  it("účtenku s více sazbami ukáže v návrhu po sazbách a po potvrzení uloží", async () => {
     const args = {
       expense_date: "2026-05-05",
-      description: "Čisticí prostředky",
+      description: "Nákup",
       supplier: "Mercadona",
       category: "material",
-      subtotal: "40",
-      tax_rate: "21",
+      items: [
+        { subtotal: "23.50", tax_rate: "10" },
+        { subtotal: "12", tax_rate: "21" },
+      ],
     }
 
     const prepared = await draft("create_expense", args)
     const summary = prepared.data?.summary as Record<string, unknown>
-    expect(summary.tax_amount).toMatchObject({ amount: "8.40" })
-    expect(summary.total).toMatchObject({ amount: "48.40" })
+    expect(summary.vat_by_rate).toMatchObject([
+      { tax_rate_percent: "21.00", tax_amount: { amount: "2.52" } },
+      { tax_rate_percent: "10.00", tax_amount: { amount: "2.35" } },
+    ])
+    expect(summary.total).toMatchObject({ amount: "40.37" })
+    expect(db.expenses).toHaveLength(0)
 
     const created = await confirm("create_expense", args, prepared)
 
     expect(created.success).toBe(true)
-    expect(db.expenses).toHaveLength(1)
-    expect(db.expenses[0]).toMatchObject({ user_id: OWNER, subtotal: 40, tax_amount: 8.4, total: 48.4 })
+    expect(db.expenses[0]).toMatchObject({ user_id: OWNER, subtotal: 35.5, tax_amount: 4.87, total: 40.37 })
+    expect(db.expense_items.map((item) => item.tax_rate)).toEqual([10, 21])
   })
 
-  it("úprava jednoho pole nechá zbytek nákladu být", async () => {
-    const args = { expense_id: seedExpense(db, OWNER), subtotal: "100" }
+  it("úprava jednoho pole nechá položky být", async () => {
+    const args = { expense_id: seedExpense(db, OWNER), description: "Drogerie" }
 
     const prepared = await draft("update_expense", args)
     const summary = prepared.data?.summary as Record<string, unknown>
-    expect(summary.description).toBe("Čisticí prostředky")
-    expect(summary.total).toMatchObject({ amount: "121.00" })
-    expect(db.expenses[0].subtotal).toBe(40)
+    expect(summary.description).toBe("Drogerie")
+    expect(summary.total).toMatchObject({ amount: "48.40" })
 
     const updated = await confirm("update_expense", args, prepared)
 
     expect(updated.success).toBe(true)
-    expect(db.expenses[0]).toMatchObject({
-      description: "Čisticí prostředky",
-      category: "material",
-      subtotal: 100,
-      tax_amount: 21,
-      total: 121,
-    })
+    expect(db.expenses[0]).toMatchObject({ description: "Drogerie", category: "material", total: 48.4 })
+    expect(db.expense_items).toHaveLength(1)
+    expect(db.expense_items[0]).toMatchObject({ subtotal: 40, tax_rate: 21 })
+  })
+
+  it("items v úpravě nahradí všechny položky", async () => {
+    const args = {
+      expense_id: seedExpense(db, OWNER),
+      items: [
+        { subtotal: "100", tax_rate: "10" },
+        { subtotal: "50", tax_rate: "21" },
+      ],
+    }
+
+    const updated = await confirm("update_expense", args, await draft("update_expense", args))
+
+    expect(updated.success).toBe(true)
+    expect(db.expenses[0]).toMatchObject({ subtotal: 150, tax_amount: 20.5, total: 170.5 })
+    expect(db.expense_items.map((item) => item.tax_rate)).toEqual([10, 21])
   })
 
   it("smazání chce jen expense_id", async () => {
@@ -267,6 +284,7 @@ describe("náklad", () => {
 
     expect(deleted.success).toBe(true)
     expect(db.expenses).toHaveLength(0)
+    expect(db.expense_items).toHaveLength(0)
   })
 })
 

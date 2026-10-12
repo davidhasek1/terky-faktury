@@ -100,13 +100,27 @@ export function seedActivity(
   return id
 }
 
+export interface SeedExpenseItem {
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+}
+
+/**
+ * Doklad nákladu s položkami. Bez `items` dostane jednu položku 40 € + 21 %.
+ * Součty dokladu se dopočtou z položek, jako to dělá servisní vrstva.
+ */
 export function seedExpense(
   db: FakeDatabase,
   userId: string,
   overrides: Partial<Row> = {},
+  items: SeedExpenseItem[] = [{ subtotal: 40, tax_rate: 21, tax_amount: 8.4, total: 48.4 }],
 ): string {
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
+  const sum = (key: keyof SeedExpenseItem) =>
+    Math.round(items.reduce((total, item) => total + item[key] * 100, 0)) / 100
 
   db.expenses.push({
     id,
@@ -115,14 +129,17 @@ export function seedExpense(
     description: "Čisticí prostředky",
     supplier: "Mercadona",
     category: "material",
-    subtotal: 40,
-    tax_rate: 21,
-    tax_amount: 8.4,
-    total: 48.4,
+    subtotal: sum("subtotal"),
+    tax_amount: sum("tax_amount"),
+    total: sum("total"),
     note: null,
     created_at: now,
     updated_at: now,
     ...overrides,
+  })
+
+  items.forEach((item, position) => {
+    db.expense_items.push({ id: crypto.randomUUID(), expense_id: id, position, ...item })
   })
 
   return id

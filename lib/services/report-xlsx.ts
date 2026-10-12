@@ -3,6 +3,7 @@ import ExcelJS from "exceljs"
 import { EXPENSE_CATEGORY_LABELS } from "@/components/expenses/category-labels"
 import { toDecimal, type Scaled } from "@/lib/money"
 
+import type { RateTotal } from "./expense-totals"
 import type { PeriodReport } from "./period-report"
 import { periodLabel } from "./report-period"
 
@@ -103,6 +104,9 @@ function addSummarySheet(workbook: ExcelJS.Workbook, report: PeriodReport) {
   }
   sheet.getColumn(2).width = 18
 
+  addRateTable(sheet, "IVA vybraná podle sazby", totals.income.byRate)
+  addRateTable(sheet, "IVA z nákladů podle sazby", totals.expenses.byRate)
+
   if (totals.expensesByCategory.length === 0) return
 
   sheet.addRow([])
@@ -118,6 +122,20 @@ function addSummarySheet(workbook: ExcelJS.Workbook, report: PeriodReport) {
       money(bucket.total),
     ])
     row.getCell(2).numFmt = "0"
+  }
+}
+
+/** Základ a IVA podle sazby — to, co se přepisuje do modelo 303. */
+function addRateTable(sheet: ExcelJS.Worksheet, title: string, rows: RateTotal[]) {
+  if (rows.length === 0) return
+
+  sheet.addRow([])
+  const header = sheet.addRow([title, "Sazba", "Základ", "IVA"])
+  header.font = { bold: true }
+  header.border = { bottom: { style: "thin" } }
+  for (const row of rows) {
+    const added = sheet.addRow(["", rate(row.taxRate), money(row.subtotal), money(row.taxAmount)])
+    added.getCell(2).numFmt = PERCENT
   }
 }
 
@@ -176,28 +194,33 @@ function addExpensesSheet(workbook: ExcelJS.Workbook, report: PeriodReport) {
     { header: "Celkem", key: "total", width: 14, style: { numFmt: MONEY } },
   ]
 
+  // Jeden řádek za položku, ať účetní vidí každou sazbu IVA zvlášť.
+  let itemRows = 0
   for (const expense of report.expenses) {
-    sheet.addRow({
-      expense_date: date(expense.expense_date),
-      description: expense.description,
-      supplier: expense.supplier ?? "",
-      category: EXPENSE_CATEGORY_LABELS[expense.category],
-      subtotal: money(expense.subtotal),
-      tax_rate: rate(expense.tax_rate),
-      tax: money(expense.tax),
-      total: money(expense.total),
-    })
+    for (const item of expense.items) {
+      sheet.addRow({
+        expense_date: date(expense.expense_date),
+        description: expense.description,
+        supplier: expense.supplier ?? "",
+        category: EXPENSE_CATEGORY_LABELS[expense.category],
+        subtotal: money(item.subtotal),
+        tax_rate: rate(item.tax_rate),
+        tax: money(item.tax),
+        total: money(item.total),
+      })
+      itemRows += 1
+    }
   }
 
   styleHeader(sheet)
-  sheet.autoFilter = { from: "A1", to: { row: report.expenses.length + 1, column: 8 } }
+  sheet.autoFilter = { from: "A1", to: { row: itemRows + 1, column: 8 } }
 
   const { expenses } = report.totals
   addTotalsRow(
     sheet,
     "Celkem",
     { subtotal: expenses.subtotal, tax: expenses.tax, total: expenses.total },
-    report.expenses.length,
+    itemRows,
   )
 }
 

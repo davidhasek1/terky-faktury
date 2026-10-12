@@ -98,3 +98,33 @@ describe("reportXlsx", () => {
     expect(sheet.getRow(2).getCell(4).value).toBe(0)
   })
 })
+
+describe("reportXlsx s více sazbami", () => {
+  it("rozepíše doklad na řádky položek a souhrn po sazbách", async () => {
+    seedExpense(db, OWNER, { expense_date: "2026-02-01", description: "Nákup" }, [
+      { subtotal: 23.5, tax_rate: 10, tax_amount: 2.35, total: 25.85 },
+      { subtotal: 12, tax_rate: 21, tax_amount: 2.52, total: 14.52 },
+    ])
+
+    const workbook = await workbookFor()
+    const sheet = workbook.getWorksheet("Náklady")!
+
+    expect(sheet.getRow(2).getCell(6).value).toBe(0.1)
+    expect(sheet.getRow(3).getCell(6).value).toBe(0.21)
+    expect(sheet.getRow(4).getCell(5).value).toMatchObject({ formula: "SUM(E2:E3)", result: 35.5 })
+
+    const summary = workbook.getWorksheet("Souhrn")!
+    const rateRows: unknown[][] = []
+    let inExpenseRates = false
+    summary.eachRow((row) => {
+      if (row.getCell(1).value === "IVA z nákladů podle sazby") inExpenseRates = true
+      else if (inExpenseRates && row.getCell(1).value === "" && typeof row.getCell(2).value === "number") {
+        rateRows.push([row.getCell(2).value, row.getCell(3).value, row.getCell(4).value])
+      } else inExpenseRates = false
+    })
+    expect(rateRows).toEqual([
+      [0.21, 12, 2.52],
+      [0.1, 23.5, 2.35],
+    ])
+  })
+})

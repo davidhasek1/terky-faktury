@@ -13,8 +13,8 @@ import { StatTile } from "@/components/patterns/stat-tile"
 import { PeriodPicker } from "@/components/report/period-picker"
 import { ReportInvoiceTable } from "@/components/report/report-invoice-table"
 import { Button } from "@/components/ui/button"
-import { formatScaled } from "@/lib/money"
-import { getPeriodReport } from "@/lib/services/period-report"
+import { formatScaled, toDecimal, type Scaled } from "@/lib/money"
+import { getPeriodReport, type PeriodTotals } from "@/lib/services/period-report"
 import { localToday, periodLabel, resolvePeriod } from "@/lib/services/report-period"
 import { createServerServiceContext } from "@/lib/services/server-context"
 
@@ -147,6 +147,33 @@ export default async function ReportPage({
           )}
         </section>
 
+        {(totals.income.byRate.length > 0 || totals.expenses.byRate.length > 0) && (
+          <section className="mb-10">
+            <SectionLabel title="IVA podle sazeb" />
+            <DataTable
+              head={
+                <>
+                  <TableHead>Sazba</TableHead>
+                  <TableHead align="right">Základ příjmů</TableHead>
+                  <TableHead align="right">IVA vybraná</TableHead>
+                  <TableHead align="right">Základ nákladů</TableHead>
+                  <TableHead align="right">IVA z nákladů</TableHead>
+                </>
+              }
+            >
+              {vatRates(totals).map((row) => (
+                <tr key={row.taxRate} className="border-b border-border/60 last:border-0">
+                  <TableCell className="tabular-nums">{toDecimal(row.taxRate)} %</TableCell>
+                  <TableCell align="right" className="tabular-nums">{formatScaled(row.incomeSubtotal)}</TableCell>
+                  <TableCell align="right" className="tabular-nums">{formatScaled(row.incomeTax)}</TableCell>
+                  <TableCell align="right" className="tabular-nums">{formatScaled(row.expenseSubtotal)}</TableCell>
+                  <TableCell align="right" className="tabular-nums">{formatScaled(row.expenseTax)}</TableCell>
+                </tr>
+              ))}
+            </DataTable>
+          </section>
+        )}
+
         {totals.expensesByCategory.length > 0 && (
           <section>
             <SectionLabel title="Náklady podle kategorií" />
@@ -178,4 +205,25 @@ export default async function ReportPage({
       </PageShell>
     </>
   )
+}
+
+/** Sazby z příjmů i nákladů vedle sebe — tak, jak se přepisují do modelo 303. */
+function vatRates(totals: PeriodTotals) {
+  const rates = new Map<
+    Scaled,
+    { taxRate: Scaled; incomeSubtotal: Scaled; incomeTax: Scaled; expenseSubtotal: Scaled; expenseTax: Scaled }
+  >()
+  const row = (taxRate: Scaled) =>
+    rates.get(taxRate) ??
+    rates
+      .set(taxRate, { taxRate, incomeSubtotal: 0, incomeTax: 0, expenseSubtotal: 0, expenseTax: 0 })
+      .get(taxRate)!
+
+  for (const bucket of totals.income.byRate) {
+    Object.assign(row(bucket.taxRate), { incomeSubtotal: bucket.subtotal, incomeTax: bucket.taxAmount })
+  }
+  for (const bucket of totals.expenses.byRate) {
+    Object.assign(row(bucket.taxRate), { expenseSubtotal: bucket.subtotal, expenseTax: bucket.taxAmount })
+  }
+  return [...rates.values()].sort((a, b) => b.taxRate - a.taxRate)
 }

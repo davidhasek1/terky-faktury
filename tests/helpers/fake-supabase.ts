@@ -21,6 +21,7 @@ export interface FakeDatabase {
   activities: Row[]
   activity_services: Row[]
   expenses: Row[]
+  expense_items: Row[]
   company_details: Row[]
   mcp_confirmations: Row[]
   mcp_idempotency: Row[]
@@ -40,6 +41,7 @@ export function createFakeDatabase(): FakeDatabase {
     activities: [],
     activity_services: [],
     expenses: [],
+    expense_items: [],
     company_details: [],
     mcp_confirmations: [],
     mcp_idempotency: [],
@@ -81,6 +83,7 @@ const USER_OWNED: TableName[] = [
 const PARENT_OWNED: Partial<Record<TableName, { table: TableName; foreignKey: string }>> = {
   invoice_items: { table: "invoices", foreignKey: "invoice_id" },
   activity_services: { table: "activities", foreignKey: "activity_id" },
+  expense_items: { table: "expenses", foreignKey: "expense_id" },
 }
 
 class FakeQuery<T> implements PromiseLike<Result<T>> {
@@ -332,6 +335,10 @@ class FakeQuery<T> implements PromiseLike<Result<T>> {
       this.db.activity_services = this.db.activity_services.filter(
         (service) => !ids.has(service.activity_id),
       )
+    }
+    if (this.table === "expenses") {
+      const ids = new Set(rows.map((row) => row.id))
+      this.db.expense_items = this.db.expense_items.filter((item) => !ids.has(item.expense_id))
     }
     if (this.table === "customers") {
       const ids = new Set(rows.map((row) => row.id))

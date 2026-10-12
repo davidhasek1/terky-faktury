@@ -114,7 +114,12 @@ export function presentExpense(expense: Expense) {
     supplier: safeText(expense.supplier, 200),
     category: expense.category,
     category_label: EXPENSE_CATEGORY_LABELS[expense.category],
-    tax_rate_percent: amount(fromDecimal(expense.tax_rate)),
+    items: expense.items.map((item) => ({
+      tax_rate_percent: amount(fromDecimal(item.tax_rate)),
+      subtotal: amountFields(fromDecimal(item.subtotal)),
+      tax_amount: amountFields(fromDecimal(item.tax_amount)),
+      total: amountFields(fromDecimal(item.total)),
+    })),
     subtotal: amountFields(fromDecimal(expense.subtotal)),
     tax_amount: amountFields(fromDecimal(expense.tax_amount)),
     total: amountFields(fromDecimal(expense.total)),

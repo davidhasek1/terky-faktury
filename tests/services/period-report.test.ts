@@ -44,15 +44,12 @@ function seedQuarter() {
   seedInvoice(db, OTHER, seedCustomer(db, OTHER), { issue_date: "2026-02-01" })
 
   seedExpense(db, OWNER, { expense_date: "2026-02-15" })
-  seedExpense(db, OWNER, {
-    expense_date: "2026-03-01",
-    description: "Cuota autónomo",
-    category: "social_security",
-    subtotal: 294,
-    tax_rate: 0,
-    tax_amount: 0,
-    total: 294,
-  })
+  seedExpense(
+    db,
+    OWNER,
+    { expense_date: "2026-03-01", description: "Cuota autónomo", category: "social_security" },
+    [{ subtotal: 294, tax_rate: 0, tax_amount: 0, total: 294 }],
+  )
   seedExpense(db, OWNER, { expense_date: "2026-04-01" })
   seedExpense(db, OTHER, { expense_date: "2026-02-15" })
 }
@@ -72,14 +69,14 @@ describe("getPeriodReport", () => {
     seedQuarter()
     const { totals } = await getPeriodReport(owner, Q1)
 
-    expect(totals.income).toEqual({
+    expect(totals.income).toMatchObject({
       count: 2,
       subtotal: 30000,
       tax: 6300,
       retention: 3000,
       total: 33300,
     })
-    expect(totals.expenses).toEqual({ count: 2, subtotal: 33400, tax: 840, total: 34240 })
+    expect(totals.expenses).toMatchObject({ count: 2, subtotal: 33400, tax: 840, total: 34240 })
     expect(totals.vatBalance).toBe(6300 - 840)
     expect(totals.profit).toBe(30000 - 33400)
     expect(totals.expensesByCategory.map((c) => [c.category, c.subtotal])).toEqual([
@@ -93,6 +90,38 @@ describe("getPeriodReport", () => {
     expect(report.invoices).toEqual([])
     expect(report.totals.vatBalance).toBe(0)
     expect(report.totals.expensesByCategory).toEqual([])
+  })
+})
+
+describe("IVA podle sazeb", () => {
+  it("rozepíše příjmy i náklady po sazbách včetně víceřádkových dokladů", async () => {
+    const customerId = seedCustomer(db, OWNER)
+    seedInvoice(db, OWNER, customerId, { issue_date: "2026-01-10" })
+    seedInvoice(db, OWNER, customerId, {
+      issue_date: "2026-01-11",
+      tax_rate: 10,
+      subtotal: 50,
+      tax_amount: 5,
+      total: 55,
+    })
+    seedExpense(db, OWNER, { expense_date: "2026-02-01" }, [
+      { subtotal: 23.5, tax_rate: 10, tax_amount: 2.35, total: 25.85 },
+      { subtotal: 12, tax_rate: 21, tax_amount: 2.52, total: 14.52 },
+    ])
+    seedExpense(db, OWNER, { expense_date: "2026-02-02" })
+
+    const { totals, expenses } = await getPeriodReport(owner, Q1)
+
+    expect(totals.income.byRate).toEqual([
+      { taxRate: 2100, subtotal: 10000, taxAmount: 2100 },
+      { taxRate: 1000, subtotal: 5000, taxAmount: 500 },
+    ])
+    expect(totals.expenses.byRate).toEqual([
+      { taxRate: 2100, subtotal: 5200, taxAmount: 1092 },
+      { taxRate: 1000, subtotal: 2350, taxAmount: 235 },
+    ])
+    expect(expenses[0].items).toHaveLength(2)
+    expect(totals.expenses.tax).toBe(1092 + 235)
   })
 })
 
@@ -122,5 +151,21 @@ describe("CSV", () => {
     expect(lines[1]).toBe(
       '2026-01-10;"Mop; kbelík ""XL""";"\'=HYPERLINK(""x"")";Materiál a čisticí prostředky;40,00;21,00;8,40;48,40',
     )
+  })
+})
+
+describe("CSV nákladů s více sazbami", () => {
+  it("vypíše jeden řádek za položku a součet přes všechny", async () => {
+    seedExpense(db, OWNER, { expense_date: "2026-02-01", description: "Nákup" }, [
+      { subtotal: 23.5, tax_rate: 10, tax_amount: 2.35, total: 25.85 },
+      { subtotal: 12, tax_rate: 21, tax_amount: 2.52, total: 14.52 },
+    ])
+    const lines = expensesCsv(await getPeriodReport(owner, Q1)).slice(1).trimEnd().split("\r\n")
+
+    expect(lines.slice(1)).toEqual([
+      "2026-02-01;Nákup;Mercadona;Materiál a čisticí prostředky;23,50;10,00;2,35;25,85",
+      "2026-02-01;Nákup;Mercadona;Materiál a čisticí prostředky;12,00;21,00;2,52;14,52",
+      "Celkem;;;;35,50;;4,87;40,37",
+    ])
   })
 })

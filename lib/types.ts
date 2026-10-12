@@ -97,6 +97,17 @@ export type ExpenseCategory =
   | "social_security"
   | "other"
 
+export interface ExpenseItem {
+  id?: string
+  expense_id?: string
+  position: number
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+}
+
+/** Doklad nákladu. `subtotal`, `tax_amount` a `total` jsou součty položek. */
 export interface Expense {
   id: string
   user_id?: string
@@ -105,10 +116,10 @@ export interface Expense {
   supplier?: string | null
   category: ExpenseCategory
   subtotal: number
-  tax_rate: number
   tax_amount: number
   total: number
   note?: string | null
   created_at: string
   updated_at: string
+  items: ExpenseItem[]
 }
