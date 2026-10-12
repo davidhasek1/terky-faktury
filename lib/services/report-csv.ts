@@ -59,16 +59,19 @@ export function expensesCsv(report: PeriodReport): string {
   const { expenses } = report.totals
   return toCsv([
     ["Datum", "Popis", "Dodavatel", "Kategorie", "Základ", "IVA %", "IVA", "Celkem"],
-    ...report.expenses.map((expense) => [
-      expense.expense_date,
-      text(expense.description),
-      text(expense.supplier),
-      EXPENSE_CATEGORY_LABELS[expense.category],
-      money(expense.subtotal),
-      money(expense.tax_rate),
-      money(expense.tax),
-      money(expense.total),
-    ]),
+    // Jeden řádek za položku, ať účetní vidí každou sazbu IVA zvlášť.
+    ...report.expenses.flatMap((expense) =>
+      expense.items.map((item) => [
+        expense.expense_date,
+        text(expense.description),
+        text(expense.supplier),
+        EXPENSE_CATEGORY_LABELS[expense.category],
+        money(item.subtotal),
+        money(item.tax_rate),
+        money(item.tax),
+        money(item.total),
+      ]),
+    ),
     ["Celkem", "", "", "", money(expenses.subtotal), "", money(expenses.tax), money(expenses.total)],
   ])
 }

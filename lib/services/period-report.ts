@@ -4,6 +4,7 @@ import type { ReportPeriod } from "@/lib/validation/report"
 
 import type { ServiceContext } from "./context"
 import { toServiceError } from "./errors"
+import { groupByRate, type RateTotal } from "./expense-totals"
 import { listExpenses } from "./expenses"
 import { invoiceStatus, type InvoiceStatus } from "./invoices"
 
@@ -32,16 +33,23 @@ export interface ReportInvoice {
   total: Scaled
 }
 
+export interface ReportExpenseItem {
+  tax_rate: Scaled
+  subtotal: Scaled
+  tax: Scaled
+  total: Scaled
+}
+
 export interface ReportExpense {
   id: string
   expense_date: string
   description: string
   supplier: string | null
   category: ExpenseCategory
-  tax_rate: Scaled
   subtotal: Scaled
   tax: Scaled
   total: Scaled
+  items: ReportExpenseItem[]
 }
 
 export interface CategoryTotal {
@@ -53,8 +61,23 @@ export interface CategoryTotal {
 }
 
 export interface PeriodTotals {
-  income: { count: number; subtotal: Scaled; tax: Scaled; retention: Scaled; total: Scaled }
-  expenses: { count: number; subtotal: Scaled; tax: Scaled; total: Scaled }
+  income: {
+    count: number
+    subtotal: Scaled
+    tax: Scaled
+    retention: Scaled
+    total: Scaled
+    /** Základ a IVA podle sazby — řádky modelo 303 (IVA devengado). */
+    byRate: RateTotal[]
+  }
+  expenses: {
+    count: number
+    subtotal: Scaled
+    tax: Scaled
+    total: Scaled
+    /** Základ a IVA podle sazby z položek dokladů (IVA soportado). */
+    byRate: RateTotal[]
+  }
   /** IVA vybraná − IVA zaplacená. Záporná = nárok na vrácení. */
   vatBalance: Scaled
   /** Příjmy bez DPH − náklady bez DPH. */
@@ -143,10 +166,15 @@ export function buildPeriodReport(
         description: row.description,
         supplier: row.supplier ?? null,
         category: row.category,
-        tax_rate: fromDecimal(row.tax_rate),
         subtotal: fromDecimal(row.subtotal),
         tax: fromDecimal(row.tax_amount),
         total: fromDecimal(row.total),
+        items: row.items.map((item) => ({
+          tax_rate: fromDecimal(item.tax_rate),
+          subtotal: fromDecimal(item.subtotal),
+          tax: fromDecimal(item.tax_amount),
+          total: fromDecimal(item.total),
+        })),
       }),
     )
     .sort((a, b) => a.expense_date.localeCompare(b.expense_date))
@@ -157,6 +185,9 @@ export function buildPeriodReport(
     tax: sumScaled(invoices.map((i) => i.tax)),
     retention: sumScaled(invoices.map((i) => i.retention)),
     total: sumScaled(invoices.map((i) => i.total)),
+    byRate: groupByRate(
+      invoices.map((i) => ({ taxRate: i.tax_rate, subtotal: i.subtotal, taxAmount: i.tax })),
+    ),
   }
 
   const spent = {
@@ -164,6 +195,11 @@ export function buildPeriodReport(
     subtotal: sumScaled(expenses.map((e) => e.subtotal)),
     tax: sumScaled(expenses.map((e) => e.tax)),
     total: sumScaled(expenses.map((e) => e.total)),
+    byRate: groupByRate(
+      expenses.flatMap((e) =>
+        e.items.map((item) => ({ taxRate: item.tax_rate, subtotal: item.subtotal, taxAmount: item.tax })),
+      ),
+    ),
   }
 
   const byCategory = new Map<ExpenseCategory, CategoryTotal>()
