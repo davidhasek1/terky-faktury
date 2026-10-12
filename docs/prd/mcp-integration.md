@@ -54,11 +54,14 @@ the thing that breaks that (see ADR 0002).
 ## Functional requirements
 
 **Reading.** Customers (search, detail), invoices (list, detail, aggregate
-summary, public download link), diary entries (list, detail), issuer profile.
+summary, public download link), diary entries (list, detail), expenses (list,
+detail), the period report (invoices with base / VAT / retención breakdown,
+expenses, VAT balance and profit), issuer profile.
 Reads have no side effects and need only `invoices:read`.
 
-**Writing.** Create and update customers, invoices and diary entries; mark an
-invoice paid or unpaid; send an invoice by email; delete an invoice. All require
+**Writing.** Create and update customers, invoices, diary entries and expenses;
+mark an invoice paid or unpaid; send an invoice by email; delete an invoice or
+an expense. All require
 `invoices:write` and all are two-phase (ADR 0003): the first call returns a draft
 that saves nothing, the second call with a server-issued token performs the
 write.
@@ -114,6 +117,7 @@ tokens or configuration leave the server.
 | Deleting a diary entry | destructive, low value in a conversation |
 | Writing the issuer profile | changes the billing identity on every future document |
 | Raw PDF bytes | large binary into a model's context; a link is returned instead |
+| Period report CSV export | a file download for a human (the accountant); the same data reaches the model as structure through `get_period_report` |
 
 ## Success criteria
 

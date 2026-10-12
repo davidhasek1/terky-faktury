@@ -1,4 +1,13 @@
-import { Building2, ClipboardList, FileText, LayoutDashboard, Plug, Users } from "lucide-react"
+import {
+  Building2,
+  ChartColumn,
+  ClipboardList,
+  FileText,
+  LayoutDashboard,
+  Plug,
+  Receipt,
+  Users,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -12,6 +21,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/invoices", label: "Faktury", icon: FileText },
   { href: "/customers", label: "Zákazníci", icon: Users },
   { href: "/activities", label: "Aktivity", icon: ClipboardList },
+  { href: "/expenses", label: "Náklady", icon: Receipt },
+  { href: "/report", label: "Výkaz", icon: ChartColumn },
   { href: "/company", label: "Moje údaje", icon: Building2 },
   { href: "/connect", label: "Připojení", icon: Plug },
 ]

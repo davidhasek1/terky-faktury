@@ -1,5 +1,6 @@
 import { formatScaled, fromDecimal, toDecimal, type Scaled } from "@/lib/money"
-import type { ActivityService, Customer, InvoiceItem } from "@/lib/types"
+import { EXPENSE_CATEGORY_LABELS } from "@/components/expenses/category-labels"
+import type { ActivityService, Customer, Expense, InvoiceItem } from "@/lib/types"
 import type { ActivityWithCustomer } from "@/lib/services/activities"
 import { invoiceStatus, type InvoiceDetail, type InvoiceWithCustomer } from "@/lib/services/invoices"
 
@@ -102,6 +103,22 @@ export function presentActivity(activity: ActivityWithCustomer, services: Activi
       price: amountFields(fromDecimal(service.price)),
       note: safeText(service.note, 200),
     })),
+  }
+}
+
+export function presentExpense(expense: Expense) {
+  return {
+    id: expense.id,
+    expense_date: expense.expense_date,
+    description: safeText(expense.description, 500),
+    supplier: safeText(expense.supplier, 200),
+    category: expense.category,
+    category_label: EXPENSE_CATEGORY_LABELS[expense.category],
+    tax_rate_percent: amount(fromDecimal(expense.tax_rate)),
+    subtotal: amountFields(fromDecimal(expense.subtotal)),
+    tax_amount: amountFields(fromDecimal(expense.tax_amount)),
+    total: amountFields(fromDecimal(expense.total)),
+    note: safeText(expense.note, 2000),
   }
 }
 

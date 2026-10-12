@@ -30,6 +30,7 @@ export function serviceErrorStatus(code: ServiceErrorCode): number {
     case "CUSTOMER_NOT_FOUND":
     case "INVOICE_NOT_FOUND":
     case "ACTIVITY_NOT_FOUND":
+    case "EXPENSE_NOT_FOUND":
       return 404
     case "VALIDATION_ERROR":
     case "CUSTOMER_EMAIL_MISSING":

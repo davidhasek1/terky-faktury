@@ -219,9 +219,12 @@ project at the same repo.
 - [ ] `/invoices/new` saves an invoice
 - [ ] `/api/invoices/[id]/pdf` downloads a PDF
 - [ ] `/api/invoices/[id]/send-email` sends an email and stamps `email_sent_at`
+- [ ] `/expenses/new` saves an expense and the VAT / total preview matches what is stored
+- [ ] `/report` opens on the current quarter, the arrows move between quarters,
+      and both CSV buttons download a file that opens correctly in Excel
 - [ ] The link in the email opens `/invoices/download/[publicId]` without auth
 - [ ] `/api/invoices/download/[publicId]` returns the PDF without auth
 - [ ] `/.well-known/oauth-protected-resource` returns JSON with the right origin
 - [ ] `POST /mcp` without a token returns 401 with a `WWW-Authenticate` header
-- [ ] The ChatGPT connector connects and `tools/list` returns 19 tools
+- [ ] The ChatGPT connector connects and `tools/list` returns 25 tools
 - [ ] `/connect` shows the production MCP URL and can issue + revoke a token

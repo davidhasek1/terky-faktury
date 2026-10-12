@@ -20,6 +20,7 @@ export interface FakeDatabase {
   invoice_items: Row[]
   activities: Row[]
   activity_services: Row[]
+  expenses: Row[]
   company_details: Row[]
   mcp_confirmations: Row[]
   mcp_idempotency: Row[]
@@ -38,6 +39,7 @@ export function createFakeDatabase(): FakeDatabase {
     invoice_items: [],
     activities: [],
     activity_services: [],
+    expenses: [],
     company_details: [],
     mcp_confirmations: [],
     mcp_idempotency: [],
@@ -68,6 +70,7 @@ const USER_OWNED: TableName[] = [
   "customers",
   "invoices",
   "activities",
+  "expenses",
   "company_details",
   "mcp_confirmations",
   "mcp_idempotency",
@@ -362,6 +365,7 @@ class FakeQuery<T> implements PromiseLike<Result<T>> {
     }
 
     if (this.table === "activities" && !row.updated_at) row.updated_at = now
+    if (this.table === "expenses" && !row.updated_at) row.updated_at = now
     if (this.table === "company_details" && !row.updated_at) row.updated_at = now
 
     return row

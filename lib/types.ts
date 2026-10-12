@@ -86,3 +86,29 @@ export interface Activity {
   customer?: Customer | null
   services?: ActivityService[]
 }
+
+export type ExpenseCategory =
+  | "material"
+  | "transport"
+  | "phone_internet"
+  | "equipment"
+  | "fees"
+  | "insurance"
+  | "social_security"
+  | "other"
+
+export interface Expense {
+  id: string
+  user_id?: string
+  expense_date: string
+  description: string
+  supplier?: string | null
+  category: ExpenseCategory
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+  note?: string | null
+  created_at: string
+  updated_at: string
+}

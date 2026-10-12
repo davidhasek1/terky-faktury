@@ -22,9 +22,9 @@ describe("zvýraznění aktivní položky", () => {
 })
 
 describe("navigace", () => {
-  it("vede na všech šest sekcí", () => {
+  it("vede na všech osm sekcí", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
-      "/", "/invoices", "/customers", "/activities", "/company", "/connect",
+      "/", "/invoices", "/customers", "/activities", "/expenses", "/report", "/company", "/connect",
     ])
   })
 })

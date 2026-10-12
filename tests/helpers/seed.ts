@@ -99,3 +99,31 @@ export function seedActivity(
 
   return id
 }
+
+export function seedExpense(
+  db: FakeDatabase,
+  userId: string,
+  overrides: Partial<Row> = {},
+): string {
+  const id = crypto.randomUUID()
+  const now = new Date().toISOString()
+
+  db.expenses.push({
+    id,
+    user_id: userId,
+    expense_date: "2026-02-15",
+    description: "Čisticí prostředky",
+    supplier: "Mercadona",
+    category: "material",
+    subtotal: 40,
+    tax_rate: 21,
+    tax_amount: 8.4,
+    total: 48.4,
+    note: null,
+    created_at: now,
+    updated_at: now,
+    ...overrides,
+  })
+
+  return id
+}
