@@ -3,6 +3,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Písmo pro PDF přehledy se čte ze souboru za běhu; bez tohohle by se
+  // do serverless funkcí na Vercelu nepřibalilo.
+  outputFileTracingIncludes: {
+    "/api/report/invoices-pdf": ["./lib/fonts/**"],
+    "/api/report/expenses-pdf": ["./lib/fonts/**"],
+  },
   // App Router neumí složky začínající tečkou, takže OAuth metadata bydlí pod
   // /api/well-known a sem se jen přepisují. Varianty s příponou (např.
   // /.well-known/oauth-protected-resource/mcp) posílají někteří klienti podle
