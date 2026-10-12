@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Download, FileText, Plus, Receipt } from "lucide-react"
+import { Download, FileSpreadsheet, FileText, Plus, Receipt } from "lucide-react"
 
 import { Topbar } from "@/components/app-shell/topbar"
 import { EXPENSE_CATEGORY_LABELS } from "@/components/expenses/category-labels"
@@ -39,6 +39,12 @@ export default async function ReportPage({
           description="Vystavené faktury podle data vystavení, náklady a souhrn pro přiznání IVA a IRPF."
           actions={
             <>
+              <Button asChild size="sm">
+                <a href={`/api/report/xlsx?${query}`} download>
+                  <FileSpreadsheet className="size-4" />
+                  Excel
+                </a>
+              </Button>
               <Button asChild variant="outline" size="sm">
                 <a href={`/api/report/invoices?${query}`} download>
                   <Download className="size-4" />
